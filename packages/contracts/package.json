@@ -1,0 +1,21 @@
+{
+  "name": "@bloom/contracts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "deploy:mantle-sepolia": "hardhat run scripts/deploy.ts --network mantleSepolia",
+    "node": "hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox-viem": "^4.0.0",
+    "hardhat": "^2.22.0",
+    "typescript": "~5.9.2",
+    "viem": "^2.21.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.1.0"
+  }
+}
