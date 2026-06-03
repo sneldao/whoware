@@ -1,21 +1,29 @@
 {
-    "name": "bloom-monorepo-template",
-    "private": true,
-    "workspaces": [
-        "apps/*",
-        "packages/*"
-    ],
-    "scripts": {
-        "dev": "turbo run dev",
-        "dev:backend": "turbo run dev --filter=@bloom/backend",
-        "dev:mobile": "turbo run dev --filter=@bloom/mobile",
-        "build": "turbo run build",
-        "lint": "turbo run lint",
-        "typecheck": "turbo run typecheck",
-        "test": "turbo run test"
-    },
-    "devDependencies": {
-        "turbo": "^2.0.12"
-    },
-    "packageManager": "bun@1.3.6"
+  "name": "bloom-monorepo-template",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=@bloom/backend",
+    "dev:mobile": "turbo run dev --filter=@bloom/mobile",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.7",
+    "turbo": "^2.0.12"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs}": [
+      "eslint --fix --no-warn-ignored"
+    ]
+  },
+  "packageManager": "bun@1.3.6"
 }

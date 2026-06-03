@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+
+# Pre-commit hook: secrets scan + lint staged files
+
+# 1. Scan for secrets in staged files
+.husky/check-secrets
+
+# 2. Run linters on staged files only
+npx lint-staged
