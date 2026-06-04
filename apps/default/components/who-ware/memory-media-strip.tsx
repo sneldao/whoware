@@ -9,6 +9,7 @@ interface MemoryMediaStripProps {
   detailImageKeys?: string[];
   sceneIndex: number;
   motionPrompt?: string;
+  imageUrl?: string;
 }
 
 const detailFocus = [
@@ -17,7 +18,7 @@ const detailFocus = [
   { label: "Texture", position: "right center" },
 ] as const;
 
-export function MemoryMediaStrip({ imageKey, detailImageKeys, sceneIndex, motionPrompt }: MemoryMediaStripProps) {
+export function MemoryMediaStrip({ imageKey, detailImageKeys, sceneIndex, motionPrompt, imageUrl }: MemoryMediaStripProps) {
   const hasMotionPlan = Boolean(motionPrompt?.trim());
   const detailKeys = detailImageKeys && detailImageKeys.length > 0 ? detailImageKeys.slice(0, 3) : [imageKey, imageKey, imageKey];
 
@@ -38,7 +39,7 @@ export function MemoryMediaStrip({ imageKey, detailImageKeys, sceneIndex, motion
         {detailFocus.map((item, index) => (
           <View key={item.label} style={styles.frame}>
             <Image
-              source={getSceneImageSource(detailKeys[index], sceneIndex)}
+              source={getSceneImageSource(detailKeys[index], sceneIndex, imageUrl)}
               style={styles.detailImage}
               contentFit="cover"
               contentPosition={item.position}

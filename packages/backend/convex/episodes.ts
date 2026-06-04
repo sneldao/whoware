@@ -23,6 +23,7 @@ const sceneReturnValidator = v.object({
   ambientText: v.string(),
   clues: v.array(sceneClueValidator),
   isMercy: v.optional(v.boolean()),
+  imageUrl: v.optional(v.string()),
 });
 
 const demoScenes = [

@@ -27,6 +27,7 @@ export interface Scene {
   motionPrompt?: string;
   ambientText: string;
   clues: Clue[];
+  imageUrl?: string;
 }
 
 interface PanoramaSceneProps {
@@ -42,7 +43,7 @@ interface PanoramaSceneProps {
 export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, onGenerateHint, activeHint, isHintGenerating }: PanoramaSceneProps) {
   const [activeClue, setActiveClue] = useState<Clue | null>(null);
   const colors = useMemo(() => normalizePalette(scene.palette), [scene.palette]);
-  const imageSource = getSceneImageSource(scene.imageKey, sceneIndex);
+  const imageSource = getSceneImageSource(scene.imageKey, sceneIndex, scene.imageUrl);
 
   useEffect(() => {
     setActiveClue(null);
@@ -96,6 +97,7 @@ export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, o
         detailImageKeys={scene.detailImageKeys}
         sceneIndex={sceneIndex}
         motionPrompt={scene.motionPrompt}
+        imageUrl={scene.imageUrl}
       />
 
       {activeClue ? (

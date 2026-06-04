@@ -23,6 +23,7 @@ const scene = v.object({
   ambientText: v.string(),
   clues: v.array(sceneClue),
   isMercy: v.optional(v.boolean()),
+  imageUrl: v.optional(v.string()),
 });
 
 export default defineSchema({
@@ -48,7 +49,7 @@ export default defineSchema({
     isActive: v.boolean(),
     dropsAt: v.number(),
     closesAt: v.optional(v.number()),
-    status: v.union(v.literal("draft"), v.literal("live"), v.literal("closed")),
+    status: v.union(v.literal("staging"), v.literal("review"), v.literal("draft"), v.literal("live"), v.literal("closed")),
     difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
     scenes: v.array(scene),
     answerOptions: v.optional(v.array(v.string())),

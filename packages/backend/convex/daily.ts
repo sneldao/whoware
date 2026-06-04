@@ -1,7 +1,7 @@
 import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-const episodeStatus = v.union(v.literal("draft"), v.literal("live"), v.literal("closed"));
+const episodeStatus = v.union(v.literal("staging"), v.literal("review"), v.literal("draft"), v.literal("live"), v.literal("closed"));
 
 const MIN_DROP_LEAD_TIME_MS = 60_000;
 
@@ -28,6 +28,7 @@ const dailyEpisodeShape = v.object({
       ambientText: v.string(),
       clues: v.array(v.object({ label: v.string(), detail: v.string(), x: v.number(), y: v.number() })),
       isMercy: v.optional(v.boolean()),
+      imageUrl: v.optional(v.string()),
     }),
   ),
 });

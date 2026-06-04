@@ -17,10 +17,11 @@ const mysteryFigure = require("../../../../assets/images/whoware-mystery-figure.
 
 interface CinematicHeroProps {
   imageKey: string | undefined;
-  // 0 = nothing revealed, 1 = fully solved. Controls how sharp the figure is.
   revealProgress: number;
   isSolved: boolean;
   solvedImageKey?: string | undefined;
+  imageUrl?: string;
+  solvedImageUrl?: string;
 }
 
 /**
@@ -28,10 +29,10 @@ interface CinematicHeroProps {
  * behind a warm sepia wash (Ken Burns), and the unidentified figure resolves
  * from shadow as the player makes progress.
  */
-export function CinematicHero({ imageKey, revealProgress, isSolved, solvedImageKey }: CinematicHeroProps) {
+export function CinematicHero({ imageKey, revealProgress, isSolved, solvedImageKey, imageUrl, solvedImageUrl }: CinematicHeroProps) {
   const drift = useSharedValue(0);
   const figurePulse = useSharedValue(0);
-  const backdrop = getSceneImageSource(imageKey, 0);
+  const backdrop = getSceneImageSource(imageKey, 0, imageUrl);
   const clampedProgress = Math.max(0, Math.min(1, revealProgress));
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export function CinematicHero({ imageKey, revealProgress, isSolved, solvedImageK
       <View style={styles.figureFrame}>
         <Animated.View style={[styles.figureInner, figureStyle]}>
           <Image
-            source={isSolved && solvedImageKey ? getSceneImageSource(solvedImageKey, 0) : mysteryFigure}
+            source={isSolved && (solvedImageKey || solvedImageUrl) ? getSceneImageSource(solvedImageKey, 0, solvedImageUrl) : mysteryFigure}
             style={styles.figureImage}
             contentFit="cover"
             transition={500}

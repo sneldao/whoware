@@ -371,6 +371,7 @@ export default function Index() {
     : Math.min(0.85, (memoriesViewed / Math.max(1, totalMemories)) * 0.65 + hotspotsOpened * 0.04);
   const episodeNumber = parseInt(episode.slug.replace(/\D/g, ""), 10) || 1;
   const solvedSceneImageKey = episode.scenes[episode.scenes.length - 1]?.imageKey ?? currentScene.imageKey;
+  const solvedSceneImageUrl = (episode.scenes[episode.scenes.length - 1] as { imageUrl?: string } | undefined)?.imageUrl ?? (currentScene as { imageUrl?: string }).imageUrl;
   const solvedToday = isSolved && streak.current > 0;
   const runFinished = isSolved || isExhausted;
 
@@ -449,6 +450,8 @@ export default function Index() {
             revealProgress={revealProgress}
             isSolved={isSolved}
             solvedImageKey={solvedSceneImageKey}
+            imageUrl={(currentScene as { imageUrl?: string }).imageUrl}
+            solvedImageUrl={solvedSceneImageUrl}
           />
           <View style={styles.heroContent}>
             <View style={styles.brandRow}>

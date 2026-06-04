@@ -22,7 +22,12 @@ export function isSceneImageKey(value: string | undefined): value is SceneImageK
   return value !== undefined && value in sceneImageSources;
 }
 
-export function getSceneImageSource(imageKey: string | undefined, fallbackIndex: number): ImageSourcePropType {
+export function getSceneImageSource(
+  imageKey: string | undefined,
+  fallbackIndex: number,
+  imageUrl?: string,
+): ImageSourcePropType {
+  if (imageUrl) return { uri: imageUrl };
   const fallbackImageKey = fallbackImageKeys[fallbackIndex] ?? "bedroom";
   return isSceneImageKey(imageKey) ? sceneImageSources[imageKey] : sceneImageSources[fallbackImageKey];
 }
