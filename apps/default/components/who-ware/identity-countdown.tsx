@@ -4,9 +4,11 @@ import { StyleSheet, Text, View } from "react-native";
 
 interface IdentityCountdownProps {
   isSolved: boolean;
+  dropsAt: number | null;
+  statusLabel?: string;
 }
 
-export function IdentityCountdown({ isSolved }: IdentityCountdownProps) {
+export function IdentityCountdown({ isSolved, dropsAt, statusLabel }: IdentityCountdownProps) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -14,7 +16,12 @@ export function IdentityCountdown({ isSolved }: IdentityCountdownProps) {
     return () => clearInterval(intervalId);
   }, []);
 
-  const remaining = useMemo(() => getRemainingUntilNextLocalDay(now), [now]);
+  const remaining = useMemo(() => {
+    if (!dropsAt) return 0;
+    return Math.max(dropsAt - now, 0);
+  }, [now, dropsAt]);
+
+  const label = statusLabel ?? (isSolved ? "Next body opens in" : dropsAt ? "Next drop opens in" : "Waiting for the next drop");
 
   return (
     <View style={styles.card}>
@@ -22,18 +29,11 @@ export function IdentityCountdown({ isSolved }: IdentityCountdownProps) {
         <Ionicons name={isSolved ? "moon" : "hourglass"} size={20} color="#111827" />
       </View>
       <View style={styles.copy}>
-        <Text style={styles.label}>{isSolved ? "Next body opens in" : "Today's signal collapses in"}</Text>
-        <Text style={styles.time}>{formatRemaining(remaining)}</Text>
+        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.time}>{dropsAt ? formatRemaining(remaining) : "--:--:--"}</Text>
       </View>
     </View>
   );
-}
-
-function getRemainingUntilNextLocalDay(now: number): number {
-  const current = new Date(now);
-  const next = new Date(current);
-  next.setHours(24, 0, 0, 0);
-  return Math.max(next.getTime() - now, 0);
 }
 
 function formatRemaining(milliseconds: number): string {

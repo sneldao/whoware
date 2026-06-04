@@ -129,6 +129,46 @@ const demoScenes = [
       { label: "Script margin", detail: "The margin carries a repeated instruction: make resolve sound inevitable.", x: 63, y: 52 },
       { label: "Ashtray", detail: "Cigar ash has fallen across a line about fighting on beaches and landing grounds.", x: 76, y: 69 },
     ],
+    isMercy: false,
+  },
+  {
+    title: "A garden where the brush waits",
+    location: "Country house garden",
+    era: "1930s",
+    palette: ["#064E3B", "#92400E", "#FDE68A"],
+    panoramaPrompt:
+      "360 equirectangular panorama of a 1930s English country house garden, easel, paint tubes, brick wall, pond, no faces, no readable names.",
+    imageKey: "broadcast",
+    imageAspectRatio: "16:9",
+    detailImageKeys: ["broadcast"],
+    mediaKind: "image" as const,
+    ambientText:
+      "An easel stands beside a koi pond. The house behind is patient, as if it has waited years for its occupant to be listened to again.",
+    clues: [
+      { label: "Easel canvas", detail: "Half-finished oils show a view of the same pond, signed only with a hurried initial.", x: 32, y: 48 },
+      { label: "Brick wall", detail: "Bricks are laid in an English bond, older than the century, softening under ivy.", x: 64, y: 70 },
+      { label: "Garden chair", detail: "A canvas deck chair is positioned as if its owner steps away for a telegram, then returns to the paint.", x: 82, y: 55 },
+    ],
+    isMercy: true,
+  },
+  {
+    title: "An empty chair after the telegram",
+    location: "Downing Street annexe",
+    era: "July 1945",
+    palette: ["#111827", "#7C2D12", "#F8E7C9"],
+    panoramaPrompt:
+      "360 equirectangular panorama inside a 1945 London government annexe, empty chair, telegram paper, teacup, no portraits, no readable names.",
+    imageKey: "broadcast",
+    imageAspectRatio: "16:9",
+    detailImageKeys: ["broadcast"],
+    mediaKind: "image" as const,
+    ambientText:
+      "A chair is pushed back from a desk. A telegram lies face up, the kind that thanks a wartime leader and asks him to leave the room.",
+    clues: [
+      { label: "Telegram paper", detail: "The paper carries the arithmetic of an election: a country that won a war has voted for a different kind of peace.", x: 26, y: 42 },
+      { label: "Teacup", detail: "The tea has gone cold, as if the drinker left the room before the last sentence was read.", x: 58, y: 64 },
+      { label: "Dispatch box", detail: "The same battered box from the war cabinet sits unopened; tomorrow it will belong to someone else.", x: 78, y: 50 },
+    ],
     isMercy: true,
   },
 ];
@@ -189,7 +229,12 @@ export const ensureDemoEpisode = mutation({
         existing.figureId !== churchillFigure._id;
 
       if (shouldRefresh) {
-        await ctx.db.patch(existing._id, { scenes, figureId: churchillFigure._id });
+        await ctx.db.patch(existing._id, {
+          scenes,
+          figureId: churchillFigure._id,
+          dropsAt: existing.dropsAt ?? existing.activeAt ?? Date.now(),
+          status: existing.status ?? (existing.isActive ? "live" : "draft"),
+        });
       }
       return { episodeId: existing._id, isNew: false };
     }
@@ -200,6 +245,8 @@ export const ensureDemoEpisode = mutation({
       figureName: churchillFigure.canonicalName,
       activeAt: Date.now(),
       isActive: true,
+      dropsAt: Date.now(),
+      status: "live",
       difficulty: "iconic",
       scenes,
     });

@@ -46,13 +46,17 @@ export default defineSchema({
     figureName: v.optional(v.string()),
     activeAt: v.number(),
     isActive: v.boolean(),
+    dropsAt: v.number(),
+    closesAt: v.optional(v.number()),
+    status: v.union(v.literal("draft"), v.literal("live"), v.literal("closed")),
     difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
     scenes: v.array(scene),
     answerOptions: v.optional(v.array(v.string())),
   })
     .index("by_isActive_and_activeAt", ["isActive", "activeAt"])
     .index("by_slug", ["slug"])
-    .index("by_figureId", ["figureId"]),
+    .index("by_figureId", ["figureId"])
+    .index("by_status_and_dropsAt", ["status", "dropsAt"]),
   playerRuns: defineTable({
     episodeId: v.id("episodes"),
     identityId: v.string(),

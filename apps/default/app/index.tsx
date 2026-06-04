@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { MAX_GUESSES_PER_RUN } from "@/convex/scoring";
 import { Ionicons } from "@expo/vector-icons";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -22,7 +23,6 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useVeniceHint } from "@/hooks/use-venice-hint";
 import { useIdentity } from "@/hooks/use-identity";
 
-const EPISODE_EPOCH_MS = Date.UTC(2025, 0, 1);
 const PLAYER_NAME_KEY = "whoware.player.name";
 const DEFAULT_PLAYER_NAME = "Player";
 
@@ -30,9 +30,9 @@ export default function Index() {
   const insets = useSafeAreaInsets();
 
   const identity = useIdentity();
-  const episode = useQuery(api.episodes.getActive);
-  const maxGuesses = useQuery(api.episodes.getGuessCap) ?? 5;
-  const guessCap = typeof maxGuesses === "number" ? maxGuesses : 5;
+  const episode = useQuery(api.daily.getCurrentDrop);
+  const nextDrop = useQuery(api.daily.getNextDrop);
+  const guessCap = MAX_GUESSES_PER_RUN;
   const run = useQuery(
     api.runs.getActiveRun,
     episode && identity.identityId
@@ -142,6 +142,15 @@ export default function Index() {
   const hotspotsOpened = run?.hotspotsOpened ?? localHotspots.length;
   const lastScore = run?.score ?? null;
 
+  const countdownTarget = isSolved || isExhausted
+    ? (nextDrop?.dropsAt ?? null)
+    : (episode?.closesAt ?? nextDrop?.dropsAt ?? null);
+  const countdownLabel = episode?.closesAt && !isSolved && !isExhausted
+    ? "Today's signal collapses in"
+    : isSolved
+      ? "Next body opens in"
+      : "Next drop opens in";
+
   const figureOptions = useMemo<FigureOption[]>(
     () =>
       figures.map((f: { _id: Id<"figures">; canonicalName: string }) => ({
@@ -210,22 +219,34 @@ export default function Index() {
   );
 
   const handleUnlockNextMemory = useCallback(async () => {
-    if (!episode || !hasMoreMemories() || isSolved || isBusy) return;
+    if (!episode || isSolved || isBusy) return;
+    const finished = run?.status === "solved" || run?.status === "exhausted";
+    let nextIndex = -1;
+    for (let i = sceneIndex + 1; i < episode.scenes.length; i++) {
+      const s = episode.scenes[i] as { isMercy?: boolean };
+      if (!s.isMercy || finished) { nextIndex = i; break; }
+    }
+    if (nextIndex < 0) return;
     setIsBusy(true);
     try {
       const activeRun = await ensureRun();
-      await enterSceneMutation({ runId: activeRun._id, sceneIndex: sceneIndex + 1 });
+      await enterSceneMutation({ runId: activeRun._id, sceneIndex: nextIndex });
       setStatus("You surrender certainty for another memory. The answer is closer, but the score ceiling falls.");
     } catch {
       // ignore
     } finally {
       setIsBusy(false);
     }
-  }, [episode, isSolved, isBusy, sceneIndex, enterSceneMutation, playerName, identity.identityId]);
+  }, [episode, isSolved, isBusy, sceneIndex, enterSceneMutation, run?.status, identity.identityId]);
 
   function hasMoreMemories(): boolean {
     if (!episode) return false;
-    return sceneIndex < episode.scenes.length - 1;
+    const finished = run?.status === "solved" || run?.status === "exhausted";
+    for (let i = sceneIndex + 1; i < episode.scenes.length; i++) {
+      const s = episode.scenes[i] as { isMercy?: boolean };
+      if (!s.isMercy || finished) return true;
+    }
+    return false;
   }
 
   async function handleGuess(_guessText: string, _figureId: string, submittedPlayerName: string) {
@@ -256,7 +277,7 @@ export default function Index() {
 
       if (wallet.address) {
         setIsMinting(true);
-        const episodeDay = Math.max(1, Math.floor((episode.activeAt - EPISODE_EPOCH_MS) / 86400000) + 1);
+        const episodeDay = Math.max(1, Math.floor(episode.dropsAt / 86400000));
         mintScoreOnChain({
           playerAddress: wallet.address,
           episodeDay,
@@ -292,14 +313,22 @@ export default function Index() {
       return;
     }
 
-    if (sceneIndex < episode.scenes.length - 1) {
-      try {
-        await enterSceneMutation({ runId: activeRun._id, sceneIndex: sceneIndex + 1 });
-      } catch {
-        // ignore
+    if (hasMoreMemories()) {
+      const finished = run?.status === "solved" || run?.status === "exhausted";
+      let nextIdx = -1;
+      for (let i = sceneIndex + 1; i < episode.scenes.length; i++) {
+        const s = episode.scenes[i] as { isMercy?: boolean };
+        if (!s.isMercy || finished) { nextIdx = i; break; }
       }
-      setStatus("The body rejects that name. A deeper memory surfaces.");
-      return;
+      if (nextIdx >= 0) {
+        try {
+          await enterSceneMutation({ runId: activeRun._id, sceneIndex: nextIdx });
+        } catch {
+          // ignore
+        }
+        setStatus("The body rejects that name. A deeper memory surfaces.");
+        return;
+      }
     }
 
     setStatus("That name does not fit. You have reached the last memory.");
@@ -335,20 +364,66 @@ export default function Index() {
     );
   }
 
-  const moreMemoriesAvailable = sceneIndex < episode.scenes.length - 1;
   const memoriesViewed = run?.memoriesViewed ?? 0;
   const totalMemories = episode.scenes.length;
   const revealProgress = isSolved
     ? 1
     : Math.min(0.85, (memoriesViewed / Math.max(1, totalMemories)) * 0.65 + hotspotsOpened * 0.04);
-  const episodeNumber = Math.max(1, Math.floor((episode.activeAt - EPISODE_EPOCH_MS) / 86400000) + 1);
+  const episodeNumber = parseInt(episode.slug.replace(/\D/g, ""), 10) || 1;
   const solvedSceneImageKey = episode.scenes[episode.scenes.length - 1]?.imageKey ?? currentScene.imageKey;
   const solvedToday = isSolved && streak.current > 0;
+  const runFinished = isSolved || isExhausted;
 
-  const visibleScenes = useMemo<Scene[]>(() => {
+  const accessibleScenes = useMemo(() => {
+    if (!episode) return [];
+    return episode.scenes.filter((scene: { isMercy?: boolean }) => runFinished || !scene.isMercy);
+  }, [episode, runFinished]);
+
+  const nextAccessibleIndex = useMemo(() => {
+    if (!episode) return -1;
+    for (let i = sceneIndex + 1; i < episode.scenes.length; i++) {
+      const s = episode.scenes[i] as { isMercy?: boolean };
+      if (!s.isMercy || runFinished) return i;
+    }
+    return -1;
+  }, [episode, sceneIndex, runFinished]);
+
+  const moreMemoriesAvailable = nextAccessibleIndex >= 0;
+
+  const accessiblePosition = useMemo(() => {
+    if (!episode) return 0;
+    const idx = accessibleScenes.findIndex(
+      (s: { title: string }) => s.title === episode.scenes[sceneIndex]?.title,
+    );
+    return idx >= 0 ? idx : 0;
+  }, [episode, accessibleScenes, sceneIndex]);
+
+  const visibleScenes = useMemo<{ scene: Scene; episodeIndex: number }[]>(() => {
     if (!episode || !hasEnteredMemory) return [];
-    return episode.scenes.slice(0, sceneIndex + 1);
-  }, [episode, hasEnteredMemory, sceneIndex]);
+    return accessibleScenes
+      .map((raw: { title: string; location: string; era: string; palette: string[]; panoramaPrompt: string; imageKey?: string; imageAspectRatio?: string; detailImageKeys?: string[]; mediaKind?: "image" | "motion" | "video"; motionPrompt?: string; ambientText: string; clues: { label: string; detail: string; x: number; y: number }[] }) => {
+        const episodeIndex = episode.scenes.findIndex((s: { title: string }) => s.title === raw.title);
+        if (episodeIndex < 0 || episodeIndex > sceneIndex) return null;
+        return {
+          scene: {
+            title: raw.title,
+            location: raw.location,
+            era: raw.era,
+            palette: raw.palette,
+            panoramaPrompt: raw.panoramaPrompt,
+            imageKey: raw.imageKey,
+            imageAspectRatio: raw.imageAspectRatio,
+            detailImageKeys: raw.detailImageKeys,
+            mediaKind: raw.mediaKind,
+            motionPrompt: raw.motionPrompt,
+            ambientText: raw.ambientText,
+            clues: raw.clues,
+          },
+          episodeIndex,
+        };
+      })
+      .filter((entry): entry is { scene: Scene; episodeIndex: number } => entry !== null);
+  }, [episode, hasEnteredMemory, sceneIndex, accessibleScenes]);
 
   async function handleGenerateHint(clueLabel: string) {
     setActiveHint(null);
@@ -395,7 +470,7 @@ export default function Index() {
             />
             <Text style={styles.headline}>Someone changed history{"\n"}from this room.</Text>
             <Text style={styles.subhead}>{status}</Text>
-            <IdentityCountdown isSolved={isSolved} />
+            <IdentityCountdown isSolved={isSolved} dropsAt={countdownTarget} statusLabel={countdownLabel} />
 
             <StreakBanner current={streak.current} best={streak.best} solvedToday={solvedToday} />
 
@@ -473,8 +548,8 @@ export default function Index() {
           <>
             <PanoramaScene
               scene={currentScene}
-              sceneIndex={sceneIndex}
-              totalScenes={episode.scenes.length}
+              sceneIndex={accessiblePosition}
+              totalScenes={accessibleScenes.length}
               onHotspotOpen={handleOpenHotspot}
               onGenerateHint={handleGenerateHint}
               activeHint={activeHint}
@@ -507,14 +582,14 @@ export default function Index() {
             </View>
 
             <View style={styles.sceneRail}>
-              {visibleScenes.map((scene, index) => (
+              {visibleScenes.map(({ episodeIndex: epiIdx }, railIndex) => (
                 <Pressable
-                  key={scene.title}
+                  key={episode.scenes[epiIdx]?.title ?? railIndex}
                   accessibilityRole="button"
-                  onPress={() => setSceneIndex(index)}
-                  style={[styles.scenePill, sceneIndex === index && styles.scenePillActive]}
+                  onPress={() => setSceneIndex(epiIdx)}
+                  style={[styles.scenePill, sceneIndex === epiIdx && styles.scenePillActive]}
                 >
-                  <Text style={[styles.scenePillText, sceneIndex === index && styles.scenePillTextActive]}>{index + 1}</Text>
+                  <Text style={[styles.scenePillText, sceneIndex === epiIdx && styles.scenePillTextActive]}>{railIndex + 1}</Text>
                 </Pressable>
               ))}
             </View>
