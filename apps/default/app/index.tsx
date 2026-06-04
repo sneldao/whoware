@@ -1,11 +1,13 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Ionicons } from "@expo/vector-icons";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { GuessPanel } from "@/components/who-ware/guess-panel";
+import { GuessPanel, type FigureOption } from "@/components/who-ware/guess-panel";
 import { CinematicHero } from "@/components/who-ware/cinematic-hero";
 import { IdentityCountdown } from "@/components/who-ware/identity-countdown";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
@@ -18,121 +20,239 @@ import type { Scene } from "@/components/who-ware/panorama-scene";
 import { useStreak } from "@/lib/use-streak";
 import { useWallet } from "@/hooks/use-wallet";
 import { useVeniceHint } from "@/hooks/use-venice-hint";
+import { useIdentity } from "@/hooks/use-identity";
 
-const INITIAL_GUESSES = 3;
 const EPISODE_EPOCH_MS = Date.UTC(2025, 0, 1);
+const PLAYER_NAME_KEY = "whoware.player.name";
+const DEFAULT_PLAYER_NAME = "Player";
 
 export default function Index() {
   const insets = useSafeAreaInsets();
-  const ensureDemoEpisode = useMutation(api.episodes.ensureDemoEpisode);
-  const submitGuess = useMutation(api.episodes.submitGuess);
+
+  const identity = useIdentity();
   const episode = useQuery(api.episodes.getActive);
+  const maxGuesses = useQuery(api.episodes.getGuessCap) ?? 5;
+  const guessCap = typeof maxGuesses === "number" ? maxGuesses : 5;
+  const run = useQuery(
+    api.runs.getActiveRun,
+    episode && identity.identityId
+      ? { episodeId: episode._id, identityId: identity.identityId }
+      : "skip",
+  );
+  const figures = useQuery(api.figures.search, { query: "", limit: 10 }) ?? [];
+
+  const seedCatalog = useMutation(api.figures.seedCatalog);
+  const ensureDemoEpisode = useMutation(api.episodes.ensureDemoEpisode);
+  const startRunMutation = useMutation(api.runs.startRun);
+  const enterSceneMutation = useMutation(api.runs.enterScene);
+  const openHotspotMutation = useMutation(api.runs.openHotspot);
+  const submitGuessMutation = useMutation(api.runs.submitGuess);
+
   const { streak, recordSolve } = useStreak();
-  const [playerName, setPlayerName] = useState("Player");
+  const [playerName, setPlayerName] = useState(DEFAULT_PLAYER_NAME);
+  const [playerNameLoaded, setPlayerNameLoaded] = useState(false);
+
   const leaderboardSnapshot = useQuery(
     api.episodes.leaderboard,
-    episode ? { episodeId: episode._id, playerName: playerName.trim() || "Player" } : "skip",
+    episode && identity.identityId
+      ? {
+          episodeId: episode._id,
+          playerName: playerName.trim() || DEFAULT_PLAYER_NAME,
+          identityId: identity.identityId,
+        }
+      : "skip",
   );
 
-  const [hasEnteredMemory, setHasEnteredMemory] = useState(false);
   const [isGuessPanelOpen, setIsGuessPanelOpen] = useState(false);
   const [sceneIndex, setSceneIndex] = useState(0);
-  const [guessesLeft, setGuessesLeft] = useState(INITIAL_GUESSES);
-  const [isSolved, setIsSolved] = useState(false);
-  const [runStartedAt, setRunStartedAt] = useState<number | null>(null);
-  const [openedHotspots, setOpenedHotspots] = useState<string[]>([]);
-  const [lastScore, setLastScore] = useState<number | null>(null);
   const [solvedRun, setSolvedRun] = useState<{ elapsedMs: number; score: number } | null>(null);
   const [status, setStatus] = useState("You open your eyes in another life. Enter the first memory when you are ready.");
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [mintTxHash, setMintTxHash] = useState<string | null>(null);
   const [isMinting, setIsMinting] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const [localHotspots, setLocalHotspots] = useState<string[]>([]);
 
   const wallet = useWallet();
   const { getHint, isGenerating: isHintGenerating } = useVeniceHint();
   const mintScoreOnChain = useAction(api.mantle.mintScore);
   const updateStreakOnChain = useAction(api.mantle.updateStreak);
 
+  const runRef = useRef(run);
   useEffect(() => {
-    void ensureDemoEpisode();
-  }, [ensureDemoEpisode]);
+    runRef.current = run;
+  }, [run]);
 
   useEffect(() => {
-    setHasEnteredMemory(false);
+    let cancelled = false;
+    AsyncStorage.getItem(PLAYER_NAME_KEY).then((stored) => {
+      if (cancelled) return;
+      if (stored) setPlayerName(stored);
+      setPlayerNameLoaded(true);
+    }).catch(() => {
+      if (cancelled) return;
+      setPlayerNameLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!playerNameLoaded) return;
+    AsyncStorage.setItem(PLAYER_NAME_KEY, playerName).catch(() => {});
+  }, [playerName, playerNameLoaded]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function seed() {
+      try {
+        await seedCatalog();
+        if (cancelled) return;
+        await ensureDemoEpisode();
+      } catch {
+        // Idempotent — ignore duplicate seed attempts.
+      }
+    }
+    void seed();
+    return () => {
+      cancelled = true;
+    };
+  }, [seedCatalog, ensureDemoEpisode]);
+
+  useEffect(() => {
     setIsGuessPanelOpen(false);
-    setSceneIndex(0);
-    setGuessesLeft(INITIAL_GUESSES);
-    setIsSolved(false);
-    setRunStartedAt(null);
-    setOpenedHotspots([]);
-    setLastScore(null);
     setSolvedRun(null);
     setActiveHint(null);
     setMintTxHash(null);
     setIsMinting(false);
+    setLocalHotspots([]);
     setStatus("You open your eyes in another life. Enter the first memory when you are ready.");
-  }, [episode?._id]);
+  }, [episode?._id, identity.identityId]);
 
-  const visibleScenes = useMemo<Scene[]>(() => {
-    if (!episode || !hasEnteredMemory) return [];
-    return episode.scenes.slice(0, sceneIndex + 1);
-  }, [episode, hasEnteredMemory, sceneIndex]);
+  useEffect(() => {
+    if (run) setSceneIndex(run.currentSceneIndex);
+  }, [run?.currentSceneIndex]);
 
-  const handleEnterMemory = useCallback(() => {
-    setHasEnteredMemory(true);
-    setRunStartedAt((current) => current ?? Date.now());
-    setStatus("The first memory resolves around you. Look carefully before asking the room for help.");
-  }, []);
+  const hasEnteredMemory = (run?.memoriesViewed ?? 0) > 0;
+  const isSolved = run?.status === "solved";
+  const isExhausted = run?.status === "exhausted";
+  const guessesUsed = run?.guessesUsed ?? 0;
+  const guessesLeft = Math.max(0, guessCap - guessesUsed);
+  const hotspotsOpened = run?.hotspotsOpened ?? localHotspots.length;
+  const lastScore = run?.score ?? null;
 
-  const handleGuessNow = useCallback(() => {
-    setRunStartedAt((current) => current ?? Date.now());
-    setIsGuessPanelOpen((current) => !current);
-    setStatus("You can name the identity before opening a memory. Unassisted solves keep the highest score ceiling.");
-  }, []);
-
-  const handleOpenHotspot = useCallback(
-    (label: string) => {
-      const hotspotKey = `${sceneIndex}:${label}`;
-      setOpenedHotspots((current) => (current.includes(hotspotKey) ? current : [...current, hotspotKey]));
-    },
-    [sceneIndex],
+  const figureOptions = useMemo<FigureOption[]>(
+    () =>
+      figures.map((f: { _id: Id<"figures">; canonicalName: string }) => ({
+        figureId: f._id,
+        displayName: f.canonicalName,
+      })),
+    [figures],
   );
 
-  const handleUnlockNextMemory = useCallback(() => {
-    if (!episode || sceneIndex >= episode.scenes.length - 1 || isSolved) return;
-    setRunStartedAt((current) => current ?? Date.now());
-    setSceneIndex((current) => Math.min(current + 1, episode.scenes.length - 1));
-    setStatus("You surrender certainty for another memory. The answer is closer, but the score ceiling falls.");
-  }, [episode, isSolved, sceneIndex]);
-
-  async function handleGuess(guess: string, submittedPlayerName: string) {
-    if (!episode || isSolved || guessesLeft <= 0) return;
-
-    const memoriesViewed = hasEnteredMemory ? sceneIndex + 1 : 0;
-    const guessesUsed = INITIAL_GUESSES - guessesLeft + 1;
-    const localScore = estimateScore(memoriesViewed, openedHotspots.length, guessesUsed, runStartedAt);
-    const result = await submitGuess({
+  async function ensureRun() {
+    if (!episode || !identity.identityId) {
+      throw new Error("Episode or identity not ready");
+    }
+    const existing = runRef.current;
+    if (existing) return existing;
+    const fresh = await startRunMutation({
       episodeId: episode._id,
+      identityId: identity.identityId,
+      playerName: playerName.trim() || DEFAULT_PLAYER_NAME,
+    });
+    runRef.current = fresh;
+    return fresh;
+  }
+
+  const handleEnterMemory = useCallback(async () => {
+    if (!episode || isBusy) return;
+    setIsBusy(true);
+    try {
+      const activeRun = await ensureRun();
+      await enterSceneMutation({ runId: activeRun._id, sceneIndex: 0 });
+      setStatus("The first memory resolves around you. Look carefully before asking the room for help.");
+    } catch {
+      // ignore
+    } finally {
+      setIsBusy(false);
+    }
+  }, [episode, isBusy, enterSceneMutation, playerName]);
+
+  const handleGuessNow = useCallback(async () => {
+    if (!episode || isBusy) return;
+    setIsBusy(true);
+    try {
+      await ensureRun();
+      setIsGuessPanelOpen((current) => !current);
+      setStatus("You can name the identity before opening a memory. Unassisted solves keep the highest score ceiling.");
+    } catch {
+      // ignore
+    } finally {
+      setIsBusy(false);
+    }
+  }, [episode, isBusy, playerName]);
+
+  const handleOpenHotspot = useCallback(
+    async (label: string) => {
+      if (!episode) return;
+      const hotspotKey = `${sceneIndex}:${label}`;
+      setLocalHotspots((current) => (current.includes(hotspotKey) ? current : [...current, hotspotKey]));
+      try {
+        const activeRun = await ensureRun();
+        await openHotspotMutation({ runId: activeRun._id, sceneIndex, hotspotLabel: label });
+      } catch {
+        // ignore
+      }
+    },
+    [episode, sceneIndex, openHotspotMutation, playerName, identity.identityId],
+  );
+
+  const handleUnlockNextMemory = useCallback(async () => {
+    if (!episode || !hasMoreMemories() || isSolved || isBusy) return;
+    setIsBusy(true);
+    try {
+      const activeRun = await ensureRun();
+      await enterSceneMutation({ runId: activeRun._id, sceneIndex: sceneIndex + 1 });
+      setStatus("You surrender certainty for another memory. The answer is closer, but the score ceiling falls.");
+    } catch {
+      // ignore
+    } finally {
+      setIsBusy(false);
+    }
+  }, [episode, isSolved, isBusy, sceneIndex, enterSceneMutation, playerName, identity.identityId]);
+
+  function hasMoreMemories(): boolean {
+    if (!episode) return false;
+    return sceneIndex < episode.scenes.length - 1;
+  }
+
+  async function handleGuess(_guessText: string, _figureId: string, submittedPlayerName: string) {
+    if (!episode || isSolved || guessesLeft <= 0 || !identity.identityId) return;
+
+    const figureId = _figureId as Id<"figures">;
+    const activeRun = await ensureRun();
+
+    if (!hasEnteredMemory) {
+      await enterSceneMutation({ runId: activeRun._id, sceneIndex: 0 });
+    }
+
+    const result = await submitGuessMutation({
+      runId: activeRun._id,
+      figureId,
       playerName: submittedPlayerName,
-      guess,
-      scenesRevealed: memoriesViewed,
-      hotspotsOpened: openedHotspots.length,
-      guessesUsed,
-      startedAt: runStartedAt ?? Date.now(),
       walletAddress: wallet.address ?? undefined,
     });
 
-    const scoredResult = extractScore(result) ?? localScore;
-    setLastScore(scoredResult);
-
     if (result.isCorrect) {
-      setIsSolved(true);
       setIsGuessPanelOpen(false);
       const solvedAt = Date.now();
       void recordSolve(solvedAt);
-      const elapsedMs = extractElapsed(result) ?? Math.max(0, solvedAt - (runStartedAt ?? solvedAt));
-      setSolvedRun({ elapsedMs, score: scoredResult });
-      setStatus(`Identity anchored — you were ${result.answer}. Final score: ${formatScore(scoredResult)}.`);
+      const finalScore = result.score ?? 0;
+      setSolvedRun({ elapsedMs: result.elapsedMs, score: finalScore });
+      const identityLabel = result.answer ?? "the figure";
+      setStatus(`Identity anchored — you were ${identityLabel}. Final score: ${formatScore(finalScore)}.`);
 
       if (wallet.address) {
         setIsMinting(true);
@@ -140,14 +260,16 @@ export default function Index() {
         mintScoreOnChain({
           playerAddress: wallet.address,
           episodeDay,
-          score: scoredResult,
-          memoriesViewed,
-          cluesOpened: openedHotspots.length,
-          guessesUsed,
-        }).then((txHash) => {
-          setMintTxHash(txHash);
-          setIsMinting(false);
-        }).catch(() => setIsMinting(false));
+          score: finalScore,
+          memoriesViewed: activeRun.memoriesViewed,
+          cluesOpened: hotspotsOpened,
+          guessesUsed: result.guessesUsed,
+        })
+          .then((txHash) => {
+            setMintTxHash(txHash);
+            setIsMinting(false);
+          })
+          .catch(() => setIsMinting(false));
 
         updateStreakOnChain({
           playerAddress: wallet.address,
@@ -157,14 +279,10 @@ export default function Index() {
           totalSolved: streak.current,
         }).catch(() => {});
       }
-
       return;
     }
 
-    const nextGuessesLeft = Math.max(guessesLeft - 1, 0);
-    setGuessesLeft(nextGuessesLeft);
-
-    if (nextGuessesLeft <= 0) {
+    if (result.guessesRemaining <= 0) {
       setStatus("The signal fades. The archive closes around the wrong name.");
       return;
     }
@@ -175,7 +293,11 @@ export default function Index() {
     }
 
     if (sceneIndex < episode.scenes.length - 1) {
-      setSceneIndex(sceneIndex + 1);
+      try {
+        await enterSceneMutation({ runId: activeRun._id, sceneIndex: sceneIndex + 1 });
+      } catch {
+        // ignore
+      }
       setStatus("The body rejects that name. A deeper memory surfaces.");
       return;
     }
@@ -183,7 +305,8 @@ export default function Index() {
     setStatus("That name does not fit. You have reached the last memory.");
   }
 
-  if (episode === undefined) {
+  const waitingForBoot = !identity.isLoaded || episode === undefined || run === undefined;
+  if (waitingForBoot) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color="#FBBF24" />
@@ -212,14 +335,20 @@ export default function Index() {
     );
   }
 
-  const hasMoreMemories = sceneIndex < episode.scenes.length - 1;
-  const memoriesViewed = hasEnteredMemory ? sceneIndex + 1 : 0;
-  const scorePreview = estimateScore(memoriesViewed, openedHotspots.length, INITIAL_GUESSES - guessesLeft + 1, runStartedAt);
+  const moreMemoriesAvailable = sceneIndex < episode.scenes.length - 1;
+  const memoriesViewed = run?.memoriesViewed ?? 0;
   const totalMemories = episode.scenes.length;
-  const revealProgress = isSolved ? 1 : Math.min(0.85, memoriesViewed / Math.max(1, totalMemories) * 0.65 + openedHotspots.length * 0.04);
+  const revealProgress = isSolved
+    ? 1
+    : Math.min(0.85, (memoriesViewed / Math.max(1, totalMemories)) * 0.65 + hotspotsOpened * 0.04);
   const episodeNumber = Math.max(1, Math.floor((episode.activeAt - EPISODE_EPOCH_MS) / 86400000) + 1);
   const solvedSceneImageKey = episode.scenes[episode.scenes.length - 1]?.imageKey ?? currentScene.imageKey;
   const solvedToday = isSolved && streak.current > 0;
+
+  const visibleScenes = useMemo<Scene[]>(() => {
+    if (!episode || !hasEnteredMemory) return [];
+    return episode.scenes.slice(0, sceneIndex + 1);
+  }, [episode, hasEnteredMemory, sceneIndex]);
 
   async function handleGenerateHint(clueLabel: string) {
     setActiveHint(null);
@@ -272,44 +401,56 @@ export default function Index() {
 
             {!hasEnteredMemory ? (
               <View style={styles.introActions}>
-                <Pressable accessibilityRole="button" onPress={handleGuessNow} style={({ pressed }) => [styles.secondaryIntroButton, pressed && styles.pressed]}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handleGuessNow}
+                  disabled={isBusy}
+                  style={({ pressed }) => [styles.secondaryIntroButton, pressed && styles.pressed, isBusy && styles.disabledButton]}
+                >
                   <Ionicons name="finger-print" size={18} color="#FFF7ED" />
                   <Text style={styles.secondaryIntroButtonText}>{isGuessPanelOpen ? "Hide guess" : "Guess without a memory"}</Text>
                 </Pressable>
-                <Pressable accessibilityRole="button" onPress={handleEnterMemory} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-                  <Text style={styles.primaryButtonText}>Enter first memory</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={handleEnterMemory}
+                  disabled={isBusy}
+                  style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, isBusy && styles.disabledButton]}
+                >
+                  <Text style={styles.primaryButtonText}>{isBusy ? "Entering memory…" : "Enter first memory"}</Text>
                   <Ionicons name="arrow-forward" size={18} color="#111827" />
                 </Pressable>
               </View>
             ) : (
               <View style={styles.scoreStrip}>
-                <MetricPill label="Potential" value={`${formatScore(lastScore ?? scorePreview)} pts`} />
-                <MetricPill label="Clues opened" value={`${openedHotspots.length}`} />
-                <MetricPill label="Guesses" value={`${guessesLeft}/${INITIAL_GUESSES}`} />
+                <MetricPill label="Score" value={lastScore != null ? `${formatScore(lastScore)} pts` : "—"} />
+                <MetricPill label="Clues opened" value={`${hotspotsOpened}`} />
+                <MetricPill label="Guesses" value={`${guessesLeft}/${guessCap}`} />
               </View>
             )}
           </View>
         </View>
 
         {isSolved && solvedRun ? (
-          <ResultShareCard
-            episodeNumber={episodeNumber}
-            memoriesViewed={memoriesViewed}
-            cluesOpened={openedHotspots.length}
-            elapsedMs={solvedRun.elapsedMs}
-            score={solvedRun.score}
-            rank={leaderboardSnapshot?.playerRank?.rank ?? null}
-            rankedCount={leaderboardSnapshot?.rankedCount ?? 0}
-            streak={streak.current}
-          />
-          <OnChainBadge txHash={mintTxHash} isMinting={isMinting} />
+          <>
+            <ResultShareCard
+              episodeNumber={episodeNumber}
+              memoriesViewed={memoriesViewed}
+              cluesOpened={hotspotsOpened}
+              elapsedMs={solvedRun.elapsedMs}
+              score={solvedRun.score}
+              rank={leaderboardSnapshot?.playerRank?.rank ?? null}
+              rankedCount={leaderboardSnapshot?.rankedCount ?? 0}
+              streak={streak.current}
+            />
+            <OnChainBadge txHash={mintTxHash} isMinting={isMinting} />
+          </>
         ) : null}
 
         {!hasEnteredMemory ? (
           <>
             {isGuessPanelOpen ? (
               <GuessPanel
-                options={episode.answerOptions}
+                figures={figureOptions}
                 guessesLeft={guessesLeft}
                 isSolved={isSolved}
                 playerName={playerName}
@@ -352,11 +493,16 @@ export default function Index() {
 
               <Pressable
                 accessibilityRole="button"
-                disabled={!hasMoreMemories || isSolved}
+                disabled={!moreMemoriesAvailable || isSolved || isBusy}
                 onPress={handleUnlockNextMemory}
-                style={({ pressed }) => [styles.actionButton, styles.secondaryButton, (!hasMoreMemories || isSolved) && styles.disabledButton, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.secondaryButton,
+                  (!moreMemoriesAvailable || isSolved) && styles.disabledButton,
+                  pressed && styles.pressed,
+                ]}
               >
-                <Text style={styles.secondaryButtonText}>{hasMoreMemories ? "Unlock next memory" : "All memories open"}</Text>
+                <Text style={styles.secondaryButtonText}>{moreMemoriesAvailable ? "Unlock next memory" : "All memories open"}</Text>
               </Pressable>
             </View>
 
@@ -373,11 +519,11 @@ export default function Index() {
               ))}
             </View>
 
-            {isGuessPanelOpen || isSolved || guessesLeft <= 0 ? (
+            {isGuessPanelOpen || isSolved || isExhausted || guessesLeft <= 0 ? (
               <GuessPanel
-                options={episode.answerOptions}
+                figures={figureOptions}
                 guessesLeft={guessesLeft}
-                isSolved={isSolved}
+                isSolved={isSolved || isExhausted}
                 playerName={playerName}
                 onPlayerNameChange={setPlayerName}
                 onSubmit={handleGuess}
@@ -410,28 +556,8 @@ function MetricPill({ label, value }: MetricPillProps) {
   );
 }
 
-function estimateScore(memoriesViewed: number, hotspotsOpened: number, guessesUsed: number, startedAt: number | null): number {
-  const elapsedMs = startedAt ? Math.max(0, Date.now() - startedAt) : 0;
-  const timePenalty = Math.floor(elapsedMs / 10000) * 10;
-  return Math.max(0, 10000 - memoriesViewed * 1200 - hotspotsOpened * 250 - Math.max(0, guessesUsed - 1) * 600 - timePenalty);
-}
-
 function formatScore(score: number): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(score);
-}
-
-function extractScore(result: unknown): number | null {
-  if (!isRecord(result)) return null;
-  return typeof result.score === "number" ? result.score : null;
-}
-
-function extractElapsed(result: unknown): number | null {
-  if (!isRecord(result)) return null;
-  return typeof result.elapsedMs === "number" ? result.elapsedMs : null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 const styles = StyleSheet.create({

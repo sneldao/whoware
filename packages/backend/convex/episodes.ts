@@ -1,12 +1,13 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { compareRankedEntries, computeScore } from "./scoring";
 
-const BASE_SCORE = 10_000;
-const MEMORY_PENALTY = 1200;
-const HOTSPOT_PENALTY = 250;
-const GUESS_PENALTY = 600;
-const TIME_BUCKET_MS = 10000;
-const TIME_BUCKET_PENALTY = 10;
+const sceneClueValidator = v.object({
+  label: v.string(),
+  detail: v.string(),
+  x: v.number(),
+  y: v.number(),
+});
 
 const sceneReturnValidator = v.object({
   title: v.string(),
@@ -20,7 +21,8 @@ const sceneReturnValidator = v.object({
   mediaKind: v.optional(v.union(v.literal("image"), v.literal("motion"), v.literal("video"))),
   motionPrompt: v.optional(v.string()),
   ambientText: v.string(),
-  clues: v.array(v.object({ label: v.string(), detail: v.string(), x: v.number(), y: v.number() })),
+  clues: v.array(sceneClueValidator),
+  isMercy: v.optional(v.boolean()),
 });
 
 const demoScenes = [
@@ -43,6 +45,7 @@ const demoScenes = [
       { label: "Half-written page", detail: "The draft repeats the phrase ‘we shall’ in a forceful hand, but the signature is torn away.", x: 68, y: 42 },
       { label: "Tiny bulldog", detail: "A porcelain bulldog sits beside military dispatches stamped with yesterday’s date.", x: 45, y: 69 },
     ],
+    isMercy: false,
   },
   {
     title: "The underground workplace",
@@ -63,6 +66,7 @@ const demoScenes = [
       { label: "Telephone label", detail: "A switchboard tag reads ‘Admiralty’ in crisp English lettering.", x: 59, y: 38 },
       { label: "Hat and cane", detail: "A homburg hat rests beside a walking stick with a silver band.", x: 74, y: 72 },
     ],
+    isMercy: false,
   },
   {
     title: "A window over the capital",
@@ -83,6 +87,7 @@ const demoScenes = [
       { label: "Newspaper headline", detail: "A headline praises defiance after the evacuation from Dunkirk.", x: 50, y: 44 },
       { label: "Cigar smoke", detail: "A half-smoked cigar burns in an ashtray beside military cables.", x: 79, y: 58 },
     ],
+    isMercy: false,
   },
   {
     title: "A chamber holding its breath",
@@ -103,6 +108,7 @@ const demoScenes = [
       { label: "Dispatch box", detail: "A battered box waits for a speech that will have to become a weapon.", x: 51, y: 58 },
       { label: "Order paper", detail: "The date places this memory just after a failed policy of appeasement collapsed.", x: 70, y: 43 },
     ],
+    isMercy: false,
   },
   {
     title: "A voice entering the dark",
@@ -123,24 +129,52 @@ const demoScenes = [
       { label: "Script margin", detail: "The margin carries a repeated instruction: make resolve sound inevitable.", x: 63, y: 52 },
       { label: "Ashtray", detail: "Cigar ash has fallen across a line about fighting on beaches and landing grounds.", x: 76, y: 69 },
     ],
+    isMercy: true,
   },
 ];
 
-const answerOptions = [
-  "Winston Churchill",
-  "Franklin D. Roosevelt",
-  "Dwight D. Eisenhower",
-  "Clement Attlee",
-  "Charles de Gaulle",
-  "Neville Chamberlain",
-  "Alan Turing",
-  "Joseph Stalin",
-];
+function cloneDemoScenes() {
+  return demoScenes.map((scene) => ({
+    ...scene,
+    palette: [...scene.palette],
+    detailImageKeys: [...(scene.detailImageKeys ?? [])],
+    clues: scene.clues.map((clue) => ({ ...clue })),
+  }));
+}
+
+function hasSceneChanged(
+  existingScene: {
+    imageKey?: string;
+    detailImageKeys?: string[];
+    mediaKind?: string;
+    motionPrompt?: string;
+    isMercy?: boolean;
+  },
+  index: number,
+): boolean {
+  const demoScene = demoScenes[index];
+  if (!demoScene) return true;
+  return (
+    existingScene.imageKey !== demoScene.imageKey ||
+    existingScene.mediaKind !== demoScene.mediaKind ||
+    existingScene.motionPrompt !== demoScene.motionPrompt ||
+    Boolean(existingScene.isMercy) !== Boolean(demoScene.isMercy) ||
+    (existingScene.detailImageKeys ?? []).join("|") !== (demoScene.detailImageKeys ?? []).join("|")
+  );
+}
 
 export const ensureDemoEpisode = mutation({
   args: {},
-  returns: v.null(),
+  returns: v.object({ episodeId: v.id("episodes"), isNew: v.boolean() }),
   handler: async (ctx) => {
+    const churchillFigure = await ctx.db
+      .query("figures")
+      .withIndex("by_canonicalName", (q) => q.eq("canonicalName", "Winston Churchill"))
+      .first();
+    if (!churchillFigure) {
+      throw new Error("Figure catalog not seeded — call figures.seedCatalog first");
+    }
+
     const existing = await ctx.db
       .query("episodes")
       .withIndex("by_slug", (q) => q.eq("slug", "demo-churchill"))
@@ -149,43 +183,44 @@ export const ensureDemoEpisode = mutation({
     const scenes = cloneDemoScenes();
 
     if (existing) {
-      const shouldRefreshScenes = existing.scenes.length !== scenes.length || existing.scenes.some(hasSceneChanged);
+      const shouldRefresh =
+        existing.scenes.length !== scenes.length ||
+        existing.scenes.some((scene, index) => hasSceneChanged(scene, index)) ||
+        existing.figureId !== churchillFigure._id;
 
-      if (shouldRefreshScenes) {
-        await ctx.db.patch(existing._id, { scenes, answerOptions });
+      if (shouldRefresh) {
+        await ctx.db.patch(existing._id, { scenes, figureId: churchillFigure._id });
       }
-      return null;
+      return { episodeId: existing._id, isNew: false };
     }
 
-    await ctx.db.insert("episodes", {
+    const episodeId = await ctx.db.insert("episodes", {
       slug: "demo-churchill",
-      figureName: "Winston Churchill",
+      figureId: churchillFigure._id,
+      figureName: churchillFigure.canonicalName,
       activeAt: Date.now(),
       isActive: true,
       difficulty: "iconic",
       scenes,
-      answerOptions,
     });
 
-    return null;
+    return { episodeId, isNew: true };
   },
+});
+
+const publicEpisodeShape = v.object({
+  _id: v.id("episodes"),
+  _creationTime: v.number(),
+  slug: v.string(),
+  activeAt: v.number(),
+  isActive: v.boolean(),
+  difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
+  scenes: v.array(sceneReturnValidator),
 });
 
 export const getActive = query({
   args: {},
-  returns: v.union(
-    v.null(),
-    v.object({
-      _id: v.id("episodes"),
-      _creationTime: v.number(),
-      slug: v.string(),
-      activeAt: v.number(),
-      isActive: v.boolean(),
-      difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
-      scenes: v.array(sceneReturnValidator),
-      answerOptions: v.array(v.string()),
-    }),
-  ),
+  returns: v.union(publicEpisodeShape, v.null()),
   handler: async (ctx) => {
     const episode = await ctx.db
       .query("episodes")
@@ -203,89 +238,41 @@ export const getActive = query({
       isActive: episode.isActive,
       difficulty: episode.difficulty,
       scenes: episode.scenes,
-      answerOptions: episode.answerOptions,
     };
   },
 });
 
-export const submitGuess = mutation({
-  args: {
-    episodeId: v.id("episodes"),
-    playerName: v.string(),
-    guess: v.string(),
-    scenesRevealed: v.number(),
-    hotspotsOpened: v.optional(v.number()),
-    guessesUsed: v.optional(v.number()),
-    startedAt: v.optional(v.number()),
-    walletAddress: v.optional(v.string()),
-  },
-  returns: v.object({
-    isCorrect: v.boolean(),
-    answer: v.optional(v.string()),
-    score: v.optional(v.number()),
-    elapsedMs: v.optional(v.number()),
-  }),
-  handler: async (ctx, args) => {
-    const episode = await ctx.db.get(args.episodeId);
-    if (!episode) throw new Error("Episode not found");
+const leaderboardEntryShape = v.object({
+  _id: v.id("guesses"),
+  playerName: v.string(),
+  scenesRevealed: v.number(),
+  hotspotsOpened: v.number(),
+  guessesUsed: v.number(),
+  elapsedMs: v.number(),
+  score: v.number(),
+  guessedAt: v.number(),
+});
 
-    const now = Date.now();
-    const cleanPlayerName = args.playerName.trim().slice(0, 32) || "Anonymous";
-    const cleanGuess = args.guess.trim();
-    const memoriesViewed = clampInteger(args.scenesRevealed, 0, episode.scenes.length);
-    const hotspotsOpened = clampInteger(args.hotspotsOpened ?? 0, 0, 100);
-    const guessesUsed = clampInteger(args.guessesUsed ?? 1, 1, 5);
-    const elapsedMs = Math.max(0, now - (args.startedAt ?? now));
-    const score = computeScore({ memoriesViewed, hotspotsOpened, guessesUsed, elapsedMs });
-    const isCorrect = cleanGuess.toLowerCase() === episode.figureName.toLowerCase();
-
-    await ctx.db.insert("guesses", {
-      episodeId: args.episodeId,
-      playerName: cleanPlayerName,
-      guess: cleanGuess,
-      isCorrect,
-      scenesRevealed: memoriesViewed,
-      hotspotsOpened,
-      guessesUsed,
-      elapsedMs,
-      score,
-      guessedAt: now,
-      walletAddress: args.walletAddress?.toLowerCase(),
-    });
-
-    return isCorrect ? { isCorrect, answer: episode.figureName, score, elapsedMs } : { isCorrect, score, elapsedMs };
-  },
+const leaderboardPlayerRankShape = v.object({
+  rank: v.number(),
+  playerName: v.string(),
+  scenesRevealed: v.number(),
+  hotspotsOpened: v.number(),
+  guessesUsed: v.number(),
+  elapsedMs: v.number(),
+  score: v.number(),
+  guessedAt: v.number(),
 });
 
 export const leaderboard = query({
-  args: { episodeId: v.id("episodes"), playerName: v.optional(v.string()) },
+  args: {
+    episodeId: v.id("episodes"),
+    playerName: v.optional(v.string()),
+    identityId: v.optional(v.string()),
+  },
   returns: v.object({
-    entries: v.array(
-      v.object({
-        _id: v.id("guesses"),
-        playerName: v.string(),
-        guess: v.string(),
-        scenesRevealed: v.number(),
-        hotspotsOpened: v.number(),
-        guessesUsed: v.number(),
-        elapsedMs: v.number(),
-        score: v.number(),
-        guessedAt: v.number(),
-      }),
-    ),
-    playerRank: v.union(
-      v.null(),
-      v.object({
-        rank: v.number(),
-        playerName: v.string(),
-        scenesRevealed: v.number(),
-        hotspotsOpened: v.number(),
-        guessesUsed: v.number(),
-        elapsedMs: v.number(),
-        score: v.number(),
-        guessedAt: v.number(),
-      }),
-    ),
+    entries: v.array(leaderboardEntryShape),
+    playerRank: v.union(leaderboardPlayerRankShape, v.null()),
     rankedCount: v.number(),
   }),
   handler: async (ctx, args) => {
@@ -300,7 +287,6 @@ export const leaderboard = query({
       .map((entry) => ({
         _id: entry._id,
         playerName: entry.playerName,
-        guess: entry.guess,
         scenesRevealed: entry.scenesRevealed,
         hotspotsOpened: entry.hotspotsOpened ?? 0,
         guessesUsed: entry.guessesUsed ?? 1,
@@ -314,17 +300,25 @@ export const leaderboard = query({
             elapsedMs: entry.elapsedMs ?? 0,
           }),
         guessedAt: entry.guessedAt,
+        identityId: entry.identityId,
       }))
       .sort(compareRankedEntries);
 
     const cleanPlayerName = args.playerName?.trim().toLowerCase();
-    const playerIndex = cleanPlayerName
-      ? ranked.findIndex((entry) => entry.playerName.trim().toLowerCase() === cleanPlayerName)
-      : -1;
+    const cleanIdentityId = args.identityId?.trim();
+
+    let playerIndex = -1;
+    if (cleanIdentityId) {
+      playerIndex = ranked.findIndex((entry) => entry.identityId === cleanIdentityId);
+    }
+    if (playerIndex < 0 && cleanPlayerName) {
+      playerIndex = ranked.findIndex((entry) => entry.playerName.trim().toLowerCase() === cleanPlayerName);
+    }
+
     const playerEntry = playerIndex >= 0 ? ranked[playerIndex] : null;
 
     return {
-      entries: ranked.slice(0, 25),
+      entries: ranked.slice(0, 25).map(({ identityId: _identityId, ...rest }) => rest),
       playerRank: playerEntry
         ? {
             rank: playerIndex + 1,
@@ -341,68 +335,3 @@ export const leaderboard = query({
     };
   },
 });
-
-function cloneDemoScenes() {
-  return demoScenes.map((scene) => ({
-    ...scene,
-    palette: [...scene.palette],
-    detailImageKeys: [...scene.detailImageKeys],
-    clues: scene.clues.map((clue) => ({ ...clue })),
-  }));
-}
-
-function hasSceneChanged(scene: { imageKey?: string; detailImageKeys?: string[]; mediaKind?: string; motionPrompt?: string }, index: number): boolean {
-  const demoScene = demoScenes[index];
-  if (!demoScene) return true;
-  return (
-    scene.imageKey !== demoScene.imageKey ||
-    scene.mediaKind !== demoScene.mediaKind ||
-    scene.motionPrompt !== demoScene.motionPrompt ||
-    (scene.detailImageKeys ?? []).join("|") !== demoScene.detailImageKeys.join("|")
-  );
-}
-
-function clampInteger(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  return Math.min(Math.max(Math.floor(value), min), max);
-}
-
-function computeScore(args: { memoriesViewed: number; hotspotsOpened: number; guessesUsed: number; elapsedMs: number }): number {
-  const timePenalty = Math.floor(args.elapsedMs / TIME_BUCKET_MS) * TIME_BUCKET_PENALTY;
-  const rawScore =
-    BASE_SCORE -
-    args.memoriesViewed * MEMORY_PENALTY -
-    args.hotspotsOpened * HOTSPOT_PENALTY -
-    (args.guessesUsed - 1) * GUESS_PENALTY -
-    timePenalty;
-
-  return Math.max(0, rawScore);
-}
-
-function compareRankedEntries(
-  left: {
-    scenesRevealed: number;
-    hotspotsOpened: number;
-    guessesUsed: number;
-    elapsedMs: number;
-    score: number;
-    guessedAt: number;
-  },
-  right: {
-    scenesRevealed: number;
-    hotspotsOpened: number;
-    guessesUsed: number;
-    elapsedMs: number;
-    score: number;
-    guessedAt: number;
-  },
-): number {
-  return (
-    right.score - left.score ||
-    left.scenesRevealed - right.scenesRevealed ||
-    left.hotspotsOpened - right.hotspotsOpened ||
-    left.guessesUsed - right.guessesUsed ||
-    left.elapsedMs - right.elapsedMs ||
-    left.guessedAt - right.guessedAt
-  );
-}

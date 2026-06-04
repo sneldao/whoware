@@ -2,30 +2,35 @@ import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
+export interface FigureOption {
+  figureId: string;
+  displayName: string;
+}
+
 interface GuessPanelProps {
-  options: string[];
+  figures: FigureOption[];
   guessesLeft: number;
   isSolved: boolean;
   playerName: string;
   onPlayerNameChange: (playerName: string) => void;
-  onSubmit: (guess: string, playerName: string) => Promise<void>;
+  onSubmit: (optionText: string, figureId: string, playerName: string) => Promise<void>;
 }
 
-export function GuessPanel({ options, guessesLeft, isSolved, playerName, onPlayerNameChange, onSubmit }: GuessPanelProps) {
+export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlayerNameChange, onSubmit }: GuessPanelProps) {
   const [query, setQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredOptions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return options.slice(0, 5);
-    return options.filter((option) => option.toLowerCase().includes(normalized)).slice(0, 5);
-  }, [options, query]);
+    if (!normalized) return figures.slice(0, 5);
+    return figures.filter((figure) => figure.displayName.toLowerCase().includes(normalized)).slice(0, 5);
+  }, [figures, query]);
 
-  async function handleSubmit(guess: string) {
+  async function handleSubmit(figure: FigureOption) {
     if (isSubmitting || isSolved || guessesLeft <= 0) return;
     setIsSubmitting(true);
     try {
-      await onSubmit(guess, playerName);
+      await onSubmit(figure.displayName, figure.figureId, playerName);
       setQuery("");
     } finally {
       setIsSubmitting(false);
@@ -61,14 +66,14 @@ export function GuessPanel({ options, guessesLeft, isSolved, playerName, onPlaye
       />
 
       <View style={styles.options}>
-        {filteredOptions.map((option) => (
+        {filteredOptions.map((figure) => (
           <Pressable
-            key={option}
+            key={figure.figureId}
             accessibilityRole="button"
-            onPress={() => handleSubmit(option)}
+            onPress={() => handleSubmit(figure)}
             style={({ pressed }) => [styles.option, pressed && styles.pressed]}
           >
-            <Text style={styles.optionText}>{option}</Text>
+            <Text style={styles.optionText}>{figure.displayName}</Text>
             <Ionicons name="arrow-forward" size={16} color="rgba(255, 247, 237, 0.58)" />
           </Pressable>
         ))}
