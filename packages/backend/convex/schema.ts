@@ -46,7 +46,6 @@ export default defineSchema({
     figureId: v.optional(v.id("figures")),
     figureName: v.optional(v.string()),
     activeAt: v.number(),
-    isActive: v.boolean(),
     dropsAt: v.number(),
     closesAt: v.optional(v.number()),
     status: v.union(v.literal("staging"), v.literal("review"), v.literal("draft"), v.literal("live"), v.literal("closed")),
@@ -54,7 +53,6 @@ export default defineSchema({
     scenes: v.array(scene),
     answerOptions: v.optional(v.array(v.string())),
   })
-    .index("by_isActive_and_activeAt", ["isActive", "activeAt"])
     .index("by_slug", ["slug"])
     .index("by_figureId", ["figureId"])
     .index("by_status_and_dropsAt", ["status", "dropsAt"]),

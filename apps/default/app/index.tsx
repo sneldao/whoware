@@ -45,7 +45,6 @@ export default function Index() {
   const figures = useQuery(api.figures.search, { query: "", limit: 10 }) ?? [];
 
   const seedCatalog = useMutation(api.figures.seedCatalog);
-  const ensureDemoEpisode = useMutation(api.episodes.ensureDemoEpisode);
   const startRunMutation = useMutation(api.runs.startRun);
   const enterSceneMutation = useMutation(api.runs.enterScene);
   const openHotspotMutation = useMutation(api.runs.openHotspot);
@@ -114,8 +113,6 @@ export default function Index() {
     async function seed() {
       try {
         await seedCatalog();
-        if (cancelled) return;
-        await ensureDemoEpisode();
       } catch {
         // Idempotent — ignore duplicate seed attempts.
       }
@@ -124,7 +121,7 @@ export default function Index() {
     return () => {
       cancelled = true;
     };
-  }, [seedCatalog, ensureDemoEpisode]);
+  }, [seedCatalog]);
 
   useEffect(() => {
     setIsGuessPanelOpen(false);

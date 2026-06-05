@@ -12,8 +12,44 @@ function setup() {
 
 async function seedChurchillEpisode(t: ReturnType<typeof setup>): Promise<Id<"episodes">> {
   await t.mutation(api.figures.seedCatalog, {});
-  const { episodeId } = await t.mutation(api.episodes.ensureDemoEpisode, {});
-  return episodeId;
+  return await t.run(async (ctx) => {
+    const churchill = await ctx.db
+      .query("figures")
+      .withIndex("by_canonicalName", (q) => q.eq("canonicalName", "Winston Churchill"))
+      .first();
+    if (!churchill) throw new Error("Churchill not seeded");
+    return await ctx.db.insert("episodes", {
+      slug: "demo-churchill",
+      figureId: churchill._id,
+      figureName: churchill.canonicalName,
+      activeAt: Date.now(),
+      dropsAt: Date.now(),
+      status: "live",
+      difficulty: "iconic",
+      scenes: [
+        {
+          title: "A quiet room",
+          location: "Bedroom",
+          era: "1940s",
+          palette: ["#1E293B", "#7C2D12", "#F8E7C9"],
+          panoramaPrompt: "wartime bedroom",
+          ambientText: "A wireless set murmurs.",
+          clues: [{ label: "Blackout", detail: "A placard.", x: 18, y: 34 }],
+          isMercy: false,
+        },
+        {
+          title: "A garden",
+          location: "Garden",
+          era: "1930s",
+          palette: ["#064E3B", "#92400E", "#FDE68A"],
+          panoramaPrompt: "garden",
+          ambientText: "An easel stands beside a pond.",
+          clues: [{ label: "Easel", detail: "Half-finished oils.", x: 32, y: 48 }],
+          isMercy: true,
+        },
+      ],
+    });
+  });
 }
 
 async function insertDraftEpisode(
@@ -25,7 +61,6 @@ async function insertDraftEpisode(
     return await ctx.db.insert("episodes", {
       slug: `test-draft-${dropsAt}`,
       activeAt: dropsAt,
-      isActive: false,
       dropsAt,
       closesAt,
       status: "draft",
@@ -44,7 +79,6 @@ async function insertLiveEpisode(
     return await ctx.db.insert("episodes", {
       slug: `test-live-${dropsAt}`,
       activeAt: dropsAt,
-      isActive: true,
       dropsAt,
       closesAt,
       status: "live",

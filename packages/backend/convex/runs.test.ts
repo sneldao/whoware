@@ -18,9 +18,68 @@ async function seedFigure(t: ReturnType<typeof setup>) {
 }
 
 async function seedEpisode(t: ReturnType<typeof setup>) {
-  await seedFigure(t);
-  const { episodeId } = await t.mutation(api.episodes.ensureDemoEpisode, {});
-  return episodeId;
+  const churchill = await seedFigure(t);
+  return await t.run(async (ctx) => {
+    return await ctx.db.insert("episodes", {
+      slug: "demo-churchill",
+      figureId: churchill._id,
+      figureName: churchill.canonicalName,
+      activeAt: Date.now(),
+      dropsAt: Date.now(),
+      status: "live",
+      difficulty: "iconic",
+      scenes: [
+        {
+          title: "A quiet room before the world notices",
+          location: "Upstairs bedroom",
+          era: "Early 1940s",
+          palette: ["#1E293B", "#7C2D12", "#F8E7C9"],
+          panoramaPrompt: "wartime bedroom",
+          imageKey: "bedroom",
+          imageAspectRatio: "16:9",
+          ambientText: "A wireless set murmurs beneath blackout curtains.",
+          clues: [
+            { label: "Blackout notice", detail: "A London civil-defense placard.", x: 18, y: 34 },
+            { label: "Half-written page", detail: "The draft repeats 'we shall'.", x: 68, y: 42 },
+            { label: "Tiny bulldog", detail: "A porcelain bulldog beside dispatches.", x: 45, y: 69 },
+          ],
+          isMercy: false,
+        },
+        {
+          title: "The underground workplace",
+          location: "Cabinet rooms below the street",
+          era: "Second World War",
+          palette: ["#111827", "#92400E", "#FDE68A"],
+          panoramaPrompt: "underground war rooms",
+          imageKey: "warRooms",
+          imageAspectRatio: "16:9",
+          ambientText: "Telephones ring in a low ceilinged room.",
+          clues: [
+            { label: "Map pins", detail: "Convoy routes converge on Britain.", x: 28, y: 46 },
+            { label: "Telephone label", detail: "Switchboard tag reads 'Admiralty'.", x: 59, y: 38 },
+            { label: "Hat and cane", detail: "A homburg hat beside a walking stick.", x: 74, y: 72 },
+          ],
+          isMercy: false,
+        },
+        {
+          title: "A garden where the brush waits",
+          location: "Country house garden",
+          era: "1930s",
+          palette: ["#064E3B", "#92400E", "#FDE68A"],
+          panoramaPrompt: "country house garden",
+          imageKey: "broadcast",
+          imageAspectRatio: "16:9",
+          ambientText: "An easel stands beside a koi pond.",
+          clues: [
+            { label: "Easel canvas", detail: "Half-finished oils.", x: 32, y: 48 },
+            { label: "Brick wall", detail: "English bond bricks under ivy.", x: 64, y: 70 },
+            { label: "Garden chair", detail: "A canvas deck chair.", x: 82, y: 55 },
+          ],
+          isMercy: true,
+        },
+      ],
+    });
+  });
 }
 
 describe("figures.catalog", () => {

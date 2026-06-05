@@ -38,20 +38,11 @@ export const getCurrentDrop = query({
   returns: v.union(dailyEpisodeShape, v.null()),
   handler: async (ctx) => {
     const now = Date.now();
-    const live = await ctx.db
+    return await ctx.db
       .query("episodes")
       .withIndex("by_status_and_dropsAt", (q) => q.eq("status", "live"))
       .order("asc")
       .filter((q) => q.lte(q.field("dropsAt"), now))
-      .first();
-
-    if (live) return live;
-
-    return await ctx.db
-      .query("episodes")
-      .withIndex("by_isActive_and_activeAt", (q) => q.eq("isActive", true))
-      .order("desc")
-      .filter((q) => q.or(q.eq(q.field("status"), "live"), q.eq(q.field("status"), undefined as unknown as "live")))
       .first();
   },
 });
@@ -144,7 +135,6 @@ export const scheduleEpisode = mutation({
       dropsAt: args.dropsAt,
       closesAt: args.closesAt,
       status: "draft",
-      isActive: false,
     });
     return null;
   },
@@ -164,7 +154,6 @@ export const openExpired = internalMutation({
     for (const episode of drafts) {
       await ctx.db.patch(episode._id, {
         status: "live",
-        isActive: true,
         activeAt: episode.dropsAt,
       });
     }
@@ -186,7 +175,7 @@ export const closeExpired = internalMutation({
       .collect();
 
     for (const episode of live) {
-      await ctx.db.patch(episode._id, { status: "closed", isActive: false });
+      await ctx.db.patch(episode._id, { status: "closed" });
     }
     return { closed: live.length };
   },

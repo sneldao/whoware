@@ -11,8 +11,31 @@ function setup() {
 
 async function seedChurchillEpisode(t: ReturnType<typeof setup>) {
   await t.mutation(api.figures.seedCatalog, {});
-  const { episodeId } = await t.mutation(api.episodes.ensureDemoEpisode, {});
-  return episodeId;
+  return await t.run(async (ctx) => {
+    const churchill = await ctx.db
+      .query("figures")
+      .withIndex("by_canonicalName", (q) => q.eq("canonicalName", "Winston Churchill"))
+      .first();
+    if (!churchill) throw new Error("Churchill not seeded");
+    return await ctx.db.insert("episodes", {
+      slug: "demo-churchill",
+      figureId: churchill._id,
+      figureName: churchill.canonicalName,
+      activeAt: Date.now(),
+      dropsAt: Date.now(),
+      status: "live",
+      difficulty: "iconic",
+      scenes: [
+        { title: "Scene 1", location: "Bedroom", era: "1940s", palette: ["#1E293B"], panoramaPrompt: "bedroom", ambientText: "A room.", clues: [{ label: "A", detail: "d", x: 10, y: 10 }], isMercy: false },
+        { title: "Scene 2", location: "Office", era: "1940s", palette: ["#1E293B"], panoramaPrompt: "office", ambientText: "An office.", clues: [{ label: "B", detail: "d", x: 20, y: 20 }], isMercy: false },
+        { title: "Scene 3", location: "Street", era: "1940s", palette: ["#1E293B"], panoramaPrompt: "street", ambientText: "A street.", clues: [{ label: "C", detail: "d", x: 30, y: 30 }], isMercy: false },
+        { title: "Scene 4", location: "Park", era: "1940s", palette: ["#1E293B"], panoramaPrompt: "park", ambientText: "A park.", clues: [{ label: "D", detail: "d", x: 40, y: 40 }], isMercy: false },
+        { title: "Scene 5", location: "Hall", era: "1940s", palette: ["#1E293B"], panoramaPrompt: "hall", ambientText: "A hall.", clues: [{ label: "E", detail: "d", x: 50, y: 50 }], isMercy: false },
+        { title: "Mercy 1", location: "Garden", era: "1930s", palette: ["#064E3B"], panoramaPrompt: "garden", ambientText: "A garden.", clues: [{ label: "F", detail: "d", x: 60, y: 60 }], isMercy: true },
+        { title: "Mercy 2", location: "Annexe", era: "1945", palette: ["#111827"], panoramaPrompt: "annexe", ambientText: "An annexe.", clues: [{ label: "G", detail: "d", x: 70, y: 70 }], isMercy: true },
+      ],
+    });
+  });
 }
 
 describe("mercy scenes", () => {

@@ -99,7 +99,6 @@ describe("catalog.approveEpisode", () => {
       return await ctx.db.insert("episodes", {
         slug: "test-approved",
         activeAt: Date.now(),
-        isActive: false,
         dropsAt: Date.now() + 86_400_000,
         status: "review",
         difficulty: "iconic",
@@ -132,7 +131,6 @@ describe("catalog.approveEpisode", () => {
       return await ctx.db.insert("episodes", {
         slug: "test-no-images",
         activeAt: Date.now(),
-        isActive: false,
         dropsAt: Date.now() + 86_400_000,
         status: "review",
         difficulty: "iconic",
@@ -182,10 +180,19 @@ describe("catalog.getStagingQueue", () => {
   test("excludes live and closed episodes", async () => {
     const t = setup();
     await seedCatalog(t);
-    await t.mutation(api.episodes.ensureDemoEpisode, {});
+    await t.run(async (ctx) => {
+      await ctx.db.insert("episodes", {
+        slug: "live-churchill",
+        activeAt: Date.now(),
+        dropsAt: Date.now(),
+        status: "live",
+        difficulty: "iconic",
+        scenes: [],
+      });
+    });
 
     const queue = await t.query(api.catalog.getStagingQueue, {});
-    const demoInQueue = queue.find((ep) => ep.slug === "demo-churchill");
-    expect(demoInQueue).toBeUndefined();
+    const liveInQueue = queue.find((ep) => ep.slug === "live-churchill");
+    expect(liveInQueue).toBeUndefined();
   });
 });

@@ -85,7 +85,6 @@ export const createDraftEpisode = mutation({
       figureId: args.figureId,
       figureName: figure.canonicalName,
       activeAt: Date.now(),
-      isActive: false,
       dropsAt: Date.now() + 86_400_000,
       status: "staging",
       difficulty: args.difficulty ?? figure.difficulty,
