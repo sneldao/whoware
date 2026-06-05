@@ -1,0 +1,9 @@
+{
+  "buildCommand": "cd apps/default && npx expo export --platform web",
+  "outputDirectory": "apps/default/dist",
+  "installCommand": "npm install --legacy-peer-deps",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
