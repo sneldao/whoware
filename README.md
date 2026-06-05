@@ -82,9 +82,35 @@ cd packages/contracts && bun install && bun run test
 
 ## Hackathon Submissions
 
-Built for dual submission — see [`plans/hackathon-submissions.plan.md`](./plans/hackathon-submissions.plan.md) for the per-track checklist and remaining gaps:
-- **MetaMask x 1Shot API x Venice AI Dev Cook Off** — Autonomous Agent, Venice AI, and x402 tracks
-- **Mantle Turing Test Hackathon 2026 (Phase 2)** — Consumer & Viral DApps track
+Built for dual submission — all code features complete (Slices 1–9). Submission assets in progress:
+
+### MetaMask x 1Shot API x Venice AI Dev Cook Off
+**Tracks:** Autonomous Agent · Venice AI · x402
+
+| Feature | Status |
+|---------|--------|
+| Autonomous episode pipeline (`catalog.generateEpisode`) | ✅ |
+| Venice AI scene generation + Socratic hints | ✅ |
+| MetaMask Smart Account (ERC-7715 delegation) | ✅ |
+| x402 archive paywall (USDC on Polygon Amoy) | ✅ |
+
+### Mantle Turing Test Hackathon 2026 — Phase 2
+**Track:** Consumer & Viral DApps
+
+| Feature | Status |
+|---------|--------|
+| Soul-bound Score NFT (EIP-712 oracle-signed) | ✅ |
+| Soul-bound Streak SBT (tier badges: spark → eternal) | ✅ |
+| Commit-reveal guessing | ✅ |
+| On-chain mint wired into solve flow | ✅ |
+
+### Submission Assets
+
+- Demo script: [`plans/demo-script.md`](./plans/demo-script.md)
+- Devpost drafts: [`plans/devpost-drafts.md`](./plans/devpost-drafts.md)
+- Hackathon plan: [`plans/hackathon-submissions.plan.md`](./plans/hackathon-submissions.plan.md)
+- Demo video: [VIDEO_URL]
+- Live demo: [DEPLOYMENT_URL]
 
 ## License
 
