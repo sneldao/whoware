@@ -140,4 +140,10 @@ export default defineSchema({
     dispatchedAt: v.number(),
     recipientCount: v.number(),
   }).index("by_episodeId", ["episodeId"]),
+  archiveUnlocks: defineTable({
+    identityId: v.string(),
+    episodeId: v.id("episodes"),
+    txHash: v.string(),
+    paidAt: v.number(),
+  }).index("by_identityId_and_episodeId", ["identityId", "episodeId"]),
 });

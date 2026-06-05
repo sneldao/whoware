@@ -1,13 +1,16 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useIdentity } from "@/hooks/use-identity";
+import { useWallet } from "@/hooks/use-wallet";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "convex/react";
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PanoramaScene } from "@/components/who-ware/panorama-scene";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
+import { ArchivePaywall } from "@/components/who-ware/archive-paywall";
 
 export default function ArchiveDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -17,15 +20,46 @@ export default function ArchiveDetailScreen() {
   const episode = useQuery(api.archive.getEpisode, { episodeId });
   const leaderboard = useQuery(api.archive.getLeaderboard, { episodeId });
   const { identityId } = useIdentity();
+  const wallet = useWallet();
   const run = useQuery(
     api.archive.getRun,
     identityId ? { episodeId, identityId } : "skip",
   );
+  const isUnlocked = useQuery(
+    api.paywall.isUnlocked,
+    identityId ? { identityId, episodeId } : "skip",
+  );
+  const [unlockedLocally, setUnlockedLocally] = useState(false);
+
+  const hasAccess = !!run || isUnlocked || unlockedLocally;
 
   if (!episode) {
     return (
       <View style={[styles.root, { paddingTop: insets.top + 24 }]}>
         <Text style={styles.loading}>Opening the archive…</Text>
+      </View>
+    );
+  }
+
+  if (!hasAccess && identityId) {
+    return (
+      <View style={styles.root}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={[styles.content, { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 28 }]}
+        >
+          <View style={styles.backRow}>
+            <Ionicons name="arrow-back" size={18} color="rgba(251, 191, 36, 0.9)" />
+            <Text style={styles.backLabel}>Archive</Text>
+          </View>
+          <ArchivePaywall
+            episodeId={episodeId}
+            figureName={episode.figureName ?? "Unknown"}
+            identityId={identityId}
+            walletAddress={wallet.address}
+            onUnlockComplete={() => setUnlockedLocally(true)}
+          />
+        </ScrollView>
       </View>
     );
   }

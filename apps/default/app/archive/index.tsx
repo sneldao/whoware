@@ -64,16 +64,26 @@ function ArchiveRow({ episodeId, figureName, difficulty, activeAt, identityId }:
     api.archive.getRun,
     identityId ? { episodeId, identityId } : "skip",
   );
+  const isUnlocked = useQuery(
+    api.paywall.isUnlocked,
+    identityId ? { identityId, episodeId } : "skip",
+  );
+
   const dateLabel = new Date(activeAt).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 
+  const isLocked = !run && !isUnlocked;
+
   return (
     <Link href={`/archive/${episodeId}`} asChild>
       <View style={styles.row}>
         <View style={styles.rowHeader}>
+          {isLocked ? (
+            <Ionicons name="lock-closed" size={14} color="rgba(251, 191, 36, 0.5)" />
+          ) : null}
           <Text style={styles.figureName}>{figureName}</Text>
           <DifficultyBadge difficulty={difficulty} />
         </View>
@@ -88,6 +98,10 @@ function ArchiveRow({ episodeId, figureName, difficulty, activeAt, identityId }:
             <Text style={styles.resultText}>
               {run.status === "solved" ? `Solved · ${formatScore(run.score ?? 0)} pts` : "Unsolved"}
             </Text>
+          </View>
+        ) : isLocked ? (
+          <View style={styles.lockedRow}>
+            <Text style={styles.lockedText}>1 USDC to unlock</Text>
           </View>
         ) : (
           <Text style={styles.noRun}>Not played</Text>
@@ -205,6 +219,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     marginTop: 4,
+  },
+  lockedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+  },
+  lockedText: {
+    color: "#FBBF24",
+    fontSize: 12,
+    fontWeight: "800",
   },
   emptyState: {
     padding: 28,
