@@ -1,7 +1,7 @@
 # WhoWare — Demo Video Script (~2 minutes)
 
 One recording covers both hackathon submissions. Record screen + voice-over.
-Target length: 2:05–2:20.
+Target length: 2:10–2:25.
 
 ---
 
@@ -47,20 +47,26 @@ Target length: 2:05–2:20.
 
 ---
 
-## Gameplay + Scoring (0:50–1:15)
+## Onboarding + Gameplay (0:50–1:20)
 
-**Screen:** Enter memory → panorama → hotspot → clue ledger → guess panel
+**Screen:** Onboarding flow → enter memory → panorama → hotspot → clue ledger → guess panel
 
-> Players enter the first memory and explore. Each scene is a panoramic
-> environment with hidden clues. The scoring rewards restraint — guessing
-> without opening memories earns the highest score. Every visual memory
-> viewed, clue inspected, wrong guess, and extra second lowers the ceiling.
+> First-time players see a cinematic onboarding guided by the Mystery Figure —
+> five atmospheric steps that teach the mechanics: explore memories, inspect
+> clues, guess the identity. Interactive demos let players tap a hotspot and
+> see a clue reveal before they even start.
+>
+> Then it's into the game. Each scene is a panoramic environment with hidden
+> clues. Tap a hotspot and feel the haptic click, hear the subtle chime.
+> The scoring rewards restraint — guessing without opening memories earns the
+> highest score. A correct guess triggers a satisfying success animation and
+> haptic burst.
 >
 > The leaderboard updates in real-time via Convex.
 
 ---
 
-## MetaMask + On-Chain Verification (1:15–1:40)
+## MetaMask + On-Chain Verification (1:20–1:45)
 
 **Screen:** Wallet connect → solve → dual OnChainBadge → Mantle explorer
 
@@ -76,7 +82,7 @@ Target length: 2:05–2:20.
 
 ---
 
-## x402 Archive Paywall (1:40–2:00)
+## x402 Archive Paywall (1:45–2:05)
 
 **Screen:** Archive list → locked episode → paywall → USDC payment → unlock
 
@@ -91,12 +97,18 @@ Target length: 2:05–2:20.
 
 ---
 
-## Closing (2:00–2:15)
+## Closing (2:05–2:20)
 
-**Screen:** Share card → streak banner → archive
+**Screen:** Share card → streak badge → analytics dashboard → archive
 
-> Daily drops, streaks, share cards, on-chain proof, and paid archive access.
-> WhoWare — Wordle meets immersive history.
+> The share card shows your streak tier — spark, flame, inferno, or eternal —
+> with a score-ranked gradient border and one-tap image export for social.
+> The WhoWare Pulse dashboard shows live global stats: total solves, unique
+> players, streak leaderboard, and recent solve feed — all updating in
+> real-time via Convex subscriptions.
+>
+> Daily drops, cinematic onboarding, streaks, share cards, on-chain proof,
+> and paid archive access. WhoWare — Wordle meets immersive history.
 
 ---
 

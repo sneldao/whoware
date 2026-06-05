@@ -25,6 +25,8 @@ Players enter the first memory, explore panoramic environments, inspect clue hot
 
 Past episodes lock after the daily window. The archive uses an x402-inspired USDC paywall on Polygon Amoy: pay 1 USDC to unlock full access to any closed episode.
 
+First-time players see a cinematic onboarding flow guided by the Mystery Figure mascot — five atmospheric steps with interactive demos that teach the core mechanics before the first episode. Share cards show streak tier badges (spark/flame/inferno/eternal), score-ranked gradient borders, and one-tap image export for social virality. Haptic and sound feedback punctuate every interaction — clue reveals, correct guesses, scene transitions. A public "WhoWare Pulse" analytics dashboard shows live global stats: total solves, unique players, streak leaderboard, and recent solve feed, all updating in real-time.
+
 ### How we built it
 - **Frontend:** Expo + React Native (iOS, Android, Web)
 - **Backend:** Convex (real-time database, serverless actions, cron scheduling)
@@ -33,6 +35,10 @@ Past episodes lock after the daily window. The archive uses an x402-inspired USD
 - **Wallet:** MetaMask Smart Accounts via ERC-7715 delegation
 - **Payments:** USDC on Polygon Amoy with on-chain verification (Convex action reads ERC-20 Transfer events from tx receipts)
 - **On-chain:** Mantle Sepolia — soul-bound Score NFTs (EIP-712 oracle-signed), soul-bound Streak SBTs with tier badges, commit-reveal guessing
+- **Analytics:** Real-time Convex subscriptions powering the WhoWare Pulse dashboard (global stats, streak leaderboard, recent solves)
+- **Onboarding:** 5-step cinematic flow with Mystery Figure mascot, interactive demos, Reanimated transitions
+- **Polish:** Haptic feedback (expo-haptics), Web Audio API sound effects, progressive image loading with blurhash placeholders, SEO + OpenGraph meta tags
+- **Figure Catalog:** 35+ historical figures across 3 difficulty tiers (iconic, field, research) spanning 15+ regions and 4000 years of history
 
 ### Architecture
 ```
@@ -89,8 +95,11 @@ The archive paywall implements the x402 value proposition (stablecoin-gated cont
 - Genuine autonomous agent with self-evaluation, adversarial difficulty calibration, and memory-aware figure selection — 6+ AI sub-agents per episode
 - Privacy-preserving AI hints that guide without spoiling (leak guard regression-tested)
 - Multi-chain architecture: Mantle for NFTs, Polygon for payments
-- Daily ritual mechanics with real retention hooks (streaks, leaderboards, share cards)
-- 71 passing backend tests across 9 test suites
+- Cinematic onboarding flow with interactive demos and mascot-driven guidance
+- Real-time analytics dashboard with live Convex subscriptions
+- Daily ritual mechanics with real retention hooks (streaks, leaderboards, share cards with image export)
+- 35+ diverse historical figures across 15+ regions and 4000 years
+- 77 passing backend tests across 10 test suites
 
 ### What's next
 - Three.js WebView for true 360° panoramic viewing
@@ -165,11 +174,19 @@ WhoWareGuess implements a commit-reveal scheme where players hash their guess be
 - Push notifications when new episodes drop live
 - Archive of past episodes (paywalled with USDC for revenue)
 - Progressive identity hints that unlock after sustained play
+- Cinematic 5-step onboarding flow with Mystery Figure mascot and interactive demos
 
 **Virality:**
-- Share card with score, streak, difficulty, era/region, and copy-to-clipboard
+- Share card with streak tier badge, score-ranked gradient border, and one-tap image export
 - Real-time leaderboard with player rank
 - On-chain verification badges that link to Mantle explorer
+- "WhoWare Pulse" public analytics dashboard with live global stats
+- SEO + OpenGraph meta tags for polished social sharing
+
+**Polish:**
+- Haptic feedback on clue reveals, correct guesses, and scene transitions
+- Web Audio API sound effects (chime on clue, arpeggio on correct guess)
+- Progressive image loading with blurhash placeholders and shimmer animations
 
 **Multi-Chain Architecture:**
 - Mantle Sepolia for on-chain achievement (Score NFTs + Streak SBTs)
@@ -203,7 +220,10 @@ The solve flow `await`s `recordSolve()` (which returns the updated streak state)
 - Soul-bound tokens with tier progression
 - Commit-reveal guessing for fair competition
 - Full game loop wired end-to-end: solve → mint → badge → explorer link
-- 71 passing backend tests
+- Cinematic onboarding flow with interactive demos
+- Real-time analytics dashboard (WhoWare Pulse) with live Convex subscriptions
+- 35+ diverse historical figures across 15+ regions and 4000 years
+- 77 passing backend tests across 10 test suites
 
 ### Built With
 mantle, solidity, openzeppelin, eip-712, ecrecover, viem, convex, expo, react-native, metamask, erc-7715, typescript
