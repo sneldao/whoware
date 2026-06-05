@@ -1,7 +1,7 @@
 # WhoWare — Demo Video Script (~2 minutes)
 
 One recording covers both hackathon submissions. Record screen + voice-over.
-Target length: 1:50–2:10.
+Target length: 2:05–2:20.
 
 ---
 
@@ -16,15 +16,29 @@ Target length: 1:50–2:10.
 
 ---
 
-## Autonomous Agent + Venice AI (0:12–0:40)
+## Autonomous Agent + Venice AI (0:12–0:50)
 
 **Screen:** Curator dashboard → episode pipeline → generated scenes
 
-> Behind the scenes, the autonomous agent selects a figure from the catalog,
-> writes scene briefs with era-appropriate locations and clues, then calls
-> Venice to generate each panoramic memory. The result is a fully staged
-> episode — three scenes, nine interactive clue hotspots, and AI-generated
-> imagery — ready for players at midnight UTC.
+> The autonomous agent runs a three-stage pipeline with no human in the loop.
+>
+> First, **memory-aware figure selection**: the agent reviews the last seven
+> episodes — eras, regions, difficulty tiers — and asks Venice to pick the
+> figure that maximizes variety. No repeats, no bias toward famous names.
+>
+> Second, **adversarial difficulty calibration**: after writing scene briefs,
+> a solver agent tries to guess the figure from the clues alone. If it solves
+> in two scenes, the clues are too obvious — a rewrite agent makes them more
+> subtle. If it can't narrow down with all clues, they're too vague — another
+> agent sharpens them. Up to two calibration rounds per episode.
+>
+> Third, **self-evaluation**: before generating each image, a quality judge
+> checks the prompt for era accuracy, anachronisms, and identity leakage.
+> If issues are found, the prompt is refined and re-evaluated — up to two
+> retries per scene.
+>
+> The result: a fully staged episode with calibrated difficulty and
+> quality-checked imagery, ready for players at midnight UTC.
 >
 > During gameplay, Venice also powers the hint system. Players can ask any
 > clue hotspot for a Socratic hint — the AI guides without spoiling. After
@@ -33,7 +47,7 @@ Target length: 1:50–2:10.
 
 ---
 
-## Gameplay + Scoring (0:40–1:05)
+## Gameplay + Scoring (0:50–1:15)
 
 **Screen:** Enter memory → panorama → hotspot → clue ledger → guess panel
 
@@ -46,7 +60,7 @@ Target length: 1:50–2:10.
 
 ---
 
-## MetaMask + On-Chain Verification (1:05–1:30)
+## MetaMask + On-Chain Verification (1:15–1:40)
 
 **Screen:** Wallet connect → solve → dual OnChainBadge → Mantle explorer
 
@@ -62,7 +76,7 @@ Target length: 1:50–2:10.
 
 ---
 
-## x402 Archive Paywall (1:30–1:50)
+## x402 Archive Paywall (1:40–2:00)
 
 **Screen:** Archive list → locked episode → paywall → USDC payment → unlock
 
@@ -77,7 +91,7 @@ Target length: 1:50–2:10.
 
 ---
 
-## Closing (1:50–2:00)
+## Closing (2:00–2:15)
 
 **Screen:** Share card → streak banner → archive
 

@@ -290,6 +290,177 @@ export const markForReview = internalMutation({
   },
 });
 
+export const saveRecalibratedScenes = internalMutation({
+  args: {
+    episodeId: v.id("episodes"),
+    scenes: v.array(sceneBriefShape),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode) throw new Error("Episode not found");
+
+    const updated = episode.scenes.map((existing, i) => {
+      const recalibrated = args.scenes[i];
+      if (!recalibrated) return existing;
+      return {
+        ...existing,
+        clues: recalibrated.clues,
+        ambientText: recalibrated.ambientText,
+      };
+    });
+
+    await ctx.db.patch(args.episodeId, { scenes: updated });
+    return null;
+  },
+});
+
+// =============================================================================
+// SELF-EVALUATION (image prompt judge)
+// =============================================================================
+
+const EVALUATE_SCENE_SYSTEM_PROMPT = `You are a quality-assurance judge for WhoWare, a historical guessing game.
+Evaluate whether an image generation prompt is suitable for a panoramic memory scene.
+
+Check for:
+1. Era accuracy — does the prompt describe objects, architecture, and atmosphere consistent with the stated era?
+2. Anachronisms — are there any modern objects, technology, or concepts that don't belong?
+3. Identity leakage — does the prompt name the historical figure or include readable text with their name?
+4. Visual quality — is the prompt detailed enough for image generation?
+
+Respond with a JSON object:
+{
+  "pass": true or false,
+  "issues": ["issue 1", "issue 2"]
+}
+
+If the prompt is good, return {"pass": true, "issues": []}.
+If there are problems, return {"pass": false, "issues": ["specific problem description"]}.`;
+
+async function evaluateScenePrompt(
+  apiKey: string,
+  scene: { title: string; location: string; era: string },
+  imagePrompt: string,
+): Promise<{ pass: boolean; issues: string[] }> {
+  const userMessage = `Scene: "${scene.title}"\nLocation: ${scene.location}\nEra: ${scene.era}\n\nImage prompt:\n${imagePrompt}\n\nEvaluate this prompt.`;
+
+  try {
+    const raw = await callVeniceChat(apiKey, EVALUATE_SCENE_SYSTEM_PROMPT, userMessage);
+    const parsed = parseJsonFromResponse(raw) as { pass?: boolean; issues?: string[] };
+    return {
+      pass: parsed.pass ?? true,
+      issues: Array.isArray(parsed.issues) ? parsed.issues.map(String) : [],
+    };
+  } catch {
+    console.log("Scene evaluation failed — proceeding without quality gate");
+    return { pass: true, issues: [] };
+  }
+}
+
+// =============================================================================
+// ADVERSARIAL DIFFICULTY CALIBRATION
+// =============================================================================
+
+const CALIBRATION_SOLVER_SYSTEM_PROMPT = `You are a skilled historical detective playing WhoWare.
+You will receive a series of memory scenes with clues. WITHOUT knowing the answer, try to identify the historical figure.
+
+For each scene, describe what the clues suggest and how confident you are.
+After reviewing all scenes, give your final guess and estimate how many scenes you needed to narrow it down.
+
+Respond with a JSON object:
+{
+  "guess": "your best guess for the historical figure",
+  "confidence": "high" | "medium" | "low",
+  "scenesNeeded": 1-7,
+  "reasoning": "brief explanation of how the clues led to your guess"
+}
+
+Important: you are evaluating clue DIFFICULTY, not trying to win. Be honest about whether the clues are too obvious or too vague.`;
+
+const SUBTLE_REWRITE_SYSTEM_PROMPT = `You are a scene writer for WhoWare, a historical guessing game.
+The clues in the current scenes are TOO OBVIOUS — players can guess the figure too quickly.
+
+Rewrite the clues to be more subtle and ambiguous while remaining period-accurate.
+Rules:
+- NEVER name the figure or use their full name in any clue.
+- Clues should hint at the identity, not state it.
+- Replace specific names with contextual descriptions (e.g., "a signed treaty" instead of "the Treaty of Versailles").
+- Keep clues visually inspectable — they must be things a player could notice in a panoramic scene.
+
+Output a JSON object with the same structure as the input scenes, with updated clue details.`;
+
+const SHARPEN_REWRITE_SYSTEM_PROMPT = `You are a scene writer for WhoWare, a historical guessing game.
+The clues in the current scenes are TOO VAGUE — players cannot narrow down the identity even with all clues.
+
+Rewrite the clues to add more specific, identifying contextual detail.
+Rules:
+- NEVER name the figure or use their full name in any clue.
+- Add era-specific objects, documents, or environmental details that narrow the identity.
+- Clues should be visually inspectable in a panoramic scene.
+- Later scenes should progressively add more identifying context.
+
+Output a JSON object with the same structure as the input scenes, with updated clue details.`;
+
+async function calibrateDifficulty(
+  apiKey: string,
+  scenes: Array<{ title: string; location: string; era: string; clues: Array<{ label: string; detail: string; x: number; y: number }> }>,
+  investigationCount: number,
+): Promise<{ guess: string; confidence: string; scenesNeeded: number }> {
+  const scenesDescription = scenes
+    .filter((_, i) => i < investigationCount)
+    .map((s, i) => `Scene ${i + 1}: "${s.title}" (${s.location}, ${s.era})\n  Clues: ${s.clues.map((c) => `${c.label} — ${c.detail}`).join("; ")}`)
+    .join("\n\n");
+
+  const userMessage = `Here are the investigation scenes with their clues:\n\n${scenesDescription}\n\nTry to identify the historical figure. How many scenes did you need?`;
+
+  try {
+    const raw = await callVeniceChat(apiKey, CALIBRATION_SOLVER_SYSTEM_PROMPT, userMessage);
+    const parsed = parseJsonFromResponse(raw) as { guess?: string; confidence?: string; scenesNeeded?: number };
+    return {
+      guess: String(parsed.guess ?? "Unknown"),
+      confidence: String(parsed.confidence ?? "medium"),
+      scenesNeeded: Math.max(1, Math.min(investigationCount, Number(parsed.scenesNeeded ?? investigationCount))),
+    };
+  } catch {
+    console.log("Calibration solver failed — proceeding without difficulty adjustment");
+    return { guess: "Unknown", confidence: "medium", scenesNeeded: Math.ceil(investigationCount / 2) };
+  }
+}
+
+async function subtleRewrite(
+  apiKey: string,
+  scenes: Array<Record<string, unknown>>,
+  figure: { canonicalName: string; era: string; region: string },
+): Promise<Array<Record<string, unknown>>> {
+  const userMessage = `Figure: ${figure.canonicalName} (${figure.era}, ${figure.region})\n\nCurrent scenes:\n${JSON.stringify(scenes, null, 2)}\n\nRewrite the clues to be more subtle.`;
+
+  try {
+    const raw = await callVeniceChat(apiKey, SUBTLE_REWRITE_SYSTEM_PROMPT, userMessage);
+    const parsed = parseJsonFromResponse(raw) as { scenes?: Array<Record<string, unknown>> };
+    return parsed.scenes ?? scenes;
+  } catch {
+    console.log("Subtle rewrite failed — keeping original clues");
+    return scenes;
+  }
+}
+
+async function sharpenRewrite(
+  apiKey: string,
+  scenes: Array<Record<string, unknown>>,
+  figure: { canonicalName: string; era: string; region: string },
+): Promise<Array<Record<string, unknown>>> {
+  const userMessage = `Figure: ${figure.canonicalName} (${figure.era}, ${figure.region})\n\nCurrent scenes:\n${JSON.stringify(scenes, null, 2)}\n\nRewrite the clues to be more specific and identifying.`;
+
+  try {
+    const raw = await callVeniceChat(apiKey, SHARPEN_REWRITE_SYSTEM_PROMPT, userMessage);
+    const parsed = parseJsonFromResponse(raw) as { scenes?: Array<Record<string, unknown>> };
+    return parsed.scenes ?? scenes;
+  } catch {
+    console.log("Sharpen rewrite failed — keeping original clues");
+    return scenes;
+  }
+}
+
 // =============================================================================
 // GENERATION ACTIONS
 // =============================================================================
@@ -450,8 +621,59 @@ export const generateEpisode = action({
 
     await ctx.runMutation(internal.catalog.saveSceneBriefs, { episodeId, scenes });
 
-    for (let i = 0; i < scenes.length; i++) {
-      const prompt = buildImagePrompt(scenes[i]);
+    // --- Adversarial difficulty calibration ---
+    const MAX_CALIBRATION_ROUNDS = 2;
+    let currentScenes = scenes;
+    for (let round = 0; round < MAX_CALIBRATION_ROUNDS; round++) {
+      const result = await calibrateDifficulty(apiKey, currentScenes, investigationCount);
+      console.log(`Calibration round ${round + 1}: guess="${result.guess}", confidence=${result.confidence}, scenesNeeded=${result.scenesNeeded}`);
+
+      if (result.scenesNeeded <= 2 && result.confidence === "high") {
+        console.log("Clues too obvious — rewriting to be more subtle");
+        const rewritten = await subtleRewrite(
+          apiKey,
+          currentScenes.map((s) => ({ ...s })),
+          figure,
+        );
+        currentScenes = rewritten.map((s, i) => ({
+          ...currentScenes[i],
+          clues: Array.isArray(s.clues) ? s.clues as typeof currentScenes[0]["clues"] : currentScenes[i].clues,
+          ambientText: typeof s.ambientText === "string" ? s.ambientText : currentScenes[i].ambientText,
+        }));
+        await ctx.runMutation(internal.catalog.saveRecalibratedScenes, { episodeId, scenes: currentScenes });
+      } else if (result.scenesNeeded >= investigationCount && result.confidence !== "high") {
+        console.log("Clues too vague — rewriting to be more specific");
+        const rewritten = await sharpenRewrite(
+          apiKey,
+          currentScenes.map((s) => ({ ...s })),
+          figure,
+        );
+        currentScenes = rewritten.map((s, i) => ({
+          ...currentScenes[i],
+          clues: Array.isArray(s.clues) ? s.clues as typeof currentScenes[0]["clues"] : currentScenes[i].clues,
+          ambientText: typeof s.ambientText === "string" ? s.ambientText : currentScenes[i].ambientText,
+        }));
+        await ctx.runMutation(internal.catalog.saveRecalibratedScenes, { episodeId, scenes: currentScenes });
+      } else {
+        console.log("Difficulty calibrated — proceeding to image generation");
+        break;
+      }
+    }
+
+    // --- Image generation with self-evaluation ---
+    const MAX_EVAL_RETRIES = 2;
+    for (let i = 0; i < currentScenes.length; i++) {
+      let prompt = buildImagePrompt(currentScenes[i]);
+
+      for (let attempt = 0; attempt <= MAX_EVAL_RETRIES; attempt++) {
+        const evaluation = await evaluateScenePrompt(apiKey, currentScenes[i], prompt);
+        console.log(`Scene ${i} evaluation (attempt ${attempt + 1}): pass=${evaluation.pass}${evaluation.issues.length ? ", issues: " + evaluation.issues.join("; ") : ""}`);
+
+        if (evaluation.pass || attempt === MAX_EVAL_RETRIES) break;
+
+        prompt = `${prompt} IMPORTANT: Avoid these issues: ${evaluation.issues.join(". ")}.`;
+      }
+
       const b64 = await callVeniceImage(apiKey, prompt);
 
       const binary = atob(b64);
@@ -477,7 +699,7 @@ export const generateEpisode = action({
 
     await ctx.runMutation(internal.catalog.markForReview, { episodeId });
 
-    return { episodeId, scenesGenerated: scenes.length };
+    return { episodeId, scenesGenerated: currentScenes.length };
   },
 });
 
@@ -584,6 +806,166 @@ export const getEpisodeScenes = internalQuery({
         era: s.era,
         panoramaPrompt: s.panoramaPrompt,
       })),
+    };
+  },
+});
+
+export const getRecentEpisodeSummary = internalQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      slug: v.string(),
+      era: v.string(),
+      region: v.string(),
+      difficulty: figureTier,
+      figureName: v.optional(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const episodes = await ctx.db
+      .query("episodes")
+      .withIndex("by_status_and_dropsAt")
+      .order("desc")
+      .take(7);
+
+    return episodes
+      .filter((ep) => ep.figureId)
+      .map((ep) => {
+        const era = ep.scenes[0]?.era ?? "Unknown";
+        const region = "Unknown";
+        return {
+          slug: ep.slug,
+          era,
+          region,
+          difficulty: ep.difficulty,
+          figureName: ep.figureName,
+        };
+      });
+  },
+});
+
+export const getFullCatalog = internalQuery({
+  args: {},
+  returns: v.array(
+    v.object({
+      _id: v.id("figures"),
+      canonicalName: v.string(),
+      era: v.string(),
+      region: v.string(),
+      tier: figureTier,
+      difficulty: figureTier,
+      tags: v.array(v.string()),
+    }),
+  ),
+  handler: async (ctx) => {
+    const figures = await ctx.db.query("figures").collect();
+    return figures.map((f) => ({
+      _id: f._id,
+      canonicalName: f.canonicalName,
+      era: f.era,
+      region: f.region,
+      tier: f.tier,
+      difficulty: f.difficulty,
+      tags: f.tags,
+    }));
+  },
+});
+
+// =============================================================================
+// AUTONOMOUS FIGURE SELECTION
+// =============================================================================
+
+const CURATOR_SYSTEM_PROMPT = `You are the autonomous curator for WhoWare, a daily history guessing game.
+Your job is to select the next historical figure to feature, maximizing variety for players.
+
+Consider:
+- Recent episodes (avoid repeating eras, regions, or difficulty tiers in quick succession)
+- Balance across iconic (well-known), field (moderately known), and research (obscure) tiers
+- Geographic and temporal diversity
+
+Respond with a JSON object:
+{
+  "figureName": "exact canonical name from the catalog",
+  "reasoning": "brief explanation of why this figure maximizes variety"
+}
+
+You MUST pick a figure from the provided catalog. Do not invent new figures.`;
+
+export const autonomousGenerateEpisode = action({
+  args: {
+    slug: v.string(),
+    sceneCount: v.optional(v.number()),
+  },
+  returns: v.object({
+    episodeId: v.id("episodes"),
+    figureName: v.string(),
+    reasoning: v.string(),
+    scenesGenerated: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    const apiKey = process.env.VENICE_API_KEY;
+    if (!apiKey) throw new Error("VENICE_API_KEY is not configured");
+
+    const recentEpisodes = await ctx.runQuery(internal.catalog.getRecentEpisodeSummary, {});
+    const catalog = await ctx.runQuery(internal.catalog.getFullCatalog, {});
+
+    if (catalog.length === 0) {
+      throw new Error("Figure catalog is empty — seed the catalog first");
+    }
+
+    const recentSummary = recentEpisodes.length > 0
+      ? recentEpisodes.map((ep) => `- ${ep.figureName ?? ep.slug} (${ep.era}, ${ep.difficulty})`).join("\n")
+      : "No recent episodes.";
+
+    const catalogList = catalog
+      .map((f) => `${f.canonicalName} (${f.era}, ${f.region}, ${f.difficulty})`)
+      .join("\n");
+
+    const userMessage = `Recent episodes (last ${recentEpisodes.length}):\n${recentSummary}\n\nAvailable figures:\n${catalogList}\n\nSelect the next figure to maximize variety.`;
+
+    let selectedFigureName: string;
+    let reasoning: string;
+
+    try {
+      const raw = await callVeniceChat(apiKey, CURATOR_SYSTEM_PROMPT, userMessage);
+      const parsed = parseJsonFromResponse(raw) as { figureName?: string; reasoning?: string };
+      selectedFigureName = String(parsed.figureName ?? "");
+      reasoning = String(parsed.reasoning ?? "Autonomous selection");
+    } catch {
+      console.log("Autonomous figure selection failed — falling back to random");
+      const random = catalog[Math.floor(Math.random() * catalog.length)];
+      selectedFigureName = random.canonicalName;
+      reasoning = "Random fallback (Venice unavailable)";
+    }
+
+    const selectedFigure = catalog.find(
+      (f) => f.canonicalName.toLowerCase() === selectedFigureName.toLowerCase(),
+    );
+
+    if (!selectedFigure) {
+      console.log(`Venice selected "${selectedFigureName}" which is not in catalog — falling back to random`);
+      const random = catalog[Math.floor(Math.random() * catalog.length)];
+      selectedFigureName = random.canonicalName;
+      reasoning = "Random fallback (selected figure not found)";
+    }
+
+    const figure = catalog.find(
+      (f) => f.canonicalName.toLowerCase() === selectedFigureName.toLowerCase(),
+    )!;
+
+    console.log(`Autonomous selection: ${figure.canonicalName} — ${reasoning}`);
+
+    const result = await ctx.runAction(api.catalog.generateEpisode, {
+      figureId: figure._id,
+      slug: args.slug,
+      sceneCount: args.sceneCount,
+    });
+
+    return {
+      episodeId: result.episodeId,
+      figureName: figure.canonicalName,
+      reasoning,
+      scenesGenerated: result.scenesGenerated,
     };
   },
 });

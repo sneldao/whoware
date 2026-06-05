@@ -15,7 +15,7 @@ Two concurrent hackathon submissions targeting complementary tracks. Both levera
 ### Checklist
 - [x] Venice AI scene-image generation (`catalog.generateEpisode`, `catalog.regenerateScene`)
 - [x] Venice AI hint pipeline (scene hint + identity nudge, both cached in `veniceHints`)
-- [x] Autonomous agent: curator pipeline from figure → staged scenes → images → review → live
+- [x] Autonomous agent: curator pipeline with self-evaluation, adversarial difficulty calibration, and memory-aware figure selection (Slice 10)
 - [x] MetaMask Smart Account wallet connect (ERC-7715 delegation in `wallet-connect.tsx` / `use-wallet.ts`)
 - [x] **x402 integration** — USDC archive paywall on Polygon Amoy (`paywall.verifyAndUnlock` reads Transfer events, `ArchivePaywall` component gates `/archive/[id]`).
 - [ ] Demo video walkthrough (~2 min) highlighting autonomous agent + Venice + MetaMask + x402.

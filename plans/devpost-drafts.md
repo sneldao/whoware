@@ -14,11 +14,12 @@ Wordle meets immersive history. An AI curator stages daily episodes autonomously
 History education is passive. We wanted to build a daily ritual that makes historical figures feel alive — stepping into their world, inspecting their surroundings, and earning the satisfaction of identification through observation rather than memorization.
 
 ### What it does
-Each day at midnight UTC, an autonomous AI agent:
-1. Selects a historical figure from a curated catalog
-2. Writes three panoramic memory scenes with era-appropriate locations and hidden clues
-3. Generates each scene image via Venice AI
-4. Reviews and publishes the episode — no human in the loop
+Each day at midnight UTC, an autonomous AI agent runs a three-stage pipeline:
+1. **Memory-aware figure selection** — reviews the last 7 episodes (eras, regions, difficulty tiers) and asks Venice to pick the figure that maximizes variety
+2. **Adversarial difficulty calibration** — a solver agent tries to guess the figure from the clues alone; if it solves too quickly, a rewrite agent makes clues more subtle; if it can't narrow down, another agent sharpens them (up to 2 calibration rounds)
+3. **Self-evaluating image generation** — a quality judge checks each image prompt for era accuracy, anachronisms, and identity leakage before generation (up to 2 retries per scene)
+
+The result is a fully staged episode — scenes, clues, panoramic imagery — published with no human in the loop.
 
 Players enter the first memory, explore panoramic environments, inspect clue hotspots, and guess the identity. Scoring rewards restraint: guessing without viewing memories earns the highest score. Venice AI generates Socratic hints on demand — guiding without spoiling.
 
@@ -27,7 +28,7 @@ Past episodes lock after the daily window. The archive uses an x402-inspired USD
 ### How we built it
 - **Frontend:** Expo + React Native (iOS, Android, Web)
 - **Backend:** Convex (real-time database, serverless actions, cron scheduling)
-- **Autonomous Agent:** `catalog.generateEpisode` Convex action orchestrates the full pipeline — figure selection → scene brief generation → Venice image API → review → publish
+- **Autonomous Agent:** `catalog.autonomousGenerateEpisode` runs a three-stage pipeline — memory-aware figure selection, adversarial difficulty calibration (solver + rewrite agents), and self-evaluating image generation (quality judge with retries) — all orchestrated as a Convex action
 - **Venice AI:** Powers both panoramic scene generation and the Socratic hint system (per-clue hints + identity nudges, cached with leak guards)
 - **Wallet:** MetaMask Smart Accounts via ERC-7715 delegation
 - **Payments:** USDC on Polygon Amoy with on-chain verification (Convex action reads ERC-20 Transfer events from tx receipts)
@@ -63,7 +64,12 @@ Past episodes lock after the daily window. The archive uses an x402-inspired USD
 ### Track Mapping
 
 **Autonomous Agent Track:**
-The `catalog.generateEpisode` action is a fully autonomous pipeline. Given a figure ID, it writes scene briefs (titles, locations, eras, clue placements), calls Venice AI to generate panoramic images for each scene, reviews the output, and publishes a live episode — all without human intervention. The curator dashboard provides visibility into the pipeline but never gates it.
+The `catalog.autonomousGenerateEpisode` action is a genuine autonomous agent with self-evaluation and adversarial reasoning:
+- **Memory-aware selection** — the agent reviews recent episode history (eras, regions, difficulty) and selects the next figure to maximize variety across the catalog
+- **Adversarial calibration** — a solver sub-agent plays the puzzle before any human sees it, and triggers rewrite agents if the difficulty is miscalibrated (too easy → subtle rewrite; too hard → sharpen rewrite)
+- **Self-evaluation** — a quality-judge sub-agent evaluates each image prompt before generation, rejecting prompts with anachronisms or identity leakage
+
+The agent calls 6+ Venice AI sub-agents per episode (figure selector, calibration solver, subtle/sharpen rewriters, quality judge) and makes autonomous decisions about when to retry, when to rewrite, and when to proceed. No human gates any stage.
 
 **Venice AI Track:**
 Venice powers two features:
@@ -74,16 +80,17 @@ Venice powers two features:
 The archive paywall implements the x402 value proposition (stablecoin-gated content with on-chain verification) within a Convex architecture. Players pay 1 USDC on Polygon Amoy; the `paywall.verifyAndUnlock` action reads the USDC Transfer event from the transaction receipt, verifies the treasury received the funds, and records a persistent unlock.
 
 ### Challenges we ran into
+- **Calibrating clue difficulty autonomously:** Early episodes had clues that were either too obvious (players solved from scene 1) or too vague (couldn't narrow down with all scenes). Solved by introducing an adversarial solver agent that plays the puzzle before publishing, triggering subtle or sharpen rewrites based on how quickly it guesses.
 - **Answer leakage in AI hints:** Venice sometimes included the figure's name in generated hints. Solved with a forbidden-word post-filter that checks canonicalName and all aliases before serving.
 - **On-chain nonce management:** The EIP-712 oracle signature requires matching the contract's on-chain nonce. Hardcoding nonce=0 worked for the first mint but failed all subsequent ones. Fixed by reading `nonces(player)` before each signature.
 - **x402 on Convex:** Convex doesn't support custom HTTP middleware for the classic 402 handshake. Adapted by implementing the payment + on-chain verification core of x402 directly in Convex actions.
 
 ### Accomplishments that we're proud of
-- Fully autonomous episode pipeline — zero human intervention from figure selection to published episode
+- Genuine autonomous agent with self-evaluation, adversarial difficulty calibration, and memory-aware figure selection — 6+ AI sub-agents per episode
 - Privacy-preserving AI hints that guide without spoiling (leak guard regression-tested)
 - Multi-chain architecture: Mantle for NFTs, Polygon for payments
 - Daily ritual mechanics with real retention hooks (streaks, leaderboards, share cards)
-- 64 passing backend tests across 8 test suites
+- 71 passing backend tests across 9 test suites
 
 ### What's next
 - Three.js WebView for true 360° panoramic viewing
@@ -196,7 +203,7 @@ The solve flow `await`s `recordSolve()` (which returns the updated streak state)
 - Soul-bound tokens with tier progression
 - Commit-reveal guessing for fair competition
 - Full game loop wired end-to-end: solve → mint → badge → explorer link
-- 64 passing backend tests
+- 71 passing backend tests
 
 ### Built With
 mantle, solidity, openzeppelin, eip-712, ecrecover, viem, convex, expo, react-native, metamask, erc-7715, typescript
