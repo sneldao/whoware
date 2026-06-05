@@ -1,7 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 
 import { HintOverlay } from "@/components/who-ware/hint-overlay";
 import { MemoryMediaStrip } from "@/components/who-ware/memory-media-strip";
@@ -42,22 +50,53 @@ interface PanoramaSceneProps {
 
 export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, onGenerateHint, activeHint, isHintGenerating }: PanoramaSceneProps) {
   const [activeClue, setActiveClue] = useState<Clue | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const colors = useMemo(() => normalizePalette(scene.palette), [scene.palette]);
   const imageSource = getSceneImageSource(scene.imageKey, sceneIndex, scene.imageUrl);
 
+  const shimmerX = useSharedValue(0);
+  useEffect(() => {
+    shimmerX.value = withRepeat(
+      withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      false,
+    );
+  }, [shimmerX]);
+
+  const shimmerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -100 + shimmerX.value * 200 }],
+  }));
+
   useEffect(() => {
     setActiveClue(null);
+    setImageLoaded(false);
   }, [scene.title]);
 
   function handleCluePress(clue: Clue) {
     setActiveClue(clue);
     onHotspotOpen?.(clue.label);
+    if (Platform.OS !== "web") {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   }
 
   return (
     <View style={styles.card}>
       <View style={[styles.panorama, { backgroundColor: colors[0] }]}>
-        {imageSource ? <Image source={imageSource} style={styles.memoryImage} contentFit="cover" transition={250} /> : null}
+        {imageSource ? (
+          <Image
+            source={imageSource}
+            style={styles.memoryImage}
+            contentFit="cover"
+            transition={150}
+            onLoad={() => setImageLoaded(true)}
+          />
+        ) : null}
+        {!imageLoaded ? (
+          <View style={[StyleSheet.absoluteFill, styles.shimmerContainer]} pointerEvents="none">
+            <Animated.View style={[styles.shimmerBar, shimmerStyle]} />
+          </View>
+        ) : null}
         <View style={[styles.glow, styles.glowLeft, { backgroundColor: colors[1] }]} />
         <View style={[styles.glow, styles.glowRight, { backgroundColor: colors[2] }]} />
         <View style={styles.vignette} />
@@ -180,6 +219,15 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderWidth: 1,
     borderColor: "rgba(255, 247, 237, 0.08)",
+  },
+  shimmerContainer: {
+    overflow: "hidden",
+    justifyContent: "center",
+  },
+  shimmerBar: {
+    width: 100,
+    height: "100%",
+    backgroundColor: "rgba(255, 247, 237, 0.06)",
   },
   sceneMeta: {
     position: "absolute",

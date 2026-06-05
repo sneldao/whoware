@@ -5,7 +5,7 @@ import { MAX_GUESSES_PER_RUN } from "@/convex/scoring";
 import { Ionicons } from "@expo/vector-icons";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GuessPanel, type FigureOption } from "@/components/who-ware/guess-panel";
@@ -18,15 +18,19 @@ import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { OnChainBadge } from "@/components/who-ware/on-chain-badge";
 import { PanoramaScene } from "@/components/who-ware/panorama-scene";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
+import { OnboardingFlow } from "@/components/who-ware/onboarding-flow";
 import { SceneTransition } from "@/components/who-ware/scene-transition";
 import { StreakBanner } from "@/components/who-ware/streak-banner";
 import { WalletConnect } from "@/components/who-ware/wallet-connect";
 import type { Scene } from "@/components/who-ware/panorama-scene";
 import { useStreak } from "@/lib/use-streak";
+import { hasCompletedOnboarding, markOnboardingComplete } from "@/lib/onboarding";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useWallet } from "@/hooks/use-wallet";
 import { useVeniceHint } from "@/hooks/use-venice-hint";
 import { useIdentity } from "@/hooks/use-identity";
+import { useGameSounds } from "@/hooks/use-game-sounds";
+import * as Haptics from "expo-haptics";
 
 const PLAYER_NAME_KEY = "whoware.player.name";
 const DEFAULT_PLAYER_NAME = "Player";
@@ -55,8 +59,18 @@ export default function Index() {
   const submitGuessMutation = useMutation(api.runs.submitGuess);
 
   const { streak, recordSolve } = useStreak();
+  const gameSounds = useGameSounds();
+  const [onboardingDone, setOnboardingDone] = useState(false);
   const [playerName, setPlayerName] = useState(DEFAULT_PLAYER_NAME);
   const [playerNameLoaded, setPlayerNameLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    hasCompletedOnboarding().then((done) => {
+      if (!cancelled) setOnboardingDone(done);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const leaderboardSnapshot = useQuery(
     api.episodes.leaderboard,
@@ -222,6 +236,7 @@ export default function Index() {
   const handleOpenHotspot = useCallback(
     async (label: string) => {
       if (!episode) return;
+      gameSounds.playClueFound();
       const hotspotKey = `${sceneIndex}:${label}`;
       setLocalHotspots((current) => (current.includes(hotspotKey) ? current : [...current, hotspotKey]));
 
@@ -258,6 +273,10 @@ export default function Index() {
     try {
       const activeRun = await ensureRun();
       await enterSceneMutation({ runId: activeRun._id, sceneIndex: nextIndex });
+      gameSounds.playSceneEnter();
+      if (Platform.OS !== "web") {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
       setStatus("You surrender certainty for another memory. The answer is closer, but the score ceiling falls.");
     } catch {
       // ignore
@@ -295,6 +314,10 @@ export default function Index() {
 
     if (result.isCorrect) {
       setIsGuessPanelOpen(false);
+      gameSounds.playCorrectGuess();
+      if (Platform.OS !== "web") {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       const solvedAt = Date.now();
       const updatedStreak = await recordSolve(solvedAt);
       const finalScore = result.score ?? 0;
@@ -339,6 +362,11 @@ export default function Index() {
       return;
     }
 
+    gameSounds.playWrongGuess();
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    }
+
     if (result.guessesRemaining <= 0) {
       setStatus("The signal fades. The archive closes around the wrong name.");
       return;
@@ -368,6 +396,10 @@ export default function Index() {
     }
 
     setStatus("That name does not fit. You have reached the last memory.");
+  }
+
+  if (!onboardingDone) {
+    return <OnboardingFlow onComplete={() => { markOnboardingComplete(); setOnboardingDone(true); }} />;
   }
 
   const waitingForBoot = !identity.isLoaded || episode === undefined || run === undefined;
@@ -689,6 +721,11 @@ export default function Index() {
             <Pressable style={styles.curatorLink} href="/curator">
               <Ionicons name="construct-outline" size={14} color="#475569" />
               <Text style={styles.curatorLinkText}>Curator</Text>
+            </Pressable>
+
+            <Pressable style={styles.curatorLink} href="/analytics">
+              <Ionicons name="pulse-outline" size={14} color="#475569" />
+              <Text style={styles.curatorLinkText}>Pulse</Text>
             </Pressable>
 
             <Pressable
