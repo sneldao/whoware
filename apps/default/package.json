@@ -10,10 +10,10 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "dev": "expo start",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "build:web": "expo export --platform web"
   },
   "dependencies": {
-    "2": "^3.0.0",
     "@convex-dev/auth": "^0.0.90",
     "@convex-dev/eslint-plugin": "^1.2.1",
     "@expo/vector-icons": "^15.0.3",
