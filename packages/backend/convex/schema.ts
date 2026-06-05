@@ -126,4 +126,18 @@ export default defineSchema({
   })
     .index("by_identityId", ["identityId"])
     .index("by_walletAddress", ["walletAddress"]),
+  notificationSubscriptions: defineTable({
+    identityId: v.string(),
+    expoPushToken: v.string(),
+    platform: v.union(v.literal("ios"), v.literal("android"), v.literal("web")),
+    subscribedAt: v.number(),
+    unsubscribedAt: v.optional(v.number()),
+  })
+    .index("by_identityId", ["identityId"])
+    .index("by_expoPushToken", ["expoPushToken"]),
+  notificationDispatchLog: defineTable({
+    episodeId: v.id("episodes"),
+    dispatchedAt: v.number(),
+    recipientCount: v.number(),
+  }).index("by_episodeId", ["episodeId"]),
 });

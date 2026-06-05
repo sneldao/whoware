@@ -58,12 +58,29 @@ Cinematic polish to make the daily loop feel finished:
 - **Post-solve identity reveal.** New `IdentityReveal` component shows a full-screen overlay when the player solves, displaying the figure's canonical name, era, region, and tags over a blurred backdrop of the solved scene image. Animated entrance with spring scale. "View your result" button dismisses to reveal the `ResultShareCard`.
 - **Clue ledger.** New `ClueLedger` component shows a collapsible panel of all discovered clues grouped by scene. Tracks clues client-side when hotspots are opened, resets on episode change. Shows count of discovered vs total available clues.
 
+### 2026-06-05 — Slice 6 (Legacy cleanup) landed
+Removed dead code paths once the catalog pipeline was stable:
+
+- **ensureDemoEpisode deleted.** Hard-coded Churchill demo flow removed from backend (`episodes.ts`) and frontend (`index.tsx`). The catalog pipeline now owns episode creation.
+- **isActive field removed.** Removed from schema and all backend references. `getActive` now resolves the live episode via `by_status_and_dropsAt` index.
+- **Legacy index deleted.** `by_isActive_and_activeAt` removed from the schema.
+- **Tests updated.** All test helpers (`daily.test.ts`, `mercy.test.ts`, `runs.test.ts`, `catalog.test.ts`) construct episodes directly instead of routing through `ensureDemoEpisode`. 36 backend tests pass.
+
+### 2026-06-05 — Slice 7 (Retention & reach) landed
+Retention systems across four pillars:
+
+- **Archive mode + post-close profile unlock.** New `archive.ts` with `listClosed`, `getEpisode` (returns full figure profile once closed), `getLeaderboard`, and `getRun`. New `/archive` and `/archive/[id]` routes list closed episodes and render them read-only with revealed identity, leaderboard, and historical result card.
+- **Progressive identity hint.** New `venice.generateIdentityHint` action produces a two-sentence identity nudge from era/region/tags/aliases — canonicalName never reaches the client (answer-leak guard). New `IdentityHintButton` component unlocks after 3 scenes viewed or streak ≥ 1. Cached 24h via `veniceHints`.
+- **Share card polish.** `ResultShareCard` adds a copy-to-clipboard button (expo-clipboard), difficulty chip (iconic/field/research), era+region for solved runs, and a second stat row showing guesses + hotspots + score.
+- **Push notifications.** New `notificationSubscriptions` and `notificationDispatchLog` tables. `notifications.registerToken` / `unregisterToken` / `getSubscription` mutations. `sendDropLive` action batches push sends to Expo push API. Cron (`notifications:dispatchPending`) fires every 5 minutes and dispatches only newly-dropped episodes (deduped via dispatch log). Frontend hook `usePushNotifications` handles permission, token registration, and opt-in toggle.
+- **Tests.** `archive.test.ts` (10 tests), `venice.test.ts` (6 tests, answer-leak regression guard), `notifications.test.ts` (5 tests). 57 backend tests pass.
+
 **Remaining gaps to attack next:**
 1. Run the smoke test end-to-end to validate the Venice pipeline in production.
-2. Full deletion pass: remove legacy fields and `ensureDemoEpisode` once catalog staging is proven.
-3. Three.js WebView 360 viewer (deferred).
-4. Push notifications for episode drops and streak reminders.
-5. Archive mode for past episodes with post-close historical profile unlock.
+2. Three.js WebView 360 viewer (deferred).
+3. 30-episode season arcs and difficulty progression.
+4. Coin ledger / entitlement model for archive access gates (Phase 8).
+5. Socratic hint tier gating by difficulty (hints currently unlock uniformly after 3 scenes).
 
 ## Goal
 Turn the current playable MVP into the WhoWare described in the GDD: a daily first-person historical identity mystery where players inhabit a historical figure, explore immersive scenes, and compete on a fair global leaderboard.
@@ -134,10 +151,10 @@ WhoWare is **not** a future-self transmission/journaling experience. The core fa
 ## Phase 7 — Retention Systems
 - [ ] Add streaks for consecutive solved daily episodes.
 - [ ] Add 30-episode seasons and difficulty arcs.
-- [ ] Add archive mode for past episodes with no global leaderboard impact.
-- [ ] Add post-close historical profile unlock.
-- [ ] Add Socratic hint system with cached per-episode hints.
-- [ ] Add push notifications for episode drops and streak reminders.
+- [x] Add archive mode for past episodes with no global leaderboard impact.
+- [x] Add post-close historical profile unlock.
+- [x] Add Socratic hint system with cached per-episode hints.
+- [x] Add push notifications for episode drops and streak reminders.
 
 ## Phase 8 — Monetization-Ready Structure
 - [ ] Keep daily episode free.

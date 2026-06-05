@@ -14,3 +14,9 @@ crons.interval(
   { minutes: 5 },
   internal.daily.closeExpired,
 );
+
+crons.interval(
+  "notifications:dispatch-pending",
+  { minutes: 5 },
+  internal.notifications.dispatchPending,
+);

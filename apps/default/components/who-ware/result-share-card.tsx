@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Sharing from "expo-sharing";
@@ -17,7 +18,18 @@ interface ResultShareCardProps {
   rank: number | null;
   rankedCount: number;
   streak?: number;
+  guessesUsed?: number;
+  hotspotsOpened?: number;
+  difficulty?: "iconic" | "field" | "research";
+  figureEra?: string;
+  figureRegion?: string;
 }
+
+const DIFFICULTY_PALETTE: Record<string, { bg: string; fg: string; label: string }> = {
+  iconic: { bg: "rgba(251, 191, 36, 0.22)", fg: "#FBBF24", label: "Iconic" },
+  field: { bg: "rgba(134, 239, 172, 0.22)", fg: "#86EFAC", label: "Field" },
+  research: { bg: "rgba(147, 197, 253, 0.22)", fg: "#93C5FD", label: "Research" },
+};
 
 /**
  * Spoiler-free, screenshot-ready result card. NEVER shows the identity — only
@@ -33,13 +45,20 @@ export function ResultShareCard({
   rank,
   rankedCount,
   streak = 0,
+  guessesUsed = 1,
+  hotspotsOpened = 0,
+  difficulty,
+  figureEra,
+  figureRegion,
 }: ResultShareCardProps) {
   const cardRef = useRef<View>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const memoryGrid = buildMemoryGrid(memoriesViewed, cluesOpened);
   const percentile = rank && rankedCount > 0 ? Math.max(1, Math.round((rank / rankedCount) * 100)) : null;
   const shareText = buildShareText({ episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak });
+  const difficultyStyle = difficulty ? DIFFICULTY_PALETTE[difficulty] ?? DIFFICULTY_PALETTE.iconic : null;
 
   async function handleShare() {
     if (isSharing) return;
@@ -70,6 +89,16 @@ export function ResultShareCard({
     }
   }
 
+  async function handleCopy() {
+    if (isCopied) return;
+    await Clipboard.setStringAsync(shareText);
+    setIsCopied(true);
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setTimeout(() => setIsCopied(false), 1800);
+  }
+
   return (
     <View style={styles.container}>
       <View ref={cardRef} collapsable={false} style={styles.captureSurface}>
@@ -79,10 +108,23 @@ export function ResultShareCard({
             <Ionicons name="eye" size={16} color="#1C1106" />
           </View>
           <Text style={styles.brandName}>WhoWare</Text>
-          <Text style={styles.episodeTag}>#{episodeNumber}</Text>
+          <View style={styles.headerChips}>
+            {difficultyStyle ? (
+              <View style={[styles.chip, { backgroundColor: difficultyStyle.bg }]}>
+                <Text style={[styles.chipText, { color: difficultyStyle.fg }]}>{difficultyStyle.label}</Text>
+              </View>
+            ) : null}
+            <Text style={styles.episodeTag}>#{episodeNumber}</Text>
+          </View>
         </View>
 
         <Text style={styles.solvedLabel}>Identity anchored</Text>
+
+        {figureEra && figureRegion ? (
+          <Text style={styles.figureContext}>
+            {figureEra} · {figureRegion}
+          </Text>
+        ) : null}
 
         <View style={styles.gridRow}>
           {memoryGrid.map((symbol, index) => (
@@ -96,6 +138,12 @@ export function ResultShareCard({
           <ShareStat label="Memories" value={`${memoriesViewed}`} />
           <ShareStat label="Clues" value={`${cluesOpened}`} />
           <ShareStat label="Time" value={formatElapsed(elapsedMs)} />
+        </View>
+
+        <View style={styles.statRow}>
+          <ShareStat label="Guesses" value={`${guessesUsed}`} />
+          <ShareStat label="Hotspots" value={`${hotspotsOpened}`} />
+          <ShareStat label="Score" value={formatScore(score)} />
         </View>
 
         <View style={styles.scoreRow}>
@@ -113,15 +161,27 @@ export function ResultShareCard({
         <Text style={styles.tagline}>Can you name them in fewer? · whoware.app</Text>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={handleShare}
-        disabled={isSharing}
-        style={({ pressed }) => [styles.shareButton, pressed && styles.pressed, isSharing && styles.shareButtonBusy]}
-      >
-        <Ionicons name="share-outline" size={18} color="#1C1106" />
-        <Text style={styles.shareButtonText}>{isSharing ? "Opening share…" : "Share result (no spoilers)"}</Text>
-      </Pressable>
+      <View style={styles.actions}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleCopy}
+          disabled={isCopied}
+          style={({ pressed }) => [styles.copyButton, pressed && styles.pressed, isCopied && styles.copyButtonDone]}
+        >
+          <Ionicons name={isCopied ? "checkmark" : "copy-outline"} size={18} color="#FBBF24" />
+          <Text style={styles.copyButtonText}>{isCopied ? "Copied" : "Copy text"}</Text>
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleShare}
+          disabled={isSharing}
+          style={({ pressed }) => [styles.shareButton, pressed && styles.pressed, isSharing && styles.shareButtonBusy]}
+        >
+          <Ionicons name="share-outline" size={18} color="#1C1106" />
+          <Text style={styles.shareButtonText}>{isSharing ? "Opening share…" : "Share (no spoilers)"}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -222,12 +282,34 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
   },
+  headerChips: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  chip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  chipText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
   solvedLabel: {
     color: "rgba(255, 247, 237, 0.6)",
     fontSize: 12,
     fontWeight: "900",
     letterSpacing: 1.4,
     textTransform: "uppercase",
+  },
+  figureContext: {
+    color: "rgba(255, 247, 237, 0.7)",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.2,
   },
   gridRow: {
     flexDirection: "row",
@@ -296,6 +378,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   shareButton: {
+    flex: 1,
     minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
@@ -310,7 +393,33 @@ const styles = StyleSheet.create({
   },
   shareButtonText: {
     color: "#1C1106",
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  copyButton: {
+    minHeight: 54,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(251, 191, 36, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(251, 191, 36, 0.4)",
+  },
+  copyButtonDone: {
+    backgroundColor: "rgba(134, 239, 172, 0.14)",
+    borderColor: "rgba(134, 239, 172, 0.5)",
+  },
+  copyButtonText: {
+    color: "#FBBF24",
+    fontSize: 14,
     fontWeight: "900",
   },
   pressed: {

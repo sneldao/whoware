@@ -13,6 +13,7 @@ import { CinematicHero } from "@/components/who-ware/cinematic-hero";
 import { ClueLedger } from "@/components/who-ware/clue-ledger";
 import { IdentityCountdown } from "@/components/who-ware/identity-countdown";
 import { IdentityReveal } from "@/components/who-ware/identity-reveal";
+import { IdentityHintButton } from "@/components/who-ware/identity-hint-button";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { OnChainBadge } from "@/components/who-ware/on-chain-badge";
 import { PanoramaScene } from "@/components/who-ware/panorama-scene";
@@ -22,6 +23,7 @@ import { StreakBanner } from "@/components/who-ware/streak-banner";
 import { WalletConnect } from "@/components/who-ware/wallet-connect";
 import type { Scene } from "@/components/who-ware/panorama-scene";
 import { useStreak } from "@/lib/use-streak";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { useWallet } from "@/hooks/use-wallet";
 import { useVeniceHint } from "@/hooks/use-venice-hint";
 import { useIdentity } from "@/hooks/use-identity";
@@ -33,6 +35,7 @@ export default function Index() {
   const insets = useSafeAreaInsets();
 
   const identity = useIdentity();
+  const pushNotifications = usePushNotifications(identity.identityId ?? null);
   const episode = useQuery(api.daily.getCurrentDrop);
   const nextDrop = useQuery(api.daily.getNextDrop);
   const guessCap = MAX_GUESSES_PER_RUN;
@@ -43,6 +46,7 @@ export default function Index() {
       : "skip",
   );
   const figures = useQuery(api.figures.search, { query: "", limit: 10 }) ?? [];
+  const archiveCount = useQuery(api.archive.listClosed, {})?.length ?? 0;
 
   const seedCatalog = useMutation(api.figures.seedCatalog);
   const startRunMutation = useMutation(api.runs.startRun);
@@ -537,6 +541,11 @@ export default function Index() {
               rank={leaderboardSnapshot?.playerRank?.rank ?? null}
               rankedCount={leaderboardSnapshot?.rankedCount ?? 0}
               streak={streak.current}
+              guessesUsed={solvedRun.guessesUsed}
+              hotspotsOpened={solvedRun.hotspotsOpened}
+              difficulty={episode.difficulty}
+              figureEra={solvedFigure ? figures.find((f) => f._id === solvedFigure.figureId)?.era : undefined}
+              figureRegion={solvedFigure ? figures.find((f) => f._id === solvedFigure.figureId)?.region : undefined}
             />
             <OnChainBadge txHash={mintTxHash} isMinting={isMinting} />
           </>
@@ -627,6 +636,15 @@ export default function Index() {
               totalCluesAvailable={accessibleScenes.length * 3}
             />
 
+            {episode && !isSolved && !isExhausted ? (
+              <IdentityHintButton
+                episodeId={episode._id}
+                scenesRevealed={memoriesViewed}
+                streak={streak.current}
+                isRunActive={!isSolved && !isExhausted}
+              />
+            ) : null}
+
             {isGuessPanelOpen || isSolved || isExhausted || guessesLeft <= 0 ? (
               <GuessPanel
                 figures={figureOptions}
@@ -644,9 +662,35 @@ export default function Index() {
               rankedCount={leaderboardSnapshot?.rankedCount ?? 0}
             />
 
+            {archiveCount > 0 ? (
+              <Pressable style={styles.curatorLink} href="/archive">
+                <Ionicons name="archive-outline" size={14} color="#475569" />
+                <Text style={styles.curatorLinkText}>Archive · {archiveCount}</Text>
+              </Pressable>
+            ) : null}
+
             <Pressable style={styles.curatorLink} href="/curator">
               <Ionicons name="construct-outline" size={14} color="#475569" />
               <Text style={styles.curatorLinkText}>Curator</Text>
+            </Pressable>
+
+            <Pressable
+              style={styles.curatorLink}
+              onPress={pushNotifications.toggleNotifications}
+              disabled={pushNotifications.isBusy}
+            >
+              <Ionicons
+                name={pushNotifications.isOptedIn ? "notifications" : "notifications-off-outline"}
+                size={14}
+                color={pushNotifications.isOptedIn ? "#FBBF24" : "#475569"}
+              />
+              <Text style={styles.curatorLinkText}>
+                {pushNotifications.isBusy
+                  ? "Updating…"
+                  : pushNotifications.isOptedIn
+                    ? "Drop alerts on"
+                    : "Drop alerts off"}
+              </Text>
             </Pressable>
           </>
         )}
