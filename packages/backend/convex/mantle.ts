@@ -1,6 +1,11 @@
 import { action } from "./_generated/server";
 import { v } from "convex/values";
-import { createWalletClient, http, keccak256, encodePacked } from "viem";
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  type Address,
+} from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { mantleSepoliaTestnet } from "viem/chains";
 
@@ -20,6 +25,13 @@ const SCORE_ABI = [
     ],
     outputs: [{ name: "", type: "uint256" }],
   },
+  {
+    name: "nonces",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "player", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
 
 const STREAK_ABI = [
@@ -37,7 +49,24 @@ const STREAK_ABI = [
     ],
     outputs: [],
   },
+  {
+    name: "nonces",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "player", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
 ] as const;
+
+const MANTLE_RPC =
+  process.env.MANTLE_RPC_URL ?? mantleSepoliaTestnet.rpcUrls.default.http[0];
+
+function getPublicClient() {
+  return createPublicClient({
+    chain: mantleSepoliaTestnet,
+    transport: http(MANTLE_RPC),
+  });
+}
 
 export const mintScore = action({
   args: {
@@ -59,13 +88,26 @@ export const mintScore = action({
     }
 
     const account = privateKeyToAccount(privateKey);
-    const client = createWalletClient({
+    const walletClient = createWalletClient({
       account,
       chain: mantleSepoliaTestnet,
-      transport: http(),
+      transport: http(MANTLE_RPC),
     });
+    const publicClient = getPublicClient();
+    const player = args.playerAddress as Address;
 
-    const nonce = 0n;
+    let nonce = 0n;
+    try {
+      nonce = (await publicClient.readContract({
+        address: contractAddress,
+        abi: SCORE_ABI,
+        functionName: "nonces",
+        args: [player],
+      })) as bigint;
+    } catch (error) {
+      console.error("Failed to read on-chain nonce:", error);
+      return null;
+    }
 
     const signature = await account.signTypedData({
       domain: {
@@ -87,7 +129,7 @@ export const mintScore = action({
       },
       primaryType: "MintScore",
       message: {
-        player: args.playerAddress as `0x${string}`,
+        player,
         episodeDay: BigInt(args.episodeDay),
         score: BigInt(args.score),
         memoriesViewed: args.memoriesViewed,
@@ -98,12 +140,12 @@ export const mintScore = action({
     });
 
     try {
-      const hash = await client.writeContract({
+      const hash = await walletClient.writeContract({
         address: contractAddress,
         abi: SCORE_ABI,
         functionName: "mintScore",
         args: [
-          args.playerAddress as `0x${string}`,
+          player,
           BigInt(args.episodeDay),
           BigInt(args.score),
           args.memoriesViewed,
@@ -113,6 +155,7 @@ export const mintScore = action({
         ],
       });
 
+      await publicClient.waitForTransactionReceipt({ hash });
       return hash;
     } catch (error) {
       console.error("Failed to mint score on Mantle:", error);
@@ -140,13 +183,26 @@ export const updateStreak = action({
     }
 
     const account = privateKeyToAccount(privateKey);
-    const client = createWalletClient({
+    const walletClient = createWalletClient({
       account,
       chain: mantleSepoliaTestnet,
-      transport: http(),
+      transport: http(MANTLE_RPC),
     });
+    const publicClient = getPublicClient();
+    const player = args.playerAddress as Address;
 
-    const nonce = 0n;
+    let nonce = 0n;
+    try {
+      nonce = (await publicClient.readContract({
+        address: contractAddress,
+        abi: STREAK_ABI,
+        functionName: "nonces",
+        args: [player],
+      })) as bigint;
+    } catch (error) {
+      console.error("Failed to read on-chain nonce:", error);
+      return null;
+    }
 
     const signature = await account.signTypedData({
       domain: {
@@ -167,7 +223,7 @@ export const updateStreak = action({
       },
       primaryType: "UpdateStreak",
       message: {
-        player: args.playerAddress as `0x${string}`,
+        player,
         currentStreak: BigInt(args.currentStreak),
         bestStreak: BigInt(args.bestStreak),
         lastSolvedDay: BigInt(args.lastSolvedDay),
@@ -177,12 +233,12 @@ export const updateStreak = action({
     });
 
     try {
-      const hash = await client.writeContract({
+      const hash = await walletClient.writeContract({
         address: contractAddress,
         abi: STREAK_ABI,
         functionName: "updateStreak",
         args: [
-          args.playerAddress as `0x${string}`,
+          player,
           BigInt(args.currentStreak),
           BigInt(args.bestStreak),
           BigInt(args.lastSolvedDay),
@@ -191,6 +247,7 @@ export const updateStreak = action({
         ],
       });
 
+      await publicClient.waitForTransactionReceipt({ hash });
       return hash;
     } catch (error) {
       console.error("Failed to update streak on Mantle:", error);

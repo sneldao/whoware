@@ -79,7 +79,7 @@ cd packages/contracts && bun install && bun run test
 
 ## Hackathon Submissions
 
-Built for dual submission:
+Built for dual submission — see [`plans/hackathon-submissions.plan.md`](./plans/hackathon-submissions.plan.md) for the per-track checklist and remaining gaps:
 - **MetaMask x 1Shot API x Venice AI Dev Cook Off** — Autonomous Agent, Venice AI, and x402 tracks
 - **Mantle Turing Test Hackathon 2026 (Phase 2)** — Consumer & Viral DApps track
 

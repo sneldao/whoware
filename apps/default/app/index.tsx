@@ -75,7 +75,10 @@ export default function Index() {
   const [status, setStatus] = useState("You open your eyes in another life. Enter the first memory when you are ready.");
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [mintTxHash, setMintTxHash] = useState<string | null>(null);
+  const [streakTxHash, setStreakTxHash] = useState<string | null>(null);
   const [isMinting, setIsMinting] = useState(false);
+  const [isStreakUpdating, setIsStreakUpdating] = useState(false);
+  const hasMintedRef = useRef(false);
   const [isBusy, setIsBusy] = useState(false);
   const [localHotspots, setLocalHotspots] = useState<string[]>([]);
   const [discoveredClues, setDiscoveredClues] = useState<Array<{ sceneIndex: number; sceneTitle: string; label: string; detail: string }>>([]);
@@ -132,7 +135,10 @@ export default function Index() {
     setSolvedRun(null);
     setActiveHint(null);
     setMintTxHash(null);
+    setStreakTxHash(null);
     setIsMinting(false);
+    setIsStreakUpdating(false);
+    hasMintedRef.current = false;
     setLocalHotspots([]);
     setDiscoveredClues([]);
     setRevealDismissed(false);
@@ -290,16 +296,18 @@ export default function Index() {
     if (result.isCorrect) {
       setIsGuessPanelOpen(false);
       const solvedAt = Date.now();
-      void recordSolve(solvedAt);
+      const updatedStreak = await recordSolve(solvedAt);
       const finalScore = result.score ?? 0;
       setSolvedRun({ elapsedMs: result.elapsedMs, score: finalScore });
       setSolvedFigure({ name: result.answer ?? "Unknown", figureId: figureId });
       const identityLabel = result.answer ?? "the figure";
       setStatus(`Identity anchored — you were ${identityLabel}. Final score: ${formatScore(finalScore)}.`);
 
-      if (wallet.address) {
-        setIsMinting(true);
+      if (wallet.address && !hasMintedRef.current) {
+        hasMintedRef.current = true;
         const episodeDay = Math.max(1, Math.floor(episode.dropsAt / 86400000));
+
+        setIsMinting(true);
         mintScoreOnChain({
           playerAddress: wallet.address,
           episodeDay,
@@ -310,17 +318,23 @@ export default function Index() {
         })
           .then((txHash) => {
             setMintTxHash(txHash);
-            setIsMinting(false);
           })
-          .catch(() => setIsMinting(false));
+          .catch(() => {})
+          .finally(() => setIsMinting(false));
 
+        setIsStreakUpdating(true);
         updateStreakOnChain({
           playerAddress: wallet.address,
-          currentStreak: streak.current,
-          bestStreak: streak.best,
+          currentStreak: updatedStreak.current,
+          bestStreak: updatedStreak.best,
           lastSolvedDay: Math.floor(solvedAt / 86400000),
-          totalSolved: streak.current,
-        }).catch(() => {});
+          totalSolved: updatedStreak.totalSolved,
+        })
+          .then((txHash) => {
+            setStreakTxHash(txHash);
+          })
+          .catch(() => {})
+          .finally(() => setIsStreakUpdating(false));
       }
       return;
     }
@@ -547,7 +561,10 @@ export default function Index() {
               figureEra={solvedFigure ? figures.find((f) => f._id === solvedFigure.figureId)?.era : undefined}
               figureRegion={solvedFigure ? figures.find((f) => f._id === solvedFigure.figureId)?.region : undefined}
             />
-            <OnChainBadge txHash={mintTxHash} isMinting={isMinting} />
+            <View style={styles.onChainRow}>
+              <OnChainBadge txHash={mintTxHash} isMinting={isMinting} mintingLabel="Minting score…" verifiedLabel="Score on Mantle" />
+              <OnChainBadge txHash={streakTxHash} isMinting={isStreakUpdating} mintingLabel="Updating streak…" verifiedLabel="Streak on Mantle" />
+            </View>
           </>
         ) : null}
 
@@ -970,6 +987,11 @@ const styles = StyleSheet.create({
     gap: 6,
     padding: 12,
     marginTop: 8,
+  },
+  onChainRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
   curatorLinkText: {
     color: "#475569",

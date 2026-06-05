@@ -4,16 +4,18 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 interface OnChainBadgeProps {
   txHash: string | null;
   isMinting: boolean;
+  mintingLabel?: string;
+  verifiedLabel?: string;
 }
 
 const MANTLE_EXPLORER_BASE = "https://sepolia.mantlescan.xyz/tx";
 
-export function OnChainBadge({ txHash, isMinting }: OnChainBadgeProps) {
+export function OnChainBadge({ txHash, isMinting, mintingLabel = "Minting on Mantle…", verifiedLabel = "Verified on Mantle" }: OnChainBadgeProps) {
   if (isMinting) {
     return (
       <View style={styles.badge}>
         <Ionicons name="hourglass" size={12} color="#A78BFA" />
-        <Text style={styles.mintingText}>Minting on Mantle…</Text>
+        <Text style={styles.mintingText}>{mintingLabel}</Text>
       </View>
     );
   }
@@ -27,7 +29,7 @@ export function OnChainBadge({ txHash, isMinting }: OnChainBadgeProps) {
   return (
     <Pressable onPress={handlePress} style={({ pressed }) => [styles.badge, styles.linked, pressed && styles.pressed]}>
       <Ionicons name="checkmark-circle" size={12} color="#4ADE80" />
-      <Text style={styles.verifiedText}>Verified on Mantle</Text>
+      <Text style={styles.verifiedText}>{verifiedLabel}</Text>
       <Ionicons name="open-outline" size={10} color="rgba(74, 222, 128, 0.6)" />
     </Pressable>
   );
