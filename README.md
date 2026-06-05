@@ -25,6 +25,7 @@ whoware/
 - **Frontend:** Expo + React Native + StyleSheet
 - **Backend:** Convex (real-time DB, auth, serverless actions)
 - **Blockchain:** Mantle Sepolia (EVM) — Score NFTs, Streak SBTs, commit-reveal guessing
+- **Payments:** Polygon Amoy — USDC archive paywall with on-chain verification (x402-inspired)
 - **AI:** Venice AI (privacy-preserving hint generation)
 - **Wallet:** MetaMask Smart Accounts (ERC-7715 delegation)
 
@@ -60,6 +61,8 @@ Required variables:
 - `CONVEX_DEPLOYMENT` / `EXPO_PUBLIC_CONVEX_URL` — Run `bunx convex dev` in `packages/backend/`
 - `DEPLOYER_PRIVATE_KEY` — Ethereum private key for oracle signing
 - `VENICE_API_KEY` — Sign up at [venice.ai](https://venice.ai)
+- `PAYWALL_TREASURY_ADDRESS` — Ethereum address that receives USDC payments for archive unlocks
+- `POLYGON_AMOY_RPC_URL` — Optional custom RPC URL for Polygon Amoy (defaults to public RPC)
 
 ### 3. Run the app
 
