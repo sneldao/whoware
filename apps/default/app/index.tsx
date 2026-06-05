@@ -10,11 +10,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { GuessPanel, type FigureOption } from "@/components/who-ware/guess-panel";
 import { CinematicHero } from "@/components/who-ware/cinematic-hero";
+import { ClueLedger } from "@/components/who-ware/clue-ledger";
 import { IdentityCountdown } from "@/components/who-ware/identity-countdown";
+import { IdentityReveal } from "@/components/who-ware/identity-reveal";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { OnChainBadge } from "@/components/who-ware/on-chain-badge";
 import { PanoramaScene } from "@/components/who-ware/panorama-scene";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
+import { SceneTransition } from "@/components/who-ware/scene-transition";
 import { StreakBanner } from "@/components/who-ware/streak-banner";
 import { WalletConnect } from "@/components/who-ware/wallet-connect";
 import type { Scene } from "@/components/who-ware/panorama-scene";
@@ -72,6 +75,9 @@ export default function Index() {
   const [isMinting, setIsMinting] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [localHotspots, setLocalHotspots] = useState<string[]>([]);
+  const [discoveredClues, setDiscoveredClues] = useState<Array<{ sceneIndex: number; sceneTitle: string; label: string; detail: string }>>([]);
+  const [revealDismissed, setRevealDismissed] = useState(false);
+  const [solvedFigure, setSolvedFigure] = useState<{ name: string; figureId?: Id<"figures"> } | null>(null);
 
   const wallet = useWallet();
   const { getHint, isGenerating: isHintGenerating } = useVeniceHint();
@@ -127,6 +133,9 @@ export default function Index() {
     setMintTxHash(null);
     setIsMinting(false);
     setLocalHotspots([]);
+    setDiscoveredClues([]);
+    setRevealDismissed(false);
+    setSolvedFigure(null);
     setStatus("You open your eyes in another life. Enter the first memory when you are ready.");
   }, [episode?._id, identity.identityId]);
 
@@ -208,6 +217,17 @@ export default function Index() {
       if (!episode) return;
       const hotspotKey = `${sceneIndex}:${label}`;
       setLocalHotspots((current) => (current.includes(hotspotKey) ? current : [...current, hotspotKey]));
+
+      // Track the clue for the ledger
+      const scene = episode.scenes[sceneIndex];
+      const clue = scene?.clues.find((c) => c.label === label);
+      if (clue && !discoveredClues.some((d) => d.sceneIndex === sceneIndex && d.label === label)) {
+        setDiscoveredClues((current) => [
+          ...current,
+          { sceneIndex, sceneTitle: scene.title, label: clue.label, detail: clue.detail },
+        ]);
+      }
+
       try {
         const activeRun = await ensureRun();
         await openHotspotMutation({ runId: activeRun._id, sceneIndex, hotspotLabel: label });
@@ -215,7 +235,7 @@ export default function Index() {
         // ignore
       }
     },
-    [episode, sceneIndex, openHotspotMutation, playerName, identity.identityId],
+    [episode, sceneIndex, openHotspotMutation, playerName, identity.identityId, discoveredClues],
   );
 
   const handleUnlockNextMemory = useCallback(async () => {
@@ -272,6 +292,7 @@ export default function Index() {
       void recordSolve(solvedAt);
       const finalScore = result.score ?? 0;
       setSolvedRun({ elapsedMs: result.elapsedMs, score: finalScore });
+      setSolvedFigure({ name: result.answer ?? "Unknown", figureId: figureId });
       const identityLabel = result.answer ?? "the figure";
       setStatus(`Identity anchored — you were ${identityLabel}. Final score: ${formatScore(finalScore)}.`);
 
@@ -549,15 +570,22 @@ export default function Index() {
           </>
         ) : (
           <>
-            <PanoramaScene
-              scene={currentScene}
-              sceneIndex={accessiblePosition}
-              totalScenes={accessibleScenes.length}
-              onHotspotOpen={handleOpenHotspot}
-              onGenerateHint={handleGenerateHint}
-              activeHint={activeHint}
-              isHintGenerating={isHintGenerating}
-            />
+            <SceneTransition
+              sceneIndex={sceneIndex}
+              title={currentScene.title}
+              location={currentScene.location}
+              era={currentScene.era}
+            >
+              <PanoramaScene
+                scene={currentScene}
+                sceneIndex={accessiblePosition}
+                totalScenes={accessibleScenes.length}
+                onHotspotOpen={handleOpenHotspot}
+                onGenerateHint={handleGenerateHint}
+                activeHint={activeHint}
+                isHintGenerating={isHintGenerating}
+              />
+            </SceneTransition>
 
             <View style={styles.actionBar}>
               <Pressable
@@ -597,6 +625,11 @@ export default function Index() {
               ))}
             </View>
 
+            <ClueLedger
+              clues={discoveredClues}
+              totalCluesAvailable={accessibleScenes.length * 3}
+            />
+
             {isGuessPanelOpen || isSolved || isExhausted || guessesLeft <= 0 ? (
               <GuessPanel
                 figures={figureOptions}
@@ -621,6 +654,20 @@ export default function Index() {
           </>
         )}
       </ScrollView>
+
+      {isSolved && !revealDismissed && solvedFigure && (() => {
+        const figure = figures.find((f) => f._id === solvedFigure.figureId);
+        return (
+          <IdentityReveal
+            figureName={solvedFigure.name}
+            era={figure?.era ?? ""}
+            region={figure?.region ?? ""}
+            tags={figure?.tags ?? []}
+            imageUrl={solvedSceneImageUrl}
+            onContinue={() => setRevealDismissed(true)}
+          />
+        );
+      })()}
     </View>
   );
 }
