@@ -371,7 +371,7 @@ export default function Index() {
     : Math.min(0.85, (memoriesViewed / Math.max(1, totalMemories)) * 0.65 + hotspotsOpened * 0.04);
   const episodeNumber = parseInt(episode.slug.replace(/\D/g, ""), 10) || 1;
   const solvedSceneImageKey = episode.scenes[episode.scenes.length - 1]?.imageKey ?? currentScene.imageKey;
-  const solvedSceneImageUrl = (episode.scenes[episode.scenes.length - 1] as { imageUrl?: string } | undefined)?.imageUrl ?? (currentScene as { imageUrl?: string }).imageUrl;
+  const solvedSceneImageUrl = episode.scenes[episode.scenes.length - 1]?.imageUrl ?? currentScene.imageUrl;
   const solvedToday = isSolved && streak.current > 0;
   const runFinished = isSolved || isExhausted;
 
@@ -450,7 +450,7 @@ export default function Index() {
             revealProgress={revealProgress}
             isSolved={isSolved}
             solvedImageKey={solvedSceneImageKey}
-            imageUrl={(currentScene as { imageUrl?: string }).imageUrl}
+            imageUrl={currentScene.imageUrl}
             solvedImageUrl={solvedSceneImageUrl}
           />
           <View style={styles.heroContent}>
@@ -613,6 +613,11 @@ export default function Index() {
               playerRank={leaderboardSnapshot?.playerRank ?? null}
               rankedCount={leaderboardSnapshot?.rankedCount ?? 0}
             />
+
+            <Pressable style={styles.curatorLink} href="/curator">
+              <Ionicons name="construct-outline" size={14} color="#475569" />
+              <Text style={styles.curatorLinkText}>Curator</Text>
+            </Pressable>
           </>
         )}
       </ScrollView>
@@ -869,5 +874,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     fontWeight: "700",
+  },
+  curatorLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    padding: 12,
+    marginTop: 8,
+  },
+  curatorLinkText: {
+    color: "#475569",
+    fontSize: 12,
+    fontWeight: "500",
   },
 });

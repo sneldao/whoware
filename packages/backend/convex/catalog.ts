@@ -157,6 +157,69 @@ export const getStagingQueue = query({
   },
 });
 
+export const getEpisodeDetail = query({
+  args: { episodeId: v.id("episodes") },
+  returns: v.union(
+    v.object({
+      _id: v.id("episodes"),
+      slug: v.string(),
+      status: v.union(v.literal("staging"), v.literal("review"), v.literal("draft"), v.literal("live"), v.literal("closed")),
+      figureName: v.optional(v.string()),
+      difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
+      scenes: v.array(
+        v.object({
+          title: v.string(),
+          location: v.string(),
+          era: v.string(),
+          palette: v.array(v.string()),
+          panoramaPrompt: v.string(),
+          imageKey: v.optional(v.string()),
+          imageAspectRatio: v.optional(v.string()),
+          ambientText: v.string(),
+          clues: v.array(
+            v.object({
+              label: v.string(),
+              detail: v.string(),
+              x: v.number(),
+              y: v.number(),
+            }),
+          ),
+          isMercy: v.optional(v.boolean()),
+          imageUrl: v.optional(v.string()),
+        }),
+      ),
+      _creationTime: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode) return null;
+
+    return {
+      _id: episode._id,
+      slug: episode.slug,
+      status: episode.status,
+      figureName: episode.figureName,
+      difficulty: episode.difficulty,
+      scenes: episode.scenes.map((s) => ({
+        title: s.title,
+        location: s.location,
+        era: s.era,
+        palette: s.palette,
+        panoramaPrompt: s.panoramaPrompt,
+        imageKey: s.imageKey,
+        imageAspectRatio: s.imageAspectRatio,
+        ambientText: s.ambientText,
+        clues: s.clues,
+        isMercy: s.isMercy,
+        imageUrl: s.imageUrl,
+      })),
+      _creationTime: episode._creationTime,
+    };
+  },
+});
+
 // =============================================================================
 // INTERNAL MUTATIONS (called by actions)
 // =============================================================================
