@@ -22,8 +22,8 @@ export default function RootLayout() {
     return (
         <ConvexAuthProvider client={convex} storage={isNative ? secureStorage : undefined}>
             <Head>
-                <title>WhoWare — Daily History Guessing Game</title>
-                <meta name="description" content="Step into panoramic memories from a historical figure's life. Inspect clues. Guess the identity. New puzzle every day." />
+                <title>WhoWare — Daily Embodied History Ritual</title>
+                <meta name="description" content="Step into panoramic memories from a historical figure's life. Inspect clues. Name the figure. A new puzzle every day." />
             </Head>
             <View style={[styles.root, isWeb && styles.rootWeb]}>
                 <View style={[styles.inner, isWeb && styles.innerWeb]}>
