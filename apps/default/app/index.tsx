@@ -45,7 +45,24 @@ const DEFAULT_PLAYER_NAME = "Player";
 
 export default function Index() {
   const insets = useSafeAreaInsets();
+  const [onboardingDone, setOnboardingDone] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    hasCompletedOnboarding().then((done) => {
+      if (!cancelled) setOnboardingDone(done);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!onboardingDone) {
+    return <OnboardingFlow onComplete={() => { markOnboardingComplete(); setOnboardingDone(true); }} />;
+  }
+
+  return <GameContent insets={insets} />;
+}
+
+function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> }) {
   const identity = useIdentity();
   const pushNotifications = usePushNotifications(identity.identityId ?? null);
   const episode = useQuery(api.daily.getCurrentDrop);
@@ -68,17 +85,8 @@ export default function Index() {
 
   const { streak, recordSolve } = useStreak();
   const gameSounds = useGameSounds();
-  const [onboardingDone, setOnboardingDone] = useState(false);
   const [playerName, setPlayerName] = useState(DEFAULT_PLAYER_NAME);
   const [playerNameLoaded, setPlayerNameLoaded] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    hasCompletedOnboarding().then((done) => {
-      if (!cancelled) setOnboardingDone(done);
-    });
-    return () => { cancelled = true; };
-  }, []);
 
   const leaderboardSnapshot = useQuery(
     api.episodes.leaderboard,
@@ -522,10 +530,6 @@ export default function Index() {
     }
 
     setStatus("That name does not fit. You have reached the last memory.");
-  }
-
-  if (!onboardingDone) {
-    return <OnboardingFlow onComplete={() => { markOnboardingComplete(); setOnboardingDone(true); }} />;
   }
 
   const waitingForBoot = !identity.isLoaded || episode === undefined || run === undefined;

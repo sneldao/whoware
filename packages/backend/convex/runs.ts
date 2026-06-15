@@ -6,6 +6,7 @@ const runStatus = v.union(v.literal("active"), v.literal("solved"), v.literal("e
 
 const runPublicShape = v.object({
   _id: v.id("playerRuns"),
+  _creationTime: v.number(),
   episodeId: v.id("episodes"),
   identityId: v.string(),
   playerName: v.string(),

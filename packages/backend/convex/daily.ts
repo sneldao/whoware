@@ -9,9 +9,14 @@ const dailyEpisodeShape = v.object({
   _id: v.id("episodes"),
   _creationTime: v.number(),
   slug: v.string(),
-  dropsAt: v.number(),
+  figureId: v.optional(v.id("figures")),
+  figureName: v.optional(v.string()),
+  answerOptions: v.optional(v.array(v.string())),
+  activeAt: v.optional(v.number()),
+  dropsAt: v.optional(v.number()),
   closesAt: v.optional(v.number()),
-  status: episodeStatus,
+  status: v.optional(episodeStatus),
+  isActive: v.optional(v.boolean()),
   difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
   competitiveMode: v.optional(v.boolean()),
   scenes: v.array(
@@ -179,6 +184,20 @@ export const closeExpired = internalMutation({
       await ctx.db.patch(episode._id, { status: "closed" });
     }
     return { closed: live.length };
+  },
+});
+
+export const makeEpisodeLive = mutation({
+  args: { episodeId: v.id("episodes") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    await ctx.db.patch(args.episodeId, {
+      status: "live",
+      activeAt: now,
+      dropsAt: now,
+    });
+    return null;
   },
 });
 
