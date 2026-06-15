@@ -283,3 +283,51 @@ export const getRun = query({
     return await ctx.db.get(args.runId);
   },
 });
+
+export const getPlayerHistory = query({
+  args: { identityId: v.string() },
+  returns: v.array(
+    v.object({
+      _id: v.id("playerRuns"),
+      _creationTime: v.number(),
+      episodeId: v.id("episodes"),
+      episodeSlug: v.string(),
+      figureName: v.optional(v.string()),
+      status: runStatus,
+      startedAt: v.number(),
+      solvedAt: v.optional(v.number()),
+      score: v.optional(v.number()),
+      memoriesViewed: v.number(),
+      hotspotsOpened: v.number(),
+      guessesUsed: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identityId = validateIdentity(args.identityId);
+    const runs = await ctx.db
+      .query("playerRuns")
+      .withIndex("by_identityId_and_startedAt", (q) => q.eq("identityId", identityId))
+      .order("desc")
+      .collect();
+
+    return await Promise.all(
+      runs.map(async (run) => {
+        const episode = await ctx.db.get(run.episodeId);
+        return {
+          _id: run._id,
+          _creationTime: run._creationTime,
+          episodeId: run.episodeId,
+          episodeSlug: episode?.slug ?? "unknown",
+          figureName: episode?.figureName,
+          status: run.status,
+          startedAt: run.startedAt,
+          solvedAt: run.solvedAt,
+          score: run.score,
+          memoriesViewed: run.memoriesViewed,
+          hotspotsOpened: run.hotspotsOpened,
+          guessesUsed: run.guessesUsed,
+        };
+      }),
+    );
+  },
+});

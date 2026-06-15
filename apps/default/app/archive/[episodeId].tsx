@@ -25,7 +25,7 @@ export default function ArchiveDetailScreen() {
 
   const episode = useQuery(
     api.archive.getEpisode,
-    episodeId ? { episodeId: episodeId as Id<"episodes"> } : "skip",
+    episodeId ? { episodeId: episodeId as Id<"episodes">, identityId: identityId ?? undefined } : "skip",
   );
   const run = useQuery(
     api.archive.getRun,

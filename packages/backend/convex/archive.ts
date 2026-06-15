@@ -81,11 +81,24 @@ const archiveEpisodeShape = v.object({
 });
 
 export const getEpisode = query({
-  args: { episodeId: v.id("episodes") },
+  args: { episodeId: v.id("episodes"), identityId: v.optional(v.string()) },
   returns: v.union(archiveEpisodeShape, v.null()),
   handler: async (ctx, args) => {
     const episode = await ctx.db.get(args.episodeId);
-    if (!episode || episode.status !== "closed") return null;
+    if (!episode) return null;
+
+    const isClosed = episode.status === "closed";
+    const hasRun = args.identityId
+      ? await ctx.db
+          .query("playerRuns")
+          .withIndex("by_episodeId_and_identityId", (q) =>
+            q.eq("episodeId", args.episodeId!).eq("identityId", args.identityId!),
+          )
+          .first()
+      : null;
+    const canView = isClosed || (hasRun && (hasRun.status === "solved" || hasRun.status === "exhausted"));
+
+    if (!canView) return null;
 
     const figure = episode.figureId ? await ctx.db.get(episode.figureId) : null;
 
@@ -183,9 +196,6 @@ export const getRun = query({
   handler: async (ctx, args) => {
     const identityId = args.identityId.trim();
     if (!identityId || identityId.length > 64) return null;
-
-    const episode = await ctx.db.get(args.episodeId);
-    if (!episode || episode.status !== "closed") return null;
 
     return await ctx.db
       .query("playerRuns")

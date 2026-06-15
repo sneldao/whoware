@@ -38,6 +38,7 @@ import { SmartAccountUpgradeOverlay } from "@/components/who-ware/smart-account-
 import { SmartAccountBadge } from "@/components/who-ware/smart-account-badge";
 import { TooltipOverlay, useTooltip } from "@/components/curator/tooltip";
 import { TappableMetric } from "@/components/shared/tappable-metric";
+import { useLastSolve } from "@/lib/use-last-solve";
 import * as Haptics from "expo-haptics";
 
 const PLAYER_NAME_KEY = "whoware.player.name";
@@ -85,6 +86,12 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
 
   const { streak, recordSolve } = useStreak();
   const gameSounds = useGameSounds();
+  const { lastSolve, loaded: lastSolveLoaded, saveLastSolve, clearLastSolve } = useLastSolve();
+  const playerHistory = useQuery(
+    api.runs.getPlayerHistory,
+    identity.identityId ? { identityId: identity.identityId } : "skip",
+  );
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [playerName, setPlayerName] = useState(DEFAULT_PLAYER_NAME);
   const [playerNameLoaded, setPlayerNameLoaded] = useState(false);
 
@@ -395,6 +402,16 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
       const finalScore = result.score ?? 0;
       setSolvedRun({ elapsedMs: result.elapsedMs, score: finalScore });
       setSolvedFigure({ name: result.answer ?? "Unknown", figureId: figureId });
+      saveLastSolve({
+        episodeSlug: episode.slug,
+        figureName: result.answer ?? "Unknown",
+        score: finalScore,
+        date: Date.now(),
+        memoriesViewed,
+        hotspotsOpened,
+        guessesUsed: result.guessesUsed,
+        elapsedMs: result.elapsedMs,
+      });
       const identityLabel = result.answer ?? "the figure";
       showToast(`✅ Solved! ${formatScore(finalScore)} pts`, "success");
       setStatus(`Identity anchored — you were ${identityLabel}. Final score: ${formatScore(finalScore)}.`);
@@ -930,6 +947,76 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
           </>
         )}
 
+        {lastSolveLoaded && lastSolve && !isSolved && (
+          <View style={styles.lastSolveCard}>
+            <View style={styles.lastSolveHeader}>
+              <Ionicons name="time-outline" size={14} color="#FBBF24" />
+              <Text style={styles.lastSolveTitle}>Last solve</Text>
+              <Pressable onPress={clearLastSolve} style={styles.lastSolveDismiss}>
+                <Ionicons name="close" size={12} color="rgba(255,247,237,0.3)" />
+              </Pressable>
+            </View>
+            <Text style={styles.lastSolveFigure}>{lastSolve.figureName}</Text>
+            <View style={styles.lastSolveStats}>
+              <View style={styles.lastSolveStat}>
+                <Text style={styles.lastSolveStatValue}>{formatScore(lastSolve.score)}</Text>
+                <Text style={styles.lastSolveStatLabel}>score</Text>
+              </View>
+              <View style={styles.lastSolveStat}>
+                <Text style={styles.lastSolveStatValue}>{lastSolve.memoriesViewed}</Text>
+                <Text style={styles.lastSolveStatLabel}>memories</Text>
+              </View>
+              <View style={styles.lastSolveStat}>
+                <Text style={styles.lastSolveStatValue}>{lastSolve.guessesUsed}</Text>
+                <Text style={styles.lastSolveStatLabel}>guesses</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {playerHistory && playerHistory.length > 0 && (
+          <View style={styles.historyCard}>
+            <Pressable style={styles.historyToggle} onPress={() => setHistoryOpen((o) => !o)}>
+              <Ionicons name="list-outline" size={14} color="#FBBF24" />
+              <Text style={styles.historyTitle}>My history ({playerHistory.length})</Text>
+              <Ionicons
+                name={historyOpen ? "chevron-up" : "chevron-down"}
+                size={14}
+                color="rgba(255,247,237,0.3)"
+              />
+            </Pressable>
+            {historyOpen && (
+              <View style={styles.historyList}>
+                {playerHistory.map((entry) => (
+                  <View key={entry._id} style={styles.historyRow}>
+                    <View style={styles.historyRowLeft}>
+                      <Text style={styles.historyFigure}>{entry.figureName ?? entry.episodeSlug}</Text>
+                      <Text style={styles.historyDate}>
+                        {new Date(entry.startedAt).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </Text>
+                    </View>
+                    <View style={styles.historyRowRight}>
+                      {entry.status === "solved" ? (
+                        <>
+                          <Text style={styles.historyScore}>{entry.score != null ? formatScore(entry.score) : "-"}</Text>
+                          <Text style={styles.historyMeta}>
+                            {entry.memoriesViewed}m · {entry.guessesUsed}g
+                          </Text>
+                        </>
+                      ) : (
+                        <Text style={styles.historyExhausted}>Exhausted</Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         <TooltipOverlay
           activeBadge={tooltip.activeBadge}
           onDismiss={tooltip.hide}
@@ -1304,5 +1391,120 @@ const styles = StyleSheet.create({
     color: "#475569",
     fontSize: 12,
     fontWeight: "500",
+  },
+  lastSolveCard: {
+    padding: 16,
+    gap: 10,
+    borderRadius: 22,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(251, 191, 36, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(251, 191, 36, 0.15)",
+  },
+  lastSolveHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  lastSolveTitle: {
+    flex: 1,
+    color: "#FBBF24",
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  lastSolveDismiss: {
+    padding: 4,
+  },
+  lastSolveFigure: {
+    color: "#FFF7ED",
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: -0.4,
+  },
+  lastSolveStats: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  lastSolveStat: {
+    gap: 2,
+  },
+  lastSolveStatValue: {
+    color: "#FFF7ED",
+    fontSize: 18,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+  },
+  lastSolveStatLabel: {
+    color: "rgba(255, 247, 237, 0.4)",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  historyCard: {
+    borderRadius: 22,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255, 247, 237, 0.03)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 247, 237, 0.06)",
+    overflow: "hidden",
+  },
+  historyToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 16,
+  },
+  historyTitle: {
+    flex: 1,
+    color: "#FFF7ED",
+    fontSize: 13,
+    fontWeight: "900",
+  },
+  historyList: {
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255, 247, 237, 0.03)",
+  },
+  historyRowLeft: {
+    flex: 1,
+    gap: 2,
+  },
+  historyFigure: {
+    color: "#FFF7ED",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  historyDate: {
+    color: "rgba(255, 247, 237, 0.35)",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  historyRowRight: {
+    alignItems: "flex-end",
+    gap: 2,
+  },
+  historyScore: {
+    color: "#FBBF24",
+    fontSize: 15,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+  },
+  historyMeta: {
+    color: "rgba(255, 247, 237, 0.35)",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  historyExhausted: {
+    color: "rgba(239, 68, 68, 0.6)",
+    fontSize: 12,
+    fontWeight: "700",
   },
 });

@@ -17,7 +17,10 @@ export default function ArchiveDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const episodeId = id as Id<"episodes">;
-  const episode = useQuery(api.archive.getEpisode, { episodeId });
+  const episode = useQuery(
+    api.archive.getEpisode,
+    identityId ? { episodeId, identityId } : { episodeId },
+  );
   const leaderboard = useQuery(api.archive.getLeaderboard, { episodeId });
   const { identityId } = useIdentity();
   const wallet = useWallet();
