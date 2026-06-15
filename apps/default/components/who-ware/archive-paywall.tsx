@@ -1,11 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { useState } from "react";
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState, useEffect } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { sendArchivePayment, POLYGON_AMOY_CHAIN } from "@/lib/paywall";
+import { sendArchivePayment } from "@/lib/paywall";
 import type { Address } from "viem";
+
+interface PaymentMetadata {
+  required: boolean;
+  amount: string;
+  token: string;
+  chainId: number;
+  treasury: string;
+  label: string;
+}
 
 interface ArchivePaywallProps {
   episodeId: Id<"episodes">;
@@ -15,7 +24,7 @@ interface ArchivePaywallProps {
   onUnlockComplete: () => void;
 }
 
-type PaywallState = "idle" | "paying" | "verifying" | "error";
+type PaywallState = "idle" | "checking" | "paying" | "verifying" | "error";
 
 const POLYGON_EXPLORER_BASE = "https://amoy.polygonscan.com/tx";
 
@@ -26,11 +35,42 @@ export function ArchivePaywall({
   walletAddress,
   onUnlockComplete,
 }: ArchivePaywallProps) {
-  const [state, setState] = useState<PaywallState>("idle");
+  const [state, setState] = useState<PaywallState>("checking");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paymentMeta, setPaymentMeta] = useState<PaymentMetadata | null>(null);
+  const [had402, setHad402] = useState(false);
 
   const verifyAndUnlock = useAction(api.paywall.verifyAndUnlock);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      setState("idle");
+      return;
+    }
+    async function checkAccess() {
+      try {
+        const baseUrl = window.location.origin;
+        const res = await fetch(
+          `${baseUrl}/api/archive/${episodeId}?identityId=${encodeURIComponent(identityId)}`,
+        );
+        if (res.status === 402) {
+          const body = await res.json();
+          setPaymentMeta(body.payment);
+          setHad402(true);
+          setState("idle");
+        } else if (res.ok) {
+          onUnlockComplete();
+          return;
+        } else {
+          setState("idle");
+        }
+      } catch {
+        setState("idle");
+      }
+    }
+    checkAccess();
+  }, [episodeId, identityId, onUnlockComplete]);
 
   async function handlePay() {
     if (!walletAddress) {
@@ -76,80 +116,116 @@ export function ArchivePaywall({
     }
   }
 
+  const amount = paymentMeta?.amount ?? "1";
+  const label = paymentMeta?.label ?? "USDC";
+
   return (
     <View style={styles.paywall}>
-      <View style={styles.iconContainer}>
-        <Ionicons name="lock-closed" size={40} color="rgba(251, 191, 36, 0.7)" />
-      </View>
-
-      <Text style={styles.title}>Archive Locked</Text>
-      <Text style={styles.subtitle}>
-        This closed case is sealed. Pay 1 USDC on Polygon Amoy to unlock the full
-        investigation — scenes, leaderboard, and identity reveal.
-      </Text>
-
-      <View style={styles.priceRow}>
-        <Text style={styles.priceLabel}>Price</Text>
-        <Text style={styles.priceValue}>1 USDC</Text>
-        <View style={styles.chainBadge}>
-          <Text style={styles.chainBadgeText}>Polygon Amoy</Text>
+      {state === "checking" ? (
+        <View style={styles.statusRow}>
+          <Ionicons name="hourglass" size={16} color="#A78BFA" />
+          <Text style={styles.statusText}>Checking archive access…</Text>
         </View>
-      </View>
+      ) : (
+        <>
+          <View style={styles.iconContainer}>
+            <Ionicons name="lock-closed" size={40} color="rgba(251, 191, 36, 0.7)" />
+          </View>
 
-      <View style={styles.featureRow}>
-        <Ionicons name="flash" size={14} color="#22C55E" />
-        <Text style={styles.featureText}>Gas paid in USDC via 1Shot Permissionless Relayer</Text>
-      </View>
-
-      {state === "idle" || state === "error" ? (
-        <Pressable
-          onPress={handlePay}
-          disabled={!walletAddress}
-          style={({ pressed }) => [
-            styles.payButton,
-            pressed && styles.pressed,
-            !walletAddress && styles.disabledButton,
-          ]}
-        >
-          <Ionicons name="wallet" size={18} color="#111827" />
-          <Text style={styles.payButtonText}>
-            {walletAddress ? "Unlock for 1 USDC" : "Connect wallet first"}
+          <Text style={styles.title}>Archive Locked</Text>
+          <Text style={styles.subtitle}>
+            This closed case is sealed. Pay {amount} {label} to unlock the full
+            investigation — scenes, leaderboard, and identity reveal.
           </Text>
-        </Pressable>
-      ) : null}
 
-      {state === "paying" ? (
-        <View style={styles.statusRow}>
-          <Ionicons name="hourglass" size={16} color="#A78BFA" />
-          <Text style={styles.statusText}>Confirm payment in your wallet…</Text>
-        </View>
-      ) : null}
+          {had402 && (
+            <View style={styles.x402Tag}>
+              <Ionicons name="flash" size={12} color="#22C55E" />
+              <Text style={styles.x402Text}>HTTP 402 Payment Required</Text>
+            </View>
+          )}
 
-      {state === "verifying" ? (
-        <View style={styles.statusRow}>
-          <Ionicons name="hourglass" size={16} color="#A78BFA" />
-          <Text style={styles.statusText}>Verifying payment on Polygon…</Text>
-        </View>
-      ) : null}
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>Price</Text>
+            <Text style={styles.priceValue}>{amount} {label}</Text>
+            <View style={styles.chainBadge}>
+              <Text style={styles.chainBadgeText}>Polygon Amoy</Text>
+            </View>
+          </View>
 
-      {error ? (
-        <View style={styles.errorRow}>
-          <Ionicons name="warning" size={14} color="#F87171" />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
+          <View style={styles.featureRow}>
+            <Ionicons name="flash" size={14} color="#22C55E" />
+            <Text style={styles.featureText}>Gas paid in USDC via 1Shot Permissionless Relayer</Text>
+          </View>
 
-      {txHash ? (
-        <Pressable onPress={openExplorer} style={styles.explorerLink}>
-          <Ionicons name="open-outline" size={12} color="rgba(255, 247, 237, 0.5)" />
-          <Text style={styles.explorerText}>View transaction</Text>
-        </Pressable>
-      ) : null}
+          {state === "idle" || state === "error" ? (
+            <Pressable
+              onPress={handlePay}
+              disabled={!walletAddress}
+              style={({ pressed }) => [
+                styles.payButton,
+                pressed && styles.pressed,
+                !walletAddress && styles.disabledButton,
+              ]}
+            >
+              <Ionicons name="wallet" size={18} color="#111827" />
+              <Text style={styles.payButtonText}>
+                {walletAddress ? `Unlock for ${amount} ${label}` : "Connect wallet first"}
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {state === "paying" ? (
+            <View style={styles.statusRow}>
+              <Ionicons name="hourglass" size={16} color="#A78BFA" />
+              <Text style={styles.statusText}>Confirm payment in your wallet…</Text>
+            </View>
+          ) : null}
+
+          {state === "verifying" ? (
+            <View style={styles.statusRow}>
+              <Ionicons name="hourglass" size={16} color="#A78BFA" />
+              <Text style={styles.statusText}>Verifying payment on Polygon…</Text>
+            </View>
+          ) : null}
+
+          {error ? (
+            <View style={styles.errorRow}>
+              <Ionicons name="warning" size={14} color="#F87171" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {txHash ? (
+            <Pressable onPress={openExplorer} style={styles.explorerLink}>
+              <Ionicons name="open-outline" size={12} color="rgba(255, 247, 237, 0.5)" />
+              <Text style={styles.explorerText}>View transaction</Text>
+            </Pressable>
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  x402Tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(34, 197, 94, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(34, 197, 94, 0.25)",
+  },
+  x402Text: {
+    color: "#22C55E",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
   paywall: {
     padding: 24,
     gap: 14,

@@ -16,8 +16,11 @@ Two concurrent hackathon submissions targeting complementary tracks. Both levera
 - [x] Venice AI scene-image generation (`catalog.generateEpisode`, `catalog.regenerateScene`)
 - [x] Venice AI hint pipeline (scene hint + identity nudge, both cached in `veniceHints`)
 - [x] Autonomous agent: curator pipeline with self-evaluation, adversarial difficulty calibration, and memory-aware figure selection (Slice 10)
-- [x] MetaMask Smart Account wallet connect (ERC-7715 delegation in `wallet-connect.tsx` / `use-wallet.ts`)
+- [x] MetaMask Smart Account wallet connect (ERC-7710 delegation in `wallet-connect.tsx` / `use-wallet.ts`)
 - [x] **x402 integration** — USDC archive paywall on Polygon Amoy (`paywall.verifyAndUnlock` reads Transfer events, `ArchivePaywall` component gates `/archive/[id]`).
+- [x] **HTTP 402 archive endpoint** — `GET /api/archive/:episodeId` returns `402 Payment Required` with on-chain payment metadata
+- [x] **A2A agent card** — `GET /api/agents/card` returns agent card manifest; `POST /api/agents/pipeline` triggers full autonomous pipeline; `POST /api/agents/curator` runs standalone figure selection (Google A2A spec lite)
+- [x] **ERC-7710 delegation** — DelegationManager already deployed on Mantle Sepolia at `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3`; delegation flow wired end-to-end in solve flow
 - [ ] Demo video walkthrough (~2 min) highlighting autonomous agent + Venice + MetaMask + x402.
 - [ ] Devpost write-up: problem, architecture diagram, track mapping, live demo link.
 
@@ -64,7 +67,9 @@ Two concurrent hackathon submissions targeting complementary tracks. Both levera
 | Task | Owner | Status |
 |------|-------|--------|
 | Wire x402 payment (Dev Cook Off x402 track) | Slice 9 | ✅ done |
+| Wire HTTP 402 archive endpoint + A2A agent endpoints | Phase 3-4 | ✅ done |
 | Wire `WhoWareScore.mint` on correct solve | Slice 8 | ✅ done |
+| ERC-7710 delegation (buildMintDelegation → sign → enableDelegation) | Phase 2 | ✅ done |
 | Record 2-min demo video (covers both submissions) | TBD | ❌ not started |
 | Write Devpost submission drafts (2x) | TBD | ❌ not started |
 | Deploy public test build (Expo Go + web) | TBD | ❌ not started |

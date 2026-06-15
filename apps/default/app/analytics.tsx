@@ -4,6 +4,8 @@ import { useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { TooltipOverlay, useTooltip } from "@/components/curator/tooltip";
+import { TappableMetric } from "@/components/shared/tappable-metric";
 
 export default function AnalyticsPage() {
   const insets = useSafeAreaInsets();
@@ -11,6 +13,38 @@ export default function AnalyticsPage() {
   const stats = useQuery(api.analytics.getGlobalStats);
   const leaderboard = useQuery(api.analytics.getStreakLeaderboard);
   const recentSolves = useQuery(api.analytics.getRecentSolves);
+  const tooltip = useTooltip();
+
+  const STAT_DEFINITIONS: Record<string, { title: string; description: string }> = {
+    totalSolves: {
+      title: "Total Solves",
+      description: "The total number of correct guesses submitted by all players. Each solve represents a completed episode.",
+    },
+    uniquePlayers: {
+      title: "Unique Players",
+      description: "The number of distinct players who have submitted at least one correct guess this season.",
+    },
+    avgScore: {
+      title: "Average Score",
+      description: "The mean score across all correct solves. Scores range from 0 to 10,000 and reward restraint — fewer clues opened and faster guesses earn higher points.",
+    },
+    totalRuns: {
+      title: "Total Runs",
+      description: "The total number of game sessions started, including incomplete ones. A higher run count than solve count means players are engaging but not always finishing.",
+    },
+    onChainMints: {
+      title: "On-Chain Mints",
+      description: "The number of solve records minted as NFTs on the Mantle blockchain. Each mint permanently records a player's achievement as an on-chain credential.",
+    },
+    archiveUnlocks: {
+      title: "Archive Unlocks",
+      description: "The number of closed episodes unlocked via USDC payment on Polygon Amoy. Players pay to access past episodes they missed.",
+    },
+    episodes: {
+      title: "Episodes",
+      description: "The total number of episodes in the catalog, including those in staging, draft, or live status. Curated and generated via Venice AI.",
+    },
+  };
 
   return (
     <View style={styles.root}>
@@ -30,19 +64,26 @@ export default function AnalyticsPage() {
 
         {stats ? (
           <View style={styles.statsGrid}>
-            <StatCard label="Total Solves" value={stats.totalSolves} icon="checkmark-circle" color="#86EFAC" />
-            <StatCard label="Unique Players" value={stats.uniqueSolvers} icon="people" color="#93C5FD" />
-            <StatCard label="Avg Score" value={stats.averageScore} icon="star" color="#FBBF24" />
-            <StatCard label="Total Runs" value={stats.totalRuns} icon="play" color="#C084FC" />
-            <StatCard label="On-Chain Mints" value={stats.totalMints} icon="cube" color="#FB923C" />
-            <StatCard label="Archive Unlocks" value={stats.totalArchiveUnlocks} icon="lock-open" color="#F472B6" />
-            <StatCard label="Episodes" value={stats.episodeCount} icon="layers" color="#67E8F9" />
+            <TappableMetric variant="card" label="Total Solves" value={formatNumber(stats.totalSolves)} icon="checkmark-circle" iconColor="#86EFAC" onPress={() => tooltip.show("totalSolves")} />
+            <TappableMetric variant="card" label="Unique Players" value={formatNumber(stats.uniqueSolvers)} icon="people" iconColor="#93C5FD" onPress={() => tooltip.show("uniquePlayers")} />
+            <TappableMetric variant="card" label="Avg Score" value={formatNumber(stats.averageScore)} icon="star" iconColor="#FBBF24" onPress={() => tooltip.show("avgScore")} />
+            <TappableMetric variant="card" label="Total Runs" value={formatNumber(stats.totalRuns)} icon="play" iconColor="#C084FC" onPress={() => tooltip.show("totalRuns")} />
+            <TappableMetric variant="card" label="On-Chain Mints" value={formatNumber(stats.totalMints)} icon="cube" iconColor="#FB923C" onPress={() => tooltip.show("onChainMints")} />
+            <TappableMetric variant="card" label="Archive Unlocks" value={formatNumber(stats.totalArchiveUnlocks)} icon="lock-open" iconColor="#F472B6" onPress={() => tooltip.show("archiveUnlocks")} />
+            <TappableMetric variant="card" label="Episodes" value={formatNumber(stats.episodeCount)} icon="layers" iconColor="#67E8F9" onPress={() => tooltip.show("episodes")} />
           </View>
         ) : (
           <View style={styles.loadingBox}>
             <Text style={styles.loadingText}>Loading stats…</Text>
           </View>
         )}
+
+        <TooltipOverlay
+          activeBadge={tooltip.activeBadge}
+          onDismiss={tooltip.hide}
+          definitions={STAT_DEFINITIONS}
+          accentColor="#FBBF24"
+        />
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Top Solvers</Text>
@@ -94,18 +135,6 @@ export default function AnalyticsPage() {
           )}
         </View>
       </ScrollView>
-    </View>
-  );
-}
-
-function StatCard({ label, value, icon, color }: { label: string; value: number; icon: string; color: string }) {
-  return (
-    <View style={styles.statCard}>
-      <View style={[styles.statIcon, { backgroundColor: `${color}20` }]}>
-        <Ionicons name={icon as "checkmark-circle"} size={18} color={color} />
-      </View>
-      <Text style={styles.statValue}>{formatNumber(value)}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -163,37 +192,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: "45%",
-    padding: 14,
-    gap: 8,
-    borderRadius: 18,
-    borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
-  },
-  statIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    borderCurve: "continuous",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  statValue: {
-    color: "#FFF7ED",
-    fontSize: 22,
-    fontWeight: "900",
-    fontVariant: ["tabular-nums"],
-  },
-  statLabel: {
-    color: "rgba(255, 247, 237, 0.45)",
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 0.4,
   },
   loadingBox: {
     padding: 30,

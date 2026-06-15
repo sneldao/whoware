@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { MAX_GUESSES_PER_RUN } from "@/convex/scoring";
+import { MAX_GUESSES_PER_RUN, MEMORY_PENALTY, HOTSPOT_PENALTY, GUESS_PENALTY } from "@/convex/scoring";
 import { Ionicons } from "@expo/vector-icons";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,16 +12,18 @@ import { GuessPanel, type FigureOption } from "@/components/who-ware/guess-panel
 import { CinematicHero } from "@/components/who-ware/cinematic-hero";
 import { ClueLedger } from "@/components/who-ware/clue-ledger";
 import { IdentityCountdown } from "@/components/who-ware/identity-countdown";
-import { IdentityReveal } from "@/components/who-ware/identity-reveal";
+import { EnhancedIdentityReveal } from "@/components/who-ware/enhanced-identity-reveal";
 import { IdentityHintButton } from "@/components/who-ware/identity-hint-button";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { OnChainBadge } from "@/components/who-ware/on-chain-badge";
 import { PanoramaScene } from "@/components/who-ware/panorama-scene";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
 import { OnboardingFlow } from "@/components/who-ware/onboarding-flow";
-import { SceneTransition } from "@/components/who-ware/scene-transition";
+import { EnhancedSceneTransition } from "@/components/who-ware/enhanced-scene-transition";
 import { StreakBanner } from "@/components/who-ware/streak-banner";
-import { WalletConnect } from "@/components/who-ware/wallet-connect";
+import { IdentitySection } from "@/components/who-ware/identity-section";
+import { ScoreTrajectory } from "@/components/who-ware/score-trajectory";
+import { ActionToast } from "@/components/who-ware/action-toast";
 import type { Scene } from "@/components/who-ware/panorama-scene";
 import { useStreak } from "@/lib/use-streak";
 import { hasCompletedOnboarding, markOnboardingComplete } from "@/lib/onboarding";
@@ -31,10 +33,11 @@ import { useVeniceHint } from "@/hooks/use-venice-hint";
 import { useIdentity } from "@/hooks/use-identity";
 import { useGameSounds } from "@/hooks/use-game-sounds";
 import { commitGuessOnChain, revealGuessOnChain, generateGuessSalt } from "@/lib/wallet";
-import { SmartAccountBadge } from "@/components/who-ware/smart-account-badge";
+import { getEnvironment, buildMintDelegation, getDelegationTypedData, signWithMetaMask, sendViaSmartAccount } from "@/lib/smart-account";
 import { SmartAccountUpgradeOverlay } from "@/components/who-ware/smart-account-upgrade-overlay";
-import { VeniceAiBadge } from "@/components/who-ware/venice-ai-badge";
-import { OnChainStatusBar } from "@/components/who-ware/on-chain-status-bar";
+import { SmartAccountBadge } from "@/components/who-ware/smart-account-badge";
+import { TooltipOverlay, useTooltip } from "@/components/curator/tooltip";
+import { TappableMetric } from "@/components/shared/tappable-metric";
 import * as Haptics from "expo-haptics";
 
 const PLAYER_NAME_KEY = "whoware.player.name";
@@ -111,7 +114,20 @@ export default function Index() {
   const [revealDismissed, setRevealDismissed] = useState(false);
   const [solvedFigure, setSolvedFigure] = useState<{ name: string; figureId?: Id<"figures"> } | null>(null);
   const [showUpgradeOverlay, setShowUpgradeOverlay] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastType, setToastType] = useState<"info" | "warning" | "success" | "error">("info");
+  const [delegationHash, setDelegationHash] = useState<string | null>(null);
+  const [userOpHash, setUserOpHash] = useState<string | null>(null);
+  const [isDelegating, setIsDelegating] = useState(false);
 
+  function showToast(message: string, type: "info" | "warning" | "success" | "error" = "info") {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  }
+
+  const tooltip = useTooltip();
   const wallet = useWallet();
   const { isUpgraded: isSmartAccountUpgraded, isUpgrading: isSmartAccountUpgrading, upgrade: upgradeToSmartAccount } = wallet.smartAccount;
 
@@ -131,7 +147,10 @@ export default function Index() {
   }, [isSmartAccountUpgraded, showUpgradeOverlay]);
   const { getHint, isGenerating: isHintGenerating } = useVeniceHint();
   const mintScoreOnChain = useAction(api.mantle.mintScore);
+  const prepareMint = useAction(api.mantle.prepareMint);
   const updateStreakOnChain = useAction(api.mantle.updateStreak);
+  const submitDelegation = useMutation(api.delegation.submitDelegation);
+  const delegationManagerAddress = useQuery(api.delegation.getDelegationManagerAddress);
 
   const runRef = useRef(run);
   useEffect(() => {
@@ -267,6 +286,7 @@ export default function Index() {
     async (label: string) => {
       if (!episode) return;
       gameSounds.playClueFound();
+      showToast(`−${HOTSPOT_PENALTY.toLocaleString()} pts from max score`, "warning");
       const hotspotKey = `${sceneIndex}:${label}`;
       setLocalHotspots((current) => (current.includes(hotspotKey) ? current : [...current, hotspotKey]));
 
@@ -303,6 +323,7 @@ export default function Index() {
     try {
       const activeRun = await ensureRun();
       await enterSceneMutation({ runId: activeRun._id, sceneIndex: nextIndex });
+      showToast(`−${MEMORY_PENALTY.toLocaleString()} pts from max score`, "warning");
       gameSounds.playSceneEnter();
       if (Platform.OS !== "web") {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -367,6 +388,7 @@ export default function Index() {
       setSolvedRun({ elapsedMs: result.elapsedMs, score: finalScore });
       setSolvedFigure({ name: result.answer ?? "Unknown", figureId: figureId });
       const identityLabel = result.answer ?? "the figure";
+      showToast(`✅ Solved! ${formatScore(finalScore)} pts`, "success");
       setStatus(`Identity anchored — you were ${identityLabel}. Final score: ${formatScore(finalScore)}.`);
 
       if (wallet.address && !hasMintedRef.current) {
@@ -378,20 +400,75 @@ export default function Index() {
           await revealGuessOnChain(wallet.address, episodeDay, commitState.guess, commitState.salt);
         }
 
+        // ERC-7710 delegation: if smart account is upgraded, grant delegation to oracle
+        if (isSmartAccountUpgraded && wallet.smartAccount && delegationManagerAddress) {
+          setIsDelegating(true);
+          try {
+            const env = getEnvironment();
+            const oracleAddr = "0xfb8a7B42070334CB196e94E542cEA13655e2f394" as `0x${string}`;
+            const scoreContract = "0xd6ad76bed934ea5e5b25d635fba7889e782e691a" as `0x${string}`;
+            const delegation = buildMintDelegation(env, wallet.address as `0x${string}`, oracleAddr, scoreContract);
+            const typedData = getDelegationTypedData(delegation, env);
+
+            const userSignature = await signWithMetaMask(wallet.address as `0x${string}`, typedData as any);
+            if (userSignature) {
+              const signedDelegation = { ...delegation, signature: userSignature };
+              const result = await submitDelegation({ delegation: signedDelegation as any });
+              if (result) {
+                setDelegationHash(result.txHash);
+                showToast("🔑 ERC-7710 delegation granted on-chain", "success");
+              }
+            }
+          } catch (e) {
+            console.error("Delegation flow failed:", e);
+          }
+          setIsDelegating(false);
+        }
+
         setIsMinting(true);
-        mintScoreOnChain({
-          playerAddress: wallet.address,
-          episodeDay,
-          score: finalScore,
-          memoriesViewed: activeRun.memoriesViewed,
-          cluesOpened: hotspotsOpened,
-          guessesUsed: result.guessesUsed,
-        })
-          .then((txHash) => {
-            setMintTxHash(txHash);
+        const smartAccountObj = wallet.smartAccount.smartAccount;
+        if (isSmartAccountUpgraded && smartAccountObj) {
+          prepareMint({
+            playerAddress: wallet.address,
+            episodeDay,
+            score: finalScore,
+            memoriesViewed: activeRun.memoriesViewed,
+            cluesOpened: hotspotsOpened,
+            guessesUsed: result.guessesUsed,
           })
-          .catch(() => {})
-          .finally(() => setIsMinting(false));
+            .then(async (prepared) => {
+              if (prepared) {
+                const uoHash = await sendViaSmartAccount(
+                  smartAccountObj,
+                  prepared.to as `0x${string}`,
+                  prepared.data as `0x${string}`,
+                );
+                if (uoHash) {
+                  setUserOpHash(uoHash);
+                  showToast("🧠 Mint submitted via smart account", "success");
+                }
+                setMintTxHash(uoHash);
+              } else {
+                setMintTxHash(null);
+              }
+            })
+            .catch(() => {})
+            .finally(() => setIsMinting(false));
+        } else {
+          mintScoreOnChain({
+            playerAddress: wallet.address,
+            episodeDay,
+            score: finalScore,
+            memoriesViewed: activeRun.memoriesViewed,
+            cluesOpened: hotspotsOpened,
+            guessesUsed: result.guessesUsed,
+          })
+            .then((txHash) => {
+              setMintTxHash(txHash);
+            })
+            .catch(() => {})
+            .finally(() => setIsMinting(false));
+        }
 
         setIsStreakUpdating(true);
         updateStreakOnChain({
@@ -410,6 +487,7 @@ export default function Index() {
       return;
     }
 
+    showToast(`−${GUESS_PENALTY.toLocaleString()} pts · ${result.guessesRemaining} guess${result.guessesRemaining !== 1 ? 'es' : ''} left`, "error");
     gameSounds.playWrongGuess();
     if (Platform.OS !== "web") {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -579,23 +657,21 @@ export default function Index() {
                 <Text style={styles.drop}>Daily embodied history ritual</Text>
               </View>
             </View>
-            <View style={styles.walletRow}>
-              <WalletConnect
-                address={wallet.address}
-                isConnected={wallet.isConnected}
-                isCorrectChain={wallet.isCorrectChain}
-                isConnecting={wallet.isConnecting}
-                onConnect={wallet.connect}
-                onSwitchChain={wallet.switchChain}
-              />
-              {wallet.isConnected ? (
-                <SmartAccountBadge
-                  isUpgraded={isSmartAccountUpgraded}
-                  isUpgrading={isSmartAccountUpgrading}
-                  onUpgrade={upgradeToSmartAccount}
-                />
-              ) : null}
-            </View>
+            <IdentitySection
+              walletAddress={wallet.address}
+              isWalletConnected={wallet.isConnected}
+              isCorrectChain={wallet.isCorrectChain}
+              isSmartAccountUpgraded={isSmartAccountUpgraded}
+              isSmartAccountUpgrading={isSmartAccountUpgrading}
+              isMinting={isMinting}
+              isMinted={!!mintTxHash}
+              isStreakUpdating={isStreakUpdating}
+              hasStreakTx={!!streakTxHash}
+              type={hasEnteredMemory ? "during" : "start"}
+              onConnect={wallet.connect}
+              onUpgrade={upgradeToSmartAccount}
+              onSwitchChain={wallet.switchChain}
+            />
             <Text style={styles.headline}>Someone changed history{"\n"}from this room.</Text>
             <Text style={styles.subhead}>{status}</Text>
             <IdentityCountdown isSolved={isSolved} dropsAt={countdownTarget} statusLabel={countdownLabel} />
@@ -624,11 +700,20 @@ export default function Index() {
                 </Pressable>
               </View>
             ) : (
-              <View style={styles.scoreStrip}>
-                <MetricPill label="Score" value={lastScore != null ? `${formatScore(lastScore)} pts` : "—"} />
-                <MetricPill label="Clues opened" value={`${hotspotsOpened}`} />
-                <MetricPill label="Guesses" value={`${guessesLeft}/${guessCap}`} />
-              </View>
+              <>
+                <View style={styles.scoreStrip}>
+                  <TappableMetric label="Score" value={lastScore != null ? `${formatScore(lastScore)} pts` : "—"} onPress={() => tooltip.show("score")} />
+                  <TappableMetric label="Clues opened" value={`${hotspotsOpened}`} onPress={() => tooltip.show("clues")} />
+                  <TappableMetric label="Guesses" value={`${guessesLeft}/${guessCap}`} onPress={() => tooltip.show("guesses")} />
+                </View>
+                {lastScore != null && (
+                  <ScoreTrajectory
+                    currentScore={lastScore}
+                    maxPotential={10_000}
+                    label="Score trajectory"
+                  />
+                )}
+              </>
             )}
           </View>
         </View>
@@ -651,9 +736,15 @@ export default function Index() {
               figureRegion={solvedFigure ? figures.find((f) => f._id === solvedFigure.figureId)?.region : undefined}
             />
             <View style={styles.onChainRow}>
-              <OnChainBadge txHash={mintTxHash} isMinting={isMinting} mintingLabel="Minting score…" verifiedLabel="Score on Mantle" />
-              <OnChainBadge txHash={streakTxHash} isMinting={isStreakUpdating} mintingLabel="Updating streak…" verifiedLabel="Streak on Mantle" />
+              {isSmartAccountUpgraded && (
+                <OnChainBadge txHash={delegationHash} isMinting={isDelegating} mintingLabel="Granting ERC-7710 delegation…" verifiedLabel="ERC-7710 delegation live" onTooltipPress={() => tooltip.show("delegation")} />
+              )}
+              <OnChainBadge txHash={mintTxHash} isMinting={isMinting} mintingLabel="Minting score…" verifiedLabel="Score on Mantle" onTooltipPress={() => tooltip.show("mint")} />
+              <OnChainBadge txHash={streakTxHash} isMinting={isStreakUpdating} mintingLabel="Updating streak…" verifiedLabel="Streak on Mantle" onTooltipPress={() => tooltip.show("streak")} />
             </View>
+            {isSmartAccountUpgraded && (
+              <SmartAccountBadge isUpgraded={true} isUpgrading={false} onUpgrade={async () => true} />
+            )}
           </>
         ) : null}
 
@@ -682,11 +773,12 @@ export default function Index() {
           </>
         ) : (
           <>
-            <SceneTransition
+            <EnhancedSceneTransition
               sceneIndex={sceneIndex}
               title={currentScene.title}
               location={currentScene.location}
               era={currentScene.era}
+              palette={currentScene.palette}
             >
               <PanoramaScene
                 scene={currentScene}
@@ -697,7 +789,7 @@ export default function Index() {
                 activeHint={activeHint}
                 isHintGenerating={isHintGenerating}
               />
-            </SceneTransition>
+            </EnhancedSceneTransition>
 
             <View style={styles.actionBar}>
               <Pressable
@@ -775,18 +867,38 @@ export default function Index() {
               </Pressable>
             ) : null}
 
-            <OnChainStatusBar
-              isWalletConnected={wallet.isConnected}
-              isSmartAccountUpgraded={isSmartAccountUpgraded}
-              isMinting={isMinting}
-              isMinted={!!mintTxHash}
-              isCorrectChain={wallet.isCorrectChain}
-            />
-
-            <Pressable style={styles.curatorLink} href="/curator">
-              <Ionicons name="construct-outline" size={14} color="#475569" />
-              <Text style={styles.curatorLinkText}>Curator</Text>
-            </Pressable>
+            {/* Venice AI Pipeline showcase */}
+            <View style={styles.venicePipelineCard}>
+              <View style={styles.venicePipelineHeader}>
+                <View style={styles.venicePipelineIcon}>
+                  <Ionicons name="layers" size={16} color="#A78BFA" />
+                </View>
+                <View style={styles.venicePipelineInfo}>
+                  <Text style={styles.venicePipelineTitle}>Autonomous Agent Pipeline</Text>
+                  <Text style={styles.venicePipelineSub}>
+                    Scenes · Images · Hints · Calibration — all generated by Venice AI
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.venicePipelineSteps}>
+                <StepBadge icon="search" label="Select" color="#A78BFA" />
+                <Ionicons name="arrow-forward" size={10} color="rgba(255,247,237,0.2)" />
+                <StepBadge icon="sparkles" label="Write" color="#A78BFA" />
+                <Ionicons name="arrow-forward" size={10} color="rgba(255,247,237,0.2)" />
+                <StepBadge icon="shield-checkmark" label="Verify" color="#22C55E" />
+                <Ionicons name="arrow-forward" size={10} color="rgba(255,247,237,0.2)" />
+                <StepBadge icon="trending-up" label="Calibrate" color="#FBBF24" />
+                <Ionicons name="arrow-forward" size={10} color="rgba(255,247,237,0.2)" />
+                <StepBadge icon="image" label="Render" color="#A78BFA" />
+              </View>
+              <Pressable
+                href="/curator"
+                style={({ pressed }) => [styles.venicePipelineAction, pressed && styles.pressed]}
+              >
+                <Text style={styles.venicePipelineActionText}>Open AI Curator Studio</Text>
+                <Ionicons name="arrow-forward" size={14} color="#111827" />
+              </Pressable>
+            </View>
 
             <Pressable style={styles.curatorLink} href="/analytics">
               <Ionicons name="pulse-outline" size={14} color="#475569" />
@@ -813,12 +925,47 @@ export default function Index() {
             </Pressable>
           </>
         )}
+
+        <TooltipOverlay
+          activeBadge={tooltip.activeBadge}
+          onDismiss={tooltip.hide}
+          definitions={{
+            score: {
+              title: "Score breakdown",
+              description: "Each solve starts at 10,000 points. Every memory opened reduces the ceiling by 2,000, each clue inspected by 500, each wrong guess by 2,500, and each second by 2. Restraint and speed maximize your score.",
+            },
+            clues: {
+              title: "Clues opened",
+              description: "Clues are hidden details embedded in each scene's imagery. Opening a clue reveals information about the figure but reduces your max score by 500 points per clue.",
+            },
+            guesses: {
+              title: "Guesses remaining",
+              description: "You have 5 guesses per episode. Each wrong guess deducts 2,500 points and may lock additional content behind deeper memories. Use them wisely.",
+            },
+            mint: {
+              title: "Score minted on Mantle",
+              description: "Your solve score is recorded as a permanent on-chain credential on the Mantle blockchain. Each mint requires a small gas fee and creates an immutable record tied to your wallet. Tap to view the transaction on the explorer.",
+            },
+            streak: {
+              title: "Streak recorded on Mantle",
+              description: "Your current and best streak are recorded on-chain alongside your score. Streaks track consecutive daily solves and reset if you miss a day. Tap to view the transaction on the explorer.",
+            },
+          }}
+          accentColor="#FBBF24"
+        />
+
+        <ActionToast
+          visible={toastVisible}
+          message={toastMessage}
+          type={toastType}
+          onDismiss={() => setToastVisible(false)}
+        />
       </ScrollView>
 
       {isSolved && !revealDismissed && solvedFigure && (() => {
         const figure = figures.find((f) => f._id === solvedFigure.figureId);
         return (
-          <IdentityReveal
+          <EnhancedIdentityReveal
             figureName={solvedFigure.name}
             era={figure?.era ?? ""}
             region={figure?.region ?? ""}
@@ -840,16 +987,11 @@ export default function Index() {
   );
 }
 
-interface MetricPillProps {
-  label: string;
-  value: string;
-}
-
-function MetricPill({ label, value }: MetricPillProps) {
+function StepBadge({ icon, label, color }: { icon: string; label: string; color: string }) {
   return (
-    <View style={styles.metricPill}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
+    <View style={styles.stepBadge}>
+      <Ionicons name={icon as any} size={10} color={color} />
+      <Text style={[styles.stepBadgeLabel, { color }]}>{label}</Text>
     </View>
   );
 }
@@ -895,12 +1037,7 @@ const styles = StyleSheet.create({
   heroContent: {
     gap: 18,
   },
-  walletRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  },
+
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -981,30 +1118,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 10,
   },
-  metricPill: {
-    flexGrow: 1,
-    minWidth: 96,
-    padding: 12,
-    gap: 3,
-    borderRadius: 18,
-    borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.07)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.1)",
-  },
-  metricLabel: {
-    color: "rgba(255, 247, 237, 0.48)",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-  },
-  metricValue: {
-    color: "#FFF7ED",
-    fontSize: 15,
-    fontWeight: "900",
-    fontVariant: ["tabular-nums"],
-  },
+
   actionBar: {
     flexDirection: "row",
     gap: 10,
@@ -1095,6 +1209,79 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     fontWeight: "700",
+  },
+  stepBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 247, 237, 0.04)",
+  },
+  stepBadgeLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
+  venicePipelineCard: {
+    padding: 16,
+    gap: 12,
+    borderRadius: 22,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(167, 139, 250, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(167, 139, 250, 0.15)",
+  },
+  venicePipelineHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  venicePipelineIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(167, 139, 250, 0.12)",
+  },
+  venicePipelineInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  venicePipelineTitle: {
+    color: "#FFF7ED",
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  venicePipelineSub: {
+    color: "rgba(255, 247, 237, 0.4)",
+    fontSize: 11,
+    fontWeight: "600",
+    lineHeight: 15,
+  },
+  venicePipelineSteps: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexWrap: "wrap",
+  },
+  venicePipelineAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    backgroundColor: "#A78BFA",
+  },
+  venicePipelineActionText: {
+    color: "#111827",
+    fontSize: 13,
+    fontWeight: "900",
   },
   curatorLink: {
     flexDirection: "row",

@@ -1,37 +1,28 @@
-/**
- * MetaMask Smart Accounts Kit Integration
- *
- * Provides utilities to:
- * - Upgrade a user's EOA to a MetaMask Smart Account (EIP-7702)
- * - Send transactions via ERC-4337 user operations through a bundler
- * - Support ERC-7710 delegation patterns
- *
- * @metamask/smart-accounts-kit v1.6.0 + viem 2.52+
- */
-
-import { createPublicClient, createWalletClient, http, type Address, type Chain } from "viem";
+import { createPublicClient, createWalletClient, http, type Address, type Chain, type Hex } from "viem";
+import { privateKeyToAddress, keccak256, toBytes, encodeAbiParameters } from "viem/utils";
 import { mantleSepoliaTestnet } from "viem/chains";
 import {
   toMetaMaskSmartAccount,
   getSmartAccountsEnvironment,
   Implementation,
+  createDelegation,
   type MetaMaskSmartAccount,
   type SmartAccountsEnvironment,
+  type Delegation,
+  ScopeType,
 } from "@metamask/smart-accounts-kit";
 import { createBundlerClient } from "viem/account-abstraction";
+import {
+  createLimitedCallsTerms,
+  createTimestampTerms,
+} from "@metamask/delegation-core";
 
 export const TARGET_CHAIN: Chain = mantleSepoliaTestnet;
 
-// Mantle Sepolia Bundler RPC
-// Note: For production, replace with a dedicated bundler service URL
 const BUNDLER_RPC_URL = "https://bundler.mantle-sepolia.1rpc.io";
 
 let _cachedEnvironment: SmartAccountsEnvironment | null = null;
 
-/**
- * Get the Smart Accounts Kit deployment environment for Mantle Sepolia.
- * Returns contract addresses for the Delegation Framework on this chain.
- */
 export function getEnvironment(): SmartAccountsEnvironment {
   if (!_cachedEnvironment) {
     _cachedEnvironment = getSmartAccountsEnvironment(mantleSepoliaTestnet.id);
@@ -39,9 +30,6 @@ export function getEnvironment(): SmartAccountsEnvironment {
   return _cachedEnvironment;
 }
 
-/**
- * Create a viem public client for Mantle Sepolia.
- */
 export function createMantlePublicClient() {
   return createPublicClient({
     chain: mantleSepoliaTestnet,
@@ -49,10 +37,6 @@ export function createMantlePublicClient() {
   });
 }
 
-/**
- * Create a viem bundler client for ERC-4337 user operations.
- * The bundler collects user operations and submits them to the network.
- */
 export function createMantleBundlerClient() {
   const publicClient = createMantlePublicClient();
   return createBundlerClient({
@@ -61,23 +45,11 @@ export function createMantleBundlerClient() {
   });
 }
 
-/**
- * Upgrade the user's EOA to a MetaMask Smart Account (Stateless7702).
- *
- * This wraps the user's existing MetaMask EOA into a smart account
- * that supports ERC-4337 account abstraction and ERC-7710 delegation.
- *
- * The EIP-7702 authorization is handled internally by the Smart Accounts Kit.
- *
- * @param walletClient - A viem wallet client connected to the user's MetaMask
- * @returns A MetaMaskSmartAccount instance, or null on failure
- */
 export async function upgradeToSmartAccount(
   walletClient: ReturnType<typeof createWalletClient>,
 ): Promise<MetaMaskSmartAccount | null> {
   try {
     const publicClient = createMantlePublicClient();
-
     const addresses = await walletClient.getAddresses();
     const address = addresses[0];
 
@@ -95,18 +67,6 @@ export async function upgradeToSmartAccount(
   }
 }
 
-/**
- * Send a transaction through the MetaMask Smart Account.
- *
- * Uses ERC-4337 user operations submitted through a bundler,
- * demonstrating account abstraction in action.
- *
- * @param smartAccount - The MetaMaskSmartAccount instance
- * @param to - Target contract address
- * @param data - Encoded function calldata
- * @param value - ETH value to send (default: 0)
- * @returns The user operation hash, or null on failure
- */
 export async function sendViaSmartAccount(
   smartAccount: MetaMaskSmartAccount,
   to: Address,
@@ -118,13 +78,7 @@ export async function sendViaSmartAccount(
 
     const userOperationHash = await bundlerClient.sendUserOperation({
       account: smartAccount,
-      calls: [
-        {
-          to,
-          value,
-          data,
-        },
-      ],
+      calls: [{ to, value, data }],
     });
 
     return userOperationHash;
@@ -134,12 +88,6 @@ export async function sendViaSmartAccount(
   }
 }
 
-/**
- * Wait for a user operation to be confirmed on-chain.
- *
- * @param userOperationHash - Hash returned by sendViaSmartAccount
- * @returns The transaction hash on success, null on timeout/failure
- */
 export async function waitForUserOperationReceipt(
   userOperationHash: `0x${string}`,
 ): Promise<`0x${string}` | null> {
@@ -155,4 +103,140 @@ export async function waitForUserOperationReceipt(
   }
 }
 
-export type { MetaMaskSmartAccount, SmartAccountsEnvironment };
+function generateSalt(): Hex {
+  const bytes = new Uint8Array(32);
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 32; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return "0x" + Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("") as Hex;
+}
+
+export function buildMintDelegation(
+  environment: SmartAccountsEnvironment,
+  userAddress: Address,
+  oracleAddress: Address,
+  scoreContract: Address,
+): Delegation {
+  const now = Math.floor(Date.now() / 1000);
+  const salt = generateSalt();
+
+  const scopeCaveat = {
+    enforcer: environment.caveatEnforcers.AllowedTargetsEnforcer,
+    terms: encodeAbiParameters(
+      [{ type: "address[]" }],
+      [[scoreContract]],
+    ),
+    args: "0x00" as Hex,
+  };
+
+  const methodCaveat = {
+    enforcer: environment.caveatEnforcers.AllowedMethodsEnforcer,
+    terms: encodeAbiParameters(
+      [{ type: "bytes4[]" }],
+      [["0x2b104b0c"]],
+    ),
+    args: "0x00" as Hex,
+  };
+
+  const callsCaveat = {
+    enforcer: environment.caveatEnforcers.LimitedCallsEnforcer,
+    terms: createLimitedCallsTerms({ limit: 1 }),
+    args: "0x00" as Hex,
+  };
+
+  const timeCaveat = {
+    enforcer: environment.caveatEnforcers.TimestampEnforcer,
+    terms: createTimestampTerms({
+      afterThreshold: now,
+      beforeThreshold: now + 86400,
+    }),
+    args: "0x00" as Hex,
+  };
+
+  return createDelegation({
+    environment,
+    from: userAddress,
+    to: oracleAddress,
+    salt,
+    caveats: [scopeCaveat, methodCaveat, callsCaveat, timeCaveat],
+    scope: {
+      type: ScopeType.FunctionCall,
+      targets: [scoreContract],
+      selectors: ["0x2b104b0c" as Hex],
+      valueLte: { value: 0n },
+    },
+  } as any);
+}
+
+export const ORACLE_ADDRESS: Address = "0xfb8a7B42070334CB196e94E542cEA13655e2f394";
+
+const DELEGATION_TYPES = {
+  Delegation: [
+    { name: "delegate", type: "address" },
+    { name: "delegator", type: "address" },
+    { name: "authority", type: "bytes32" },
+    { name: "caveats", type: "Caveat[]" },
+    { name: "salt", type: "uint256" },
+  ],
+  Caveat: [
+    { name: "enforcer", type: "address" },
+    { name: "terms", type: "bytes" },
+    { name: "args", type: "bytes" },
+  ],
+} as const;
+
+export function getDelegationTypedData(
+  delegation: Delegation,
+  environment: SmartAccountsEnvironment,
+) {
+  const domain = {
+    name: "DelegationManager",
+    version: "1",
+    chainId: mantleSepoliaTestnet.id,
+    verifyingContract: environment.DelegationManager,
+  };
+
+  const message = {
+    delegate: delegation.delegate,
+    delegator: delegation.delegator,
+    authority: delegation.authority,
+    caveats: delegation.caveats.map((c) => ({
+      enforcer: c.enforcer,
+      terms: c.terms,
+      args: c.args,
+    })),
+    salt: delegation.salt,
+  };
+
+  return {
+    domain,
+    types: DELEGATION_TYPES,
+    primaryType: "Delegation",
+    message,
+  };
+}
+
+export async function signWithMetaMask(
+  address: Address,
+  typedData: Record<string, unknown>,
+): Promise<`0x${string}` | null> {
+  if (typeof window === "undefined" || !(window as any).ethereum) {
+    console.error("MetaMask not available");
+    return null;
+  }
+  try {
+    const ethereum = (window as any).ethereum;
+    const signature = await ethereum.request({
+      method: "eth_signTypedData_v4",
+      params: [address, JSON.stringify(typedData)],
+    });
+    return signature as `0x${string}`;
+  } catch (error) {
+    console.error("Failed to sign typed data:", error);
+    return null;
+  }
+}
+
+export type { MetaMaskSmartAccount, SmartAccountsEnvironment, Delegation };

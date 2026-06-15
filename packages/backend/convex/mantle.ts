@@ -4,7 +4,9 @@ import {
   createPublicClient,
   createWalletClient,
   http,
+  encodeFunctionData,
   type Address,
+  type Hex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { mantleSepoliaTestnet } from "viem/chains";
@@ -161,6 +163,93 @@ export const mintScore = action({
       console.error("Failed to mint score on Mantle:", error);
       return null;
     }
+  },
+});
+
+export const prepareMint = action({
+  args: {
+    playerAddress: v.string(),
+    episodeDay: v.number(),
+    score: v.number(),
+    memoriesViewed: v.number(),
+    cluesOpened: v.number(),
+    guessesUsed: v.number(),
+  },
+  returns: v.union(v.null(), v.object({
+    to: v.string(),
+    data: v.string(),
+  })),
+  handler: async (_ctx, args) => {
+    const privateKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}` | undefined;
+    const contractAddress = process.env.MANTLE_SCORE_CONTRACT as `0x${string}` | undefined;
+
+    if (!privateKey || !contractAddress) {
+      console.error("Missing DEPLOYER_PRIVATE_KEY or MANTLE_SCORE_CONTRACT");
+      return null;
+    }
+
+    const account = privateKeyToAccount(privateKey);
+    const publicClient = getPublicClient();
+    const player = args.playerAddress as Address;
+
+    let nonce = 0n;
+    try {
+      nonce = (await publicClient.readContract({
+        address: contractAddress,
+        abi: SCORE_ABI,
+        functionName: "nonces",
+        args: [player],
+      })) as bigint;
+    } catch (error) {
+      console.error("Failed to read on-chain nonce:", error);
+      return null;
+    }
+
+    const signature = await account.signTypedData({
+      domain: {
+        name: "WhoWareScore",
+        version: "1",
+        chainId: BigInt(mantleSepoliaTestnet.id),
+        verifyingContract: contractAddress,
+      },
+      types: {
+        MintScore: [
+          { name: "player", type: "address" },
+          { name: "episodeDay", type: "uint256" },
+          { name: "score", type: "uint256" },
+          { name: "memoriesViewed", type: "uint8" },
+          { name: "cluesOpened", type: "uint8" },
+          { name: "guessesUsed", type: "uint8" },
+          { name: "nonce", type: "uint256" },
+        ],
+      },
+      primaryType: "MintScore",
+      message: {
+        player,
+        episodeDay: BigInt(args.episodeDay),
+        score: BigInt(args.score),
+        memoriesViewed: args.memoriesViewed,
+        cluesOpened: args.cluesOpened,
+        guessesUsed: args.guessesUsed,
+        nonce,
+      },
+    });
+
+    const data = encodeFunctionData({
+      abi: SCORE_ABI,
+      functionName: "mintScore",
+      args: [
+        player,
+        BigInt(args.episodeDay),
+        BigInt(args.score),
+        args.memoriesViewed,
+        args.cluesOpened,
+        args.guessesUsed,
+        signature,
+      ],
+    });
+
+    return { to: contractAddress, data };
   },
 });
 

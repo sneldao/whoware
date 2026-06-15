@@ -27,7 +27,7 @@ whoware/
 - **Blockchain:** Mantle Sepolia (EVM) — Score NFTs, Streak SBTs, commit-reveal guessing
 - **Payments:** Polygon Amoy — USDC archive paywall with on-chain verification (x402-inspired)
 - **AI:** Venice AI (privacy-preserving hint generation)
-- **Wallet:** MetaMask Smart Accounts (ERC-7715 delegation)
+- **Wallet:** MetaMask Smart Accounts (ERC-7710 delegation)
 
 ## Smart Contracts (Mantle Sepolia)
 
@@ -63,6 +63,7 @@ Required variables:
 - `VENICE_API_KEY` — Sign up at [venice.ai](https://venice.ai)
 - `PAYWALL_TREASURY_ADDRESS` — Ethereum address that receives USDC payments for archive unlocks
 - `POLYGON_AMOY_RPC_URL` — Optional custom RPC URL for Polygon Amoy (defaults to public RPC)
+- `AGENTS_API_KEY` — Optional API key for `POST /api/agents/pipeline` auth (omit to skip auth)
 
 ### 3. Run the app
 
@@ -80,9 +81,18 @@ cd apps/default && bun run start
 cd packages/contracts && bun install && bun run test
 ```
 
+## API Endpoints
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/archive/:episodeId?identityId=` | Access check — returns `200` if unlocked, `402 Payment Required` with metadata |
+| `GET /api/agents/card` | A2A Agent Card manifest (Google A2A spec lite) |
+| `POST /api/agents/pipeline` | Trigger autonomous episode generation pipeline |
+| `POST /api/agents/curator` | Standalone curator agent — selects next figure from catalog |
+
 ## Hackathon Submissions
 
-Built for dual submission — all code features complete (Slices 1–9). Submission assets in progress:
+Built for dual submission. Submission assets in development:
 
 ### MetaMask x 1Shot API x Venice AI Dev Cook Off
 **Tracks:** Autonomous Agent · Venice AI · x402 · 1Shot · ERC-7710 Smart Accounts
@@ -92,9 +102,10 @@ Built for dual submission — all code features complete (Slices 1–9). Submiss
 | Autonomous episode pipeline (`catalog.generateEpisode`) | ✅ |
 | Venice AI scene generation + Socratic hints | ✅ |
 | MetaMask Smart Account (EIP-7702 upgrade + ERC-7710 delegation) | ✅ |
-| MetaMask Advanced Permissions (ERC-7715) ready | ✅ |
+| ERC-7710 Delegation Framework (on-chain delegation manager) | ✅ Deployed at `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3` |
 | 1Shot Permissionless Relayer (gasless USDC paywall) | ✅ |
-| x402 archive paywall (USDC on Polygon Amoy) | ✅ |
+| HTTP 402 archive paywall (`/api/archive/*` returns 402 with payment metadata) | ✅ |
+| A2A agent card + HTTP agent endpoints (`/api/agents/*`) | ✅ |
 
 ### Mantle Turing Test Hackathon 2026 — Phase 2
 **Track:** Consumer & Viral DApps

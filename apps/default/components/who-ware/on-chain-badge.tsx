@@ -6,11 +6,12 @@ interface OnChainBadgeProps {
   isMinting: boolean;
   mintingLabel?: string;
   verifiedLabel?: string;
+  onTooltipPress?: () => void;
 }
 
 const MANTLE_EXPLORER_BASE = "https://sepolia.mantlescan.xyz/tx";
 
-export function OnChainBadge({ txHash, isMinting, mintingLabel = "Minting on Mantle…", verifiedLabel = "Verified on Mantle" }: OnChainBadgeProps) {
+export function OnChainBadge({ txHash, isMinting, mintingLabel = "Minting on Mantle…", verifiedLabel = "Verified on Mantle", onTooltipPress }: OnChainBadgeProps) {
   if (isMinting) {
     return (
       <View style={styles.badge}>
@@ -23,6 +24,7 @@ export function OnChainBadge({ txHash, isMinting, mintingLabel = "Minting on Man
   if (!txHash) return null;
 
   async function handlePress() {
+    onTooltipPress?.();
     await Linking.openURL(`${MANTLE_EXPLORER_BASE}/${txHash}`);
   }
 

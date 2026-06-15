@@ -66,34 +66,46 @@ Target length: 2:10–2:25.
 
 ---
 
-## MetaMask + On-Chain Verification (1:20–1:45)
+## Smart Account + ERC-7710 Delegation (1:20–1:45)
 
-**Screen:** Wallet connect → solve → dual OnChainBadge → Mantle explorer
+**Screen:** Wallet connect → upgrade → delegation signature → smart account mint → dual OnChainBadge → Mantle explorer
 
-> Connect your MetaMask Smart Account using ERC-7715 delegation. When you
-> solve, two things happen on Mantle Sepolia simultaneously:
+> Connect your MetaMask wallet. Then upgrade your EOA to a MetaMask Smart
+> Account via EIP-7702 — one signature, and your wallet becomes an
+> ERC-4337 smart account.
 >
-> Your score mints as a soul-bound NFT — oracle-signed via EIP-712,
-> non-transferable. Your streak updates on the WhoWareStreak token, which
-> tracks tier badges from spark to eternal based on consecutive daily solves.
+> When you solve correctly, the flow triggers an ERC-7710 delegation grant.
+> You sign an EIP-712 typed data with eth_signTypedData_v4, granting the
+> oracle permission to call WhoWareScore.mintScore on your behalf — scoped
+> to a single call within 24 hours.
 >
-> Both transactions show live progress as OnChainBadges, and you can tap
-> through to the Mantle explorer to verify.
+> The delegation is submitted on-chain to the DelegationManager contract at
+> `0xdb9B...47dB3`. Then your smart account mints the score via a user
+> operation through the Mantle Sepolia bundler.
+>
+> Both the delegation hash and the user operation hash show as live
+> OnChainBadges — tap through to Mantle explorer to verify.
 
 ---
 
-## x402 Archive Paywall (1:45–2:05)
+## HTTP 402 + Agent Card + Archive Paywall (1:45–2:05)
 
-**Screen:** Archive list → locked episode → paywall → USDC payment → unlock
+**Screen:** Browser DevTools → API response 402 → agent card → archive list → locked episode → paywall → USDC payment → unlock
 
-> Past episodes lock when the daily window closes. The archive uses an
-> x402-inspired paywall on Polygon Amoy — pay 1 USDC to unlock any closed
-> episode's full content: all scenes, the leaderboard, and the identity
-> reveal.
+> Past episodes lock when the daily window closes. The HTTP endpoint at
+> `GET /api/archive/:episodeId` returns a `402 Payment Required` status
+> with payment metadata — USDC token address, treasury, and amount.
 >
-> Payment is verified on-chain. The Convex backend reads the USDC Transfer
-> event from the transaction receipt, confirms the treasury received the
-> funds, and records a persistent unlock tied to your identity.
+> External agents can also discover WhoWare's capabilities via the A2A
+> agent card at `GET /api/agents/card`, which describes the pipeline agent,
+> curator agent, and scene-writer agent with input/output schemas.
+>
+> On the frontend, the ArchivePaywall component fetches this endpoint and
+> displays the 402 status. Pay 1 USDC on Polygon Amoy via 1Shot's
+> Permissionless Relayer — gas paid in USDC, not MATIC — and the paywall
+> verifies on-chain: the backend reads the USDC Transfer event from the
+> transaction receipt, confirms the treasury received the funds, and
+> records a persistent unlock tied to your identity.
 
 ---
 
@@ -118,4 +130,6 @@ Target length: 2:10–2:25.
 - Have MetaMask connected on Mantle Sepolia before recording
 - Have USDC on Polygon Amoy ready for the paywall demo
 - Keep the solve flow short — name the figure quickly, let the badges animate
+- Open Browser DevTools → Network tab to show the 402 response live
+- Open `GET /api/agents/card` in a browser tab to show the agent card
 - End on the share card so judges see the viral hook

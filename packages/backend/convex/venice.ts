@@ -222,3 +222,120 @@ export const getIdentityHint = query({
     return existing.hint;
   },
 });
+
+export const getVeniceStats = query({
+  args: {},
+  returns: v.object({
+    totalEpisodesGenerated: v.number(),
+    totalHintsProvided: v.number(),
+    totalImagesRendered: v.number(),
+    cachedHintsAvailable: v.number(),
+  }),
+  handler: async (ctx) => {
+    const allEpisodes = await ctx.db.query("episodes").collect();
+
+    let totalEpisodesGenerated = 0;
+    let totalImagesRendered = 0;
+
+    for (const ep of allEpisodes) {
+      const hasVeniceImage = ep.scenes.some((s) => Boolean(s.imageKey || s.imageUrl));
+      if (hasVeniceImage) {
+        totalEpisodesGenerated++;
+      }
+      totalImagesRendered += ep.scenes.filter((s) => Boolean(s.imageKey || s.imageUrl)).length;
+    }
+
+    const allHints = await ctx.db.query("veniceHints").collect();
+    const now = Date.now();
+    const cachedHintsAvailable = allHints.filter((h) => now - h.cachedAt < CACHE_TTL_MS).length;
+
+    return {
+      totalEpisodesGenerated,
+      totalHintsProvided: allHints.length,
+      totalImagesRendered,
+      cachedHintsAvailable,
+    };
+  },
+});
+
+const DAY_ENTRY = v.object({
+  dayLabel: v.string(),
+  fullDate: v.string(),
+  episodes: v.number(),
+  hints: v.number(),
+  images: v.number(),
+  total: v.number(),
+});
+
+export const getVeniceWeeklyStats = query({
+  args: {},
+  returns: v.object({
+    days: v.array(DAY_ENTRY),
+    maxDaily: v.number(),
+    weeklyEpisodes: v.number(),
+    weeklyHints: v.number(),
+    weeklyImages: v.number(),
+  }),
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    // Build 7 day buckets, today through 6 days ago
+    const dayBuckets: Array<{
+      start: number;
+      end: number;
+      label: string;
+      fullDate: string;
+    }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now - i * 86_400_000);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      d.setHours(23, 59, 59, 999);
+      const end = d.getTime();
+      dayBuckets.push({
+        start,
+        end,
+        label: d.toLocaleDateString("en-US", { weekday: "short" }),
+        fullDate: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      });
+    }
+
+    const allEpisodes = await ctx.db.query("episodes").collect();
+    const allHints = await ctx.db.query("veniceHints").collect();
+
+    const days = dayBuckets.map((bucket) => {
+      let episodes = 0;
+      let images = 0;
+
+      for (const ep of allEpisodes) {
+        if (ep._creationTime >= bucket.start && ep._creationTime <= bucket.end) {
+          const hasVeniceImage = ep.scenes.some((s) => Boolean(s.imageKey || s.imageUrl));
+          if (hasVeniceImage) {
+            episodes++;
+            images += ep.scenes.filter((s) => Boolean(s.imageKey || s.imageUrl)).length;
+          }
+        }
+      }
+
+      const hints = allHints.filter(
+        (h) => h.cachedAt >= bucket.start && h.cachedAt <= bucket.end,
+      ).length;
+
+      return {
+        dayLabel: bucket.label,
+        fullDate: bucket.fullDate,
+        episodes,
+        hints,
+        images,
+        total: episodes + hints + images,
+      };
+    });
+
+    const maxDaily = Math.max(...days.map((d) => d.total), 1);
+    const weeklyEpisodes = days.reduce((s, d) => s + d.episodes, 0);
+    const weeklyHints = days.reduce((s, d) => s + d.hints, 0);
+    const weeklyImages = days.reduce((s, d) => s + d.images, 0);
+
+    return { days, maxDaily, weeklyEpisodes, weeklyHints, weeklyImages };
+  },
+});

@@ -32,8 +32,9 @@ First-time players see a cinematic onboarding flow guided by the Mystery Figure 
 - **Backend:** Convex (real-time database, serverless actions, cron scheduling)
 - **Autonomous Agent:** `catalog.autonomousGenerateEpisode` runs a three-stage pipeline — memory-aware figure selection, adversarial difficulty calibration (solver + rewrite agents), and self-evaluating image generation (quality judge with retries) — all orchestrated as a Convex action
 - **Venice AI:** Powers both panoramic scene generation and the Socratic hint system (per-clue hints + identity nudges, cached with leak guards)
-- **Wallet:** MetaMask Smart Accounts via ERC-7715 delegation
-- **Payments:** USDC on Polygon Amoy with on-chain verification (Convex action reads ERC-20 Transfer events from tx receipts)
+- **Wallet:** MetaMask Smart Accounts via ERC-7710 delegation (DelegationManager at `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3` on Mantle Sepolia)
+- **A2A Agent Card:** `GET /api/agents/card` exposes pipeline, curator, and scene-writer agents per Google A2A spec lite; `POST /api/agents/pipeline` and `POST /api/agents/curator` provide JSON-RPC 2.0 agent-to-agent communication
+- **Payments:** USDC on Polygon Amoy with on-chain verification (Convex action reads ERC-20 Transfer events from tx receipts); HTTP 402 endpoint at `GET /api/archive/:episodeId` triggers payment flow
 - **On-chain:** Mantle Sepolia — soul-bound Score NFTs (EIP-712 oracle-signed), soul-bound Streak SBTs with tier badges, commit-reveal guessing
 - **Analytics:** Real-time Convex subscriptions powering the WhoWare Pulse dashboard (global stats, streak leaderboard, recent solves)
 - **Onboarding:** 5-step cinematic flow with Mystery Figure mascot, interactive demos, Reanimated transitions
@@ -44,7 +45,7 @@ First-time players see a cinematic onboarding flow guided by the Mystery Figure 
 ```
 ┌─────────────────────────────────────────────────────┐
 │  Expo App (iOS / Android / Web)                     │
-│  ├── MetaMask Smart Account (ERC-7715)              │
+│  ├── MetaMask Smart Account (ERC-7710)              │
 │  └── USDC payments on Polygon Amoy                  │
 └──────────────────────┬──────────────────────────────┘
                        │
@@ -108,7 +109,7 @@ The archive paywall implements the x402 value proposition (stablecoin-gated cont
 - Expanded figure catalog across more eras and regions
 
 ### Built With
-expo, react-native, convex, venice-ai, viem, mantle, polygon, metamask, erc-7715, usdc, eip-712, typescript
+expo, react-native, convex, venice-ai, viem, mantle, polygon, metamask, erc-7710, usdc, eip-712, typescript
 
 ### Links
 - GitHub: https://github.com/sneldao/whoware
@@ -191,7 +192,7 @@ WhoWareGuess implements a commit-reveal scheme where players hash their guess be
 **Multi-Chain Architecture:**
 - Mantle Sepolia for on-chain achievement (Score NFTs + Streak SBTs)
 - Polygon Amoy for archive micropayments (USDC paywall)
-- MetaMask Smart Accounts via ERC-7715 delegation for seamless wallet UX
+- MetaMask Smart Accounts via ERC-7710 delegation for seamless wallet UX
 
 ### Technical Highlights
 
@@ -226,7 +227,7 @@ The solve flow `await`s `recordSolve()` (which returns the updated streak state)
 - 77 passing backend tests across 10 test suites
 
 ### Built With
-mantle, solidity, openzeppelin, eip-712, ecrecover, viem, convex, expo, react-native, metamask, erc-7715, typescript
+mantle, solidity, openzeppelin, eip-712, ecrecover, viem, convex, expo, react-native, metamask, erc-7710, typescript
 
 ### Links
 - GitHub: https://github.com/sneldao/whoware

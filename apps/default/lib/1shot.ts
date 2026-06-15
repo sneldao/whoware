@@ -103,47 +103,6 @@ export async function sendVia1ShotRelayer(
 }
 
 /**
- * Get relayer capabilities (supported tokens, fee collector addresses) for Polygon Amoy.
- */
-export async function get1ShotCapabilities(
-  useMainnet: boolean = false,
-): Promise<Record<string, unknown> | null> {
-  const relayerUrl = useMainnet ? RELAYER_MAINNET_URL : RELAYER_TESTNET_URL;
-
-  const body = {
-    jsonrpc: "2.0",
-    method: "relayer_getCapabilities",
-    params: [[AMOY_CHAIN_ID]],
-    id: 1,
-  };
-
-  try {
-    const response = await fetch(relayerUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) return null;
-
-    const json = await response.json() as {
-      result?: Record<string, unknown>;
-      error?: { message: string };
-    };
-
-    if (json.error) {
-      console.error("1Shot capabilities error:", json.error);
-      return null;
-    }
-
-    return json.result ?? null;
-  } catch (error) {
-    console.error("Failed to get 1Shot capabilities:", error);
-    return null;
-  }
-}
-
-/**
  * Check the status of a previously submitted relayed transaction.
  *
  * @param taskId - The task ID returned by sendVia1ShotRelayer
