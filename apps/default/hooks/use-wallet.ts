@@ -52,8 +52,6 @@ export function useWallet() {
   }, [refresh]);
 
   useEffect(() => {
-    void refresh();
-
     if (typeof window === "undefined" || !(window as any).ethereum) return;
 
     const ethereum = (window as any).ethereum;

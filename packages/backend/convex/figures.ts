@@ -365,6 +365,7 @@ export const seedCatalog = mutation({
 const figurePublicShape = v.object({
   _id: v.id("figures"),
   _creationTime: v.number(),
+  searchIndex: v.string(),
   canonicalName: v.string(),
   aliases: v.array(v.string()),
   era: v.string(),
