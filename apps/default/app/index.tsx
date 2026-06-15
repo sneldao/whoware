@@ -32,6 +32,9 @@ import { useIdentity } from "@/hooks/use-identity";
 import { useGameSounds } from "@/hooks/use-game-sounds";
 import { commitGuessOnChain, revealGuessOnChain, generateGuessSalt } from "@/lib/wallet";
 import { SmartAccountBadge } from "@/components/who-ware/smart-account-badge";
+import { SmartAccountUpgradeOverlay } from "@/components/who-ware/smart-account-upgrade-overlay";
+import { VeniceAiBadge } from "@/components/who-ware/venice-ai-badge";
+import { OnChainStatusBar } from "@/components/who-ware/on-chain-status-bar";
 import * as Haptics from "expo-haptics";
 
 const PLAYER_NAME_KEY = "whoware.player.name";
@@ -107,9 +110,25 @@ export default function Index() {
   const [discoveredClues, setDiscoveredClues] = useState<Array<{ sceneIndex: number; sceneTitle: string; label: string; detail: string }>>([]);
   const [revealDismissed, setRevealDismissed] = useState(false);
   const [solvedFigure, setSolvedFigure] = useState<{ name: string; figureId?: Id<"figures"> } | null>(null);
+  const [showUpgradeOverlay, setShowUpgradeOverlay] = useState(false);
 
   const wallet = useWallet();
   const { isUpgraded: isSmartAccountUpgraded, isUpgrading: isSmartAccountUpgrading, upgrade: upgradeToSmartAccount } = wallet.smartAccount;
+
+  // Show upgrade overlay when upgrade starts
+  useEffect(() => {
+    if (isSmartAccountUpgrading) {
+      setShowUpgradeOverlay(true);
+    }
+  }, [isSmartAccountUpgrading]);
+
+  // Auto-dismiss overlay when upgrade completes
+  useEffect(() => {
+    if (isSmartAccountUpgraded && showUpgradeOverlay) {
+      const timer = setTimeout(() => setShowUpgradeOverlay(false), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [isSmartAccountUpgraded, showUpgradeOverlay]);
   const { getHint, isGenerating: isHintGenerating } = useVeniceHint();
   const mintScoreOnChain = useAction(api.mantle.mintScore);
   const updateStreakOnChain = useAction(api.mantle.updateStreak);
@@ -756,6 +775,14 @@ export default function Index() {
               </Pressable>
             ) : null}
 
+            <OnChainStatusBar
+              isWalletConnected={wallet.isConnected}
+              isSmartAccountUpgraded={isSmartAccountUpgraded}
+              isMinting={isMinting}
+              isMinted={!!mintTxHash}
+              isCorrectChain={wallet.isCorrectChain}
+            />
+
             <Pressable style={styles.curatorLink} href="/curator">
               <Ionicons name="construct-outline" size={14} color="#475569" />
               <Text style={styles.curatorLinkText}>Curator</Text>
@@ -801,6 +828,14 @@ export default function Index() {
           />
         );
       })()}
+
+      <SmartAccountUpgradeOverlay
+        isVisible={showUpgradeOverlay}
+        isUpgrading={isSmartAccountUpgrading}
+        isUpgraded={isSmartAccountUpgraded}
+        error={wallet.smartAccount.error}
+        onDismiss={() => setShowUpgradeOverlay(false)}
+      />
     </View>
   );
 }

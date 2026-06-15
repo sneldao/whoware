@@ -13,6 +13,7 @@ import Animated, {
 
 import { HintOverlay } from "@/components/who-ware/hint-overlay";
 import { MemoryMediaStrip } from "@/components/who-ware/memory-media-strip";
+import { VeniceAiBadge } from "@/components/who-ware/venice-ai-badge";
 import { getSceneImageSource } from "@/components/who-ware/scene-media";
 
 export interface Clue {
@@ -164,7 +165,10 @@ export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, o
             </Pressable>
           ) : null}
           {activeHint || isHintGenerating ? (
-            <HintOverlay hint={activeHint ?? null} isGenerating={isHintGenerating ?? false} clueLabel={activeClue.label} />
+            <>
+              {activeHint ? <VeniceAiBadge type="hint" compact /> : null}
+              <HintOverlay hint={activeHint ?? null} isGenerating={isHintGenerating ?? false} clueLabel={activeClue.label} />
+            </>
           ) : null}
         </View>
       ) : (

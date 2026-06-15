@@ -202,15 +202,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "900",
   },
-  chainBadge: {
-    color: "rgba(255, 247, 237, 0.6)",
-    fontSize: 11,
-    fontWeight: "800",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
-  },  featureRow: {
+  featureRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
