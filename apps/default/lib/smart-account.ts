@@ -113,6 +113,11 @@ function generateSalt(): Hex {
   return "0x" + Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("") as Hex;
 }
 
+/**
+ * Builds an Advanced Permission (ERC-7715) delegation.
+ * This allows the Oracle to mint scores on behalf of the user's Smart Account
+ * within strict caveats (allowed target, allowed method, limited calls, time bound).
+ */
 export function buildMintDelegation(
   environment: SmartAccountsEnvironment,
   userAddress: Address,

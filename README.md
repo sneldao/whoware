@@ -90,41 +90,38 @@ cd packages/contracts && bun install && bun run test
 | `POST /api/agents/pipeline` | Trigger autonomous episode generation pipeline |
 | `POST /api/agents/curator` | Standalone curator agent — selects next figure from catalog |
 
-## Hackathon Submissions
+## Hackathon Submissions: MetaMask x 1Shot API x Venice AI
 
-Built for dual submission. Submission assets in development:
+WhoWare is purpose-built to showcase the synergy between autonomous AI agents and advanced Web3 infrastructure.
 
-### MetaMask x 1Shot API x Venice AI Dev Cook Off
-**Tracks:** Autonomous Agent · Venice AI · x402 · 1Shot · ERC-7710 Smart Accounts
+### 1. Best Use of Venice AI (Privacy-First Agentic Intelligence)
+WhoWare implements a sophisticated **6-stage autonomous pipeline** powered exclusively by Venice AI:
+- **Autonomous Curator:** Analyzes recent episode history and the figure catalog to select the next figure that maximizes variety.
+- **Scene Director:** Generates structured JSON for 7 atmospheric memory scenes with visual clues.
+- **Adversarial Calibration:** A dedicated "Solver" agent tries to identify the figure from the clues; if too easy or hard, a "Rewriter" agent adjusts the clue subtlety.
+- **Self-Evaluation:** A "Judge" agent reviews generated image prompts for era-accuracy and anachronisms before rendering.
+- **Contextual Hints:** Socratic hints generated on-the-fly for players, maintaining privacy by never storing user queries.
 
-| Feature | Status |
-|---------|--------|
-| Autonomous episode pipeline (`catalog.generateEpisode`) | ✅ |
-| Venice AI scene generation + Socratic hints | ✅ |
-| MetaMask Smart Account (EIP-7702 upgrade + ERC-7710 delegation) | ✅ |
-| ERC-7710 Delegation Framework (on-chain delegation manager) | ✅ Deployed at `0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3` |
-| 1Shot Permissionless Relayer (gasless USDC paywall) | ✅ |
-| HTTP 402 archive paywall (`/api/archive/*` returns 402 with payment metadata) | ✅ |
-| A2A agent card + HTTP agent endpoints (`/api/agents/*`) | ✅ |
+### 2. Best x402 + ERC-7710 (Advanced Permissions)
+WhoWare leverages the **MetaMask Smart Accounts Kit** for a seamless credentialing flow:
+- **EIP-7702 Upgrade:** Users can upgrade their account to a Stateless Smart Account with one click.
+- **ERC-7715 Advanced Permissions:** The app requests a delegation (ERC-7715) that allows our backend Oracle to mint the user's score NFT.
+- **ERC-7710 Compliance:** Delegations are restricted by strict caveats (AllowedTargets, AllowedMethods, LimitedCalls) ensuring the user retains ultimate control.
+- **x402 Archive Paywall:** The historical archive uses a `402 Payment Required` pattern, requiring a USDC transfer via 1Shot before granting access.
 
-### Mantle Turing Test Hackathon 2026 — Phase 2
-**Track:** Consumer & Viral DApps
+### 3. Best Agent / A2A Coordination
+The backend is a **multi-agent orchestration layer**:
+- Agents negotiate the difficulty of clues via a feedback loop.
+- The Curator agent "hands off" the figure to the Director agent.
+- Agent-to-Agent (A2A) coordination is demonstrated through the `autonomousGenerateEpisode` action which sequences multiple LLM calls with distinct roles.
 
-| Feature | Status |
-|---------|--------|
-| Soul-bound Score NFT (EIP-712 oracle-signed) | ✅ |
-| Soul-bound Streak SBT (tier badges: spark → eternal) | ✅ |
-| Commit-reveal guessing | ✅ |
-| On-chain mint wired into solve flow | ✅ |
+### 4. Best Use of 1Shot Permissionless Relayer
+- **Gasless USDC Payments:** The archive paywall uses 1Shot's public relayer to allow users to pay in USDC without needing MATIC for gas.
+- **Operational Scalability:** 1Shot handles the operational capacity, ensuring the paywall remains responsive during usage spikes.
 
-### Submission Assets
+---
 
-- Demo script: [`plans/demo-script.md`](./plans/demo-script.md)
-- Devpost drafts: [`plans/devpost-drafts.md`](./plans/devpost-drafts.md)
-- Hackathon plan: [`plans/hackathon-submissions.plan.md`](./plans/hackathon-submissions.plan.md)
-- Demo video: [VIDEO_URL]
-- Live demo: [DEPLOYMENT_URL]
+## Architecture
 
-## License
 
 MIT

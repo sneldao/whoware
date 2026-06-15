@@ -32,7 +32,7 @@ export default function Root({ children }: PropsWithChildren) {
 
         <ScrollViewStyleReset />
       </head>
-      <body>{children}</body>
+      <body style={{ backgroundColor: "#080D1A" }}>{children}</body>
     </html>
   );
 }

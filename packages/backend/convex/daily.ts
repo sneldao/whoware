@@ -181,3 +181,24 @@ export const closeExpired = internalMutation({
     return { closed: live.length };
   },
 });
+
+export const autonomousGenerate = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const now = new Date();
+    const slug = `daily-${now.getUTCFullYear()}-${now.getUTCMonth() + 1}-${now.getUTCDate()}`;
+    
+    // Schedule for tomorrow
+    const dropsAt = new Date(now);
+    dropsAt.setUTCDate(dropsAt.getUTCDate() + 1);
+    dropsAt.setUTCHours(0, 0, 0, 0);
+
+    // We call the action via internal.catalog.autonomousGenerateEpisode
+    // But since this is a mutation, we can only trigger it or let a worker do it.
+    // In Convex, mutations can't call actions directly.
+    // So we'll use a "trigger" pattern or just let the curator start it manually for now.
+    // ACTUALLY, crons can call actions directly if they are defined as internalActions.
+    
+    return null;
+  },
+});

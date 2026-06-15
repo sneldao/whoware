@@ -1,5 +1,5 @@
 import { cronJobs } from "convex/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 const crons = cronJobs();
 
@@ -20,3 +20,12 @@ crons.interval(
   { minutes: 5 },
   internal.notifications.dispatchPending,
 );
+
+crons.daily(
+  "autonomous-generation",
+  { hourUTC: 0, minuteUTC: 0 },
+  api.catalog.autonomousGenerateEpisode,
+  { slug: "daily-auto" }
+);
+
+export default crons;

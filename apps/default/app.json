@@ -1,29 +1,32 @@
 {
     "expo": {
-        "name": "Bloom app (rename me)",
-        "slug": "bloom-app-rename-me",
+        "name": "WhoWare",
+        "slug": "whoware",
         "version": "1.0.0",
         "runtimeVersion": {
             "policy": "sdkVersion"
         },
         "orientation": "portrait",
         "icon": "../../assets/images/icon.png",
-        "scheme": "myapp",
-        "userInterfaceStyle": "automatic",
+        "scheme": "whoware",
+        "userInterfaceStyle": "dark",
         "newArchEnabled": true,
         "ios": {
-            "supportsTablet": true
+            "supportsTablet": true,
+            "bundleIdentifier": "com.whoware.app",
+            "backgroundColor": "#070A12"
         },
         "android": {
+            "package": "com.whoware.app",
             "adaptiveIcon": {
                 "foregroundImage": "../../assets/images/adaptive-icon.png",
-                "backgroundColor": "#ffffff"
+                "backgroundColor": "#070A12"
             }
         },
         "web": {
             "bundler": "metro",
             "output": "single",
-            "favicon": "../../assets/images/icon.png"
+            "favicon": "../../assets/images/favicon.png"
         },
         "plugins": [
             "expo-router",
@@ -33,7 +36,7 @@
                     "image": "../../assets/images/splash-icon.png",
                     "imageWidth": 200,
                     "resizeMode": "contain",
-                    "backgroundColor": "#FAFAFA"
+                    "backgroundColor": "#070A12"
                 }
             ],
             "expo-secure-store",
