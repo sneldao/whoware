@@ -50,6 +50,7 @@ export default defineSchema({
     closesAt: v.optional(v.number()),
     status: v.union(v.literal("staging"), v.literal("review"), v.literal("draft"), v.literal("live"), v.literal("closed")),
     difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
+    competitiveMode: v.optional(v.boolean()),
     scenes: v.array(scene),
     answerOptions: v.optional(v.array(v.string())),
   })

@@ -85,13 +85,15 @@ cd packages/contracts && bun install && bun run test
 Built for dual submission — all code features complete (Slices 1–9). Submission assets in progress:
 
 ### MetaMask x 1Shot API x Venice AI Dev Cook Off
-**Tracks:** Autonomous Agent · Venice AI · x402
+**Tracks:** Autonomous Agent · Venice AI · x402 · 1Shot · ERC-7710 Smart Accounts
 
 | Feature | Status |
 |---------|--------|
 | Autonomous episode pipeline (`catalog.generateEpisode`) | ✅ |
 | Venice AI scene generation + Socratic hints | ✅ |
-| MetaMask Smart Account (ERC-7715 delegation) | ✅ |
+| MetaMask Smart Account (EIP-7702 upgrade + ERC-7710 delegation) | ✅ |
+| MetaMask Advanced Permissions (ERC-7715) ready | ✅ |
+| 1Shot Permissionless Relayer (gasless USDC paywall) | ✅ |
 | x402 archive paywall (USDC on Polygon Amoy) | ✅ |
 
 ### Mantle Turing Test Hackathon 2026 — Phase 2

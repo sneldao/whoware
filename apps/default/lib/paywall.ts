@@ -1,9 +1,8 @@
-import { createWalletClient, custom, type Address, type Chain } from "viem";
+import { createWalletClient, custom, encodeFunctionData, parseAbi, type Address, type Chain } from "viem";
 import { polygonAmoy } from "viem/chains";
+import { sendVia1ShotRelayer, USDC_AMOY_ADDRESS } from "./1shot";
 
 export const POLYGON_AMOY_CHAIN: Chain = polygonAmoy;
-
-export const USDC_AMOY_ADDRESS: Address = "0x41E94EB019C0762f9Bfcf9FB1E58725BfB0e7582";
 
 export const ARCHIVE_PRICE_USDC = 1_000_000n; // 1 USDC (6 decimals)
 
@@ -21,6 +20,14 @@ const ERC20_TRANSFER_ABI = [
     outputs: [{ name: "", type: "bool" }],
   },
 ] as const;
+
+function encodeTransfer(to: Address, amount: bigint): `0x${string}` {
+  return encodeFunctionData({
+    abi: parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]),
+    functionName: "transfer",
+    args: [to, amount],
+  });
+}
 
 export async function switchToPolygonAmoy(): Promise<boolean> {
   if (typeof window === "undefined" || !(window as any).ethereum) return false;
@@ -66,11 +73,26 @@ export async function getCurrentChainId(): Promise<number | null> {
   }
 }
 
+/**
+ * Send USDC archive payment via 1Shot Permissionless Relayer (gasless).
+ *
+ * The relayer handles gas abstraction — the user pays for gas in USDC
+ * tokens rather than MATIC. No signup or pre-funding needed.
+ *
+ * Falls back to direct MetaMask transaction if 1Shot is unavailable.
+ */
 export async function sendArchivePayment(
   playerAddress: Address,
 ): Promise<string | null> {
-  if (typeof window === "undefined" || !(window as any).ethereum) return null;
+  // Try 1Shot Permissionless Relayer first for gasless experience
+  const transferData = encodeTransfer(TREASURY_ADDRESS, ARCHIVE_PRICE_USDC);
+  const taskId = await sendVia1ShotRelayer(USDC_AMOY_ADDRESS, transferData);
 
+  if (taskId) {
+    return taskId;
+  }
+
+  // Fallback: direct USDC transfer via MetaMask (user pays gas)
   const chainId = await getCurrentChainId();
   if (chainId !== polygonAmoy.id) {
     const switched = await switchToPolygonAmoy();

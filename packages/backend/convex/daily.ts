@@ -13,6 +13,7 @@ const dailyEpisodeShape = v.object({
   closesAt: v.optional(v.number()),
   status: episodeStatus,
   difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
+  competitiveMode: v.optional(v.boolean()),
   scenes: v.array(
     v.object({
       title: v.string(),

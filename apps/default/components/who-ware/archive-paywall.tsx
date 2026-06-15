@@ -91,7 +91,14 @@ export function ArchivePaywall({
       <View style={styles.priceRow}>
         <Text style={styles.priceLabel}>Price</Text>
         <Text style={styles.priceValue}>1 USDC</Text>
-        <Text style={styles.chainBadge}>Polygon Amoy</Text>
+        <View style={styles.chainBadge}>
+          <Text style={styles.chainBadgeText}>Polygon Amoy</Text>
+        </View>
+      </View>
+
+      <View style={styles.featureRow}>
+        <Ionicons name="flash" size={14} color="#22C55E" />
+        <Text style={styles.featureText}>Gas paid in USDC via 1Shot Permissionless Relayer</Text>
       </View>
 
       {state === "idle" || state === "error" ? (
@@ -203,6 +210,31 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 999,
     backgroundColor: "rgba(255, 247, 237, 0.08)",
+  },  featureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: "rgba(34, 197, 94, 0.08)",
+  },
+  featureText: {
+    color: "rgba(255, 247, 237, 0.65)",
+    fontSize: 12,
+    fontWeight: "700",
+    flex: 1,
+  },
+  chainBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 247, 237, 0.08)",
+  },
+  chainBadgeText: {
+    color: "rgba(255, 247, 237, 0.6)",
+    fontSize: 11,
+    fontWeight: "800",
   },
   payButton: {
     flexDirection: "row",

@@ -1,4 +1,4 @@
-import { action } from "./_generated/server";
+import { action, query } from "./_generated/server";
 import { v } from "convex/values";
 import {
   createPublicClient,
@@ -252,6 +252,96 @@ export const updateStreak = action({
     } catch (error) {
       console.error("Failed to update streak on Mantle:", error);
       return null;
+    }
+  },
+});
+
+const GUESS_CONTRACT = process.env.MANTLE_GUESS_CONTRACT ?? "0x8185762f72a6290eb4959adbd8286281131a531d";
+
+const GUESS_ABI = [
+  {
+    name: "getRevealedCount",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "episodeDay", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "getRevealedGuess",
+    type: "function",
+    stateMutability: "view",
+    inputs: [
+      { name: "episodeDay", type: "uint256" },
+      { name: "index", type: "uint256" },
+    ],
+    outputs: [
+      { name: "player", type: "address" },
+      { name: "guess", type: "string" },
+      { name: "revealedAt", type: "uint256" },
+    ],
+  },
+] as const;
+
+export const getRevealedGuessCount = query({
+  args: { episodeDay: v.number() },
+  returns: v.number(),
+  handler: async (_ctx, args) => {
+    const client = createPublicClient({
+      chain: mantleSepoliaTestnet,
+      transport: http(process.env.MANTLE_RPC_URL ?? mantleSepoliaTestnet.rpcUrls.default.http[0]),
+    });
+    try {
+      return await client.readContract({
+        address: GUESS_CONTRACT as Address,
+        abi: GUESS_ABI,
+        functionName: "getRevealedCount",
+        args: [BigInt(args.episodeDay)],
+      }) as bigint;
+    } catch {
+      return 0;
+    }
+  },
+});
+
+export const getRevealedGuesses = query({
+  args: { episodeDay: v.number() },
+  returns: v.array(
+    v.object({
+      player: v.string(),
+      guess: v.string(),
+      revealedAt: v.number(),
+    }),
+  ),
+  handler: async (_ctx, args) => {
+    const client = createPublicClient({
+      chain: mantleSepoliaTestnet,
+      transport: http(process.env.MANTLE_RPC_URL ?? mantleSepoliaTestnet.rpcUrls.default.http[0]),
+    });
+    try {
+      const count = (await client.readContract({
+        address: GUESS_CONTRACT as Address,
+        abi: GUESS_ABI,
+        functionName: "getRevealedCount",
+        args: [BigInt(args.episodeDay)],
+      })) as bigint;
+
+      const results = [];
+      for (let i = 0n; i < count; i++) {
+        const result = (await client.readContract({
+          address: GUESS_CONTRACT as Address,
+          abi: GUESS_ABI,
+          functionName: "getRevealedGuess",
+          args: [BigInt(args.episodeDay), i],
+        })) as [Address, string, bigint];
+        results.push({
+          player: result[0],
+          guess: result[1],
+          revealedAt: Number(result[2]),
+        });
+      }
+      return results;
+    } catch {
+      return [];
     }
   },
 });

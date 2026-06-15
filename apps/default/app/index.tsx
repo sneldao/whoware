@@ -30,6 +30,8 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useVeniceHint } from "@/hooks/use-venice-hint";
 import { useIdentity } from "@/hooks/use-identity";
 import { useGameSounds } from "@/hooks/use-game-sounds";
+import { commitGuessOnChain, revealGuessOnChain, generateGuessSalt } from "@/lib/wallet";
+import { SmartAccountBadge } from "@/components/who-ware/smart-account-badge";
 import * as Haptics from "expo-haptics";
 
 const PLAYER_NAME_KEY = "whoware.player.name";
@@ -87,6 +89,13 @@ export default function Index() {
   const [sceneIndex, setSceneIndex] = useState(0);
   const [solvedRun, setSolvedRun] = useState<{ elapsedMs: number; score: number } | null>(null);
   const [status, setStatus] = useState("You open your eyes in another life. Enter the first memory when you are ready.");
+  const [commitState, setCommitState] = useState<{
+    guess: string;
+    salt: string;
+    txHash: string | null;
+    isCommitting: boolean;
+    hasCommitted: boolean;
+  } | null>(null);
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [mintTxHash, setMintTxHash] = useState<string | null>(null);
   const [streakTxHash, setStreakTxHash] = useState<string | null>(null);
@@ -100,6 +109,7 @@ export default function Index() {
   const [solvedFigure, setSolvedFigure] = useState<{ name: string; figureId?: Id<"figures"> } | null>(null);
 
   const wallet = useWallet();
+  const { isUpgraded: isSmartAccountUpgraded, isUpgrading: isSmartAccountUpgrading, upgrade: upgradeToSmartAccount } = wallet.smartAccount;
   const { getHint, isGenerating: isHintGenerating } = useVeniceHint();
   const mintScoreOnChain = useAction(api.mantle.mintScore);
   const updateStreakOnChain = useAction(api.mantle.updateStreak);
@@ -157,6 +167,7 @@ export default function Index() {
     setDiscoveredClues([]);
     setRevealDismissed(false);
     setSolvedFigure(null);
+    setCommitState(null);
     setStatus("You open your eyes in another life. Enter the first memory when you are ready.");
   }, [episode?._id, identity.identityId]);
 
@@ -305,6 +316,19 @@ export default function Index() {
       await enterSceneMutation({ runId: activeRun._id, sceneIndex: 0 });
     }
 
+    // Commit-reveal: commit guess on-chain before submitting (competitive mode)
+    if (episode.competitiveMode && wallet.address && !commitState?.hasCommitted) {
+      const salt = generateGuessSalt();
+      setCommitState({ guess: _guessText, salt, txHash: null, isCommitting: true, hasCommitted: false });
+      const episodeDay = Math.max(1, Math.floor(episode.dropsAt / 86400000));
+      const txHash = await commitGuessOnChain(wallet.address, episodeDay, _guessText, salt);
+      setCommitState((prev) => prev ? { ...prev, txHash, isCommitting: false, hasCommitted: !!txHash } : null);
+      if (!txHash) {
+        setStatus("Could not commit guess on-chain. Check your wallet connection and try again.");
+        return;
+      }
+    }
+
     const result = await submitGuessMutation({
       runId: activeRun._id,
       figureId,
@@ -329,6 +353,11 @@ export default function Index() {
       if (wallet.address && !hasMintedRef.current) {
         hasMintedRef.current = true;
         const episodeDay = Math.max(1, Math.floor(episode.dropsAt / 86400000));
+
+        // Reveal on-chain if competitive mode and we committed
+        if (episode.competitiveMode && commitState?.hasCommitted && wallet.address) {
+          await revealGuessOnChain(wallet.address, episodeDay, commitState.guess, commitState.salt);
+        }
 
         setIsMinting(true);
         mintScoreOnChain({
@@ -531,14 +560,23 @@ export default function Index() {
                 <Text style={styles.drop}>Daily embodied history ritual</Text>
               </View>
             </View>
-            <WalletConnect
-              address={wallet.address}
-              isConnected={wallet.isConnected}
-              isCorrectChain={wallet.isCorrectChain}
-              isConnecting={wallet.isConnecting}
-              onConnect={wallet.connect}
-              onSwitchChain={wallet.switchChain}
-            />
+            <View style={styles.walletRow}>
+              <WalletConnect
+                address={wallet.address}
+                isConnected={wallet.isConnected}
+                isCorrectChain={wallet.isCorrectChain}
+                isConnecting={wallet.isConnecting}
+                onConnect={wallet.connect}
+                onSwitchChain={wallet.switchChain}
+              />
+              {wallet.isConnected ? (
+                <SmartAccountBadge
+                  isUpgraded={isSmartAccountUpgraded}
+                  isUpgrading={isSmartAccountUpgrading}
+                  onUpgrade={upgradeToSmartAccount}
+                />
+              ) : null}
+            </View>
             <Text style={styles.headline}>Someone changed history{"\n"}from this room.</Text>
             <Text style={styles.subhead}>{status}</Text>
             <IdentityCountdown isSolved={isSolved} dropsAt={countdownTarget} statusLabel={countdownLabel} />
@@ -821,6 +859,12 @@ const styles = StyleSheet.create({
   },
   heroContent: {
     gap: 18,
+  },
+  walletRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
   },
   brandRow: {
     flexDirection: "row",

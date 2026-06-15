@@ -1,22 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { SceneThumbnail } from "./scene-thumbnail";
+import type { Id } from "@/convex/_generated/dataModel";
 
 interface Scene {
   title: string;
   location: string;
   era: string;
-  imageUrl?: string;
+  palette: string[];
+  panoramaPrompt: string;
+  imageKey?: string;
+  ambientText: string;
+  clues: Array<{ label: string; detail: string; x: number; y: number }>;
   isMercy?: boolean;
+  imageUrl?: string;
 }
 
 interface EpisodeCardProps {
-  episodeId: string;
+  episodeId: Id<"episodes">;
   slug: string;
-  status: string;
+  status: "staging" | "review" | "draft" | "live" | "closed";
   figureName?: string;
-  difficulty: string;
+  difficulty: "iconic" | "field" | "research";
   scenes: Scene[];
   onApprove: () => void;
   onRegenerateScene: (sceneIndex: number) => void;
@@ -24,8 +28,15 @@ interface EpisodeCardProps {
   regeneratingScenes: Set<number>;
 }
 
+const STATUS_COLORS: Record<string, string> = {
+  staging: "#F59E0B",
+  review: "#3B82F6",
+  draft: "#8B5CF6",
+  live: "#22C55E",
+  closed: "#64748B",
+};
+
 export function EpisodeCard({
-  episodeId,
   slug,
   status,
   figureName,
@@ -36,169 +47,261 @@ export function EpisodeCard({
   isApproving,
   regeneratingScenes,
 }: EpisodeCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const imagesReady = scenes.filter((s) => Boolean(s.imageUrl)).length;
-  const canApprove = status === "review" && imagesReady === scenes.length;
+  const canApprove = status === "review" && scenes.length > 0;
+  const investigationScenes = scenes.filter((s) => !s.isMercy);
+  const missingImages = investigationScenes.filter((s) => !s.imageUrl && !s.imageKey);
 
   return (
     <View style={styles.card}>
-      <Pressable style={styles.header} onPress={() => setExpanded(!expanded)}>
+      <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons
-            name={expanded ? "chevron-down" : "chevron-forward"}
-            size={18}
-            color="#94a3b8"
-          />
-          <View style={styles.headerInfo}>
-            <Text style={styles.slug}>{slug}</Text>
-            {figureName && <Text style={styles.figureName}>{figureName}</Text>}
-          </View>
+          <Text style={styles.slug}>{slug}</Text>
+          {figureName && <Text style={styles.figureName}>{figureName}</Text>}
         </View>
-        <View style={styles.headerRight}>
-          <View style={[styles.badge, styles[`badge_${status}`] || styles.badge_default]}>
-            <Text style={styles.badgeText}>{status}</Text>
-          </View>
-          <View style={styles.diffBadge}>
-            <Text style={styles.diffText}>{difficulty}</Text>
-          </View>
-          <Text style={styles.imageCount}>
-            {imagesReady}/{scenes.length}
+        <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[status] ?? "#64748B" }]}>
+          <Text style={styles.statusText}>{status}</Text>
+        </View>
+      </View>
+
+      <View style={styles.meta}>
+        <View style={styles.metaChip}>
+          <Text style={styles.metaLabel}>Difficulty</Text>
+          <Text style={styles.metaValue}>{difficulty}</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <Text style={styles.metaLabel}>Scenes</Text>
+          <Text style={styles.metaValue}>{scenes.length}</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <Text style={styles.metaLabel}>Images</Text>
+          <Text style={[styles.metaValue, missingImages.length > 0 && styles.metaValueError]}>
+            {scenes.length - missingImages.length}/{scenes.length}
           </Text>
         </View>
-      </Pressable>
+      </View>
 
-      {expanded && (
-        <View style={styles.body}>
-          <View style={styles.scenes}>
-            {scenes.map((scene, i) => (
-              <SceneThumbnail
-                key={i}
-                title={scene.title}
-                location={scene.location}
-                era={scene.era}
-                imageUrl={scene.imageUrl}
-                isMercy={scene.isMercy}
-                sceneIndex={i}
-                onRegenerate={() => onRegenerateScene(i)}
-                isRegenerating={regeneratingScenes.has(i)}
-              />
-            ))}
-          </View>
+      <View style={styles.scenesList}>
+        <Text style={styles.scenesTitle}>Scenes</Text>
+        {scenes.map((scene, i) => {
+          const isRegenerating = regeneratingScenes.has(i);
+          const hasImage = Boolean(scene.imageUrl || scene.imageKey);
+          return (
+            <View key={`${scene.title}-${i}`} style={styles.sceneRow}>
+              <View style={styles.sceneInfo}>
+                <Text style={styles.sceneIndex}>#{i + 1}</Text>
+                <View style={styles.sceneMeta}>
+                  <Text style={styles.sceneTitle}>{scene.title}</Text>
+                  <Text style={styles.sceneLocation}>
+                    {scene.location} · {scene.era}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.sceneRight}>
+                {scene.isMercy && (
+                  <View style={styles.mercyBadge}>
+                    <Text style={styles.mercyText}>mercy</Text>
+                  </View>
+                )}
+                {hasImage ? (
+                  <Ionicons name="image" size={14} color="#22C55E" />
+                ) : (
+                  <Ionicons name="image-outline" size={14} color="#EF4444" />
+                )}
+                <Pressable
+                  style={styles.regenButton}
+                  onPress={() => onRegenerateScene(i)}
+                  disabled={isRegenerating}
+                >
+                  {isRegenerating ? (
+                    <ActivityIndicator size="small" color="#94a3b8" />
+                  ) : (
+                    <Ionicons name="refresh" size={14} color="#94a3b8" />
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          );
+        })}
+      </View>
 
-          {canApprove && (
-            <Pressable
-              style={[styles.approveButton, isApproving && styles.approveButtonDisabled]}
-              onPress={onApprove}
-              disabled={isApproving}
-            >
-              {isApproving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                  <Text style={styles.approveText}>Approve Episode</Text>
-                </>
-              )}
-            </Pressable>
+      {canApprove ? (
+        <Pressable
+          style={({ pressed }) => [
+            styles.approveButton,
+            pressed && styles.pressed,
+            missingImages.length > 0 && styles.approveButtonDisabled,
+          ]}
+          onPress={onApprove}
+          disabled={isApproving || missingImages.length > 0}
+        >
+          {isApproving ? (
+            <ActivityIndicator size="small" color="#111827" />
+          ) : (
+            <View style={styles.approveButtonContent}>
+              <Ionicons name="checkmark-circle" size={16} color="#111827" />
+              <Text style={styles.approveButtonText}>
+                {missingImages.length > 0
+                  ? `Approve (${missingImages.length} scene${missingImages.length > 1 ? "s" : "s"} missing images)`
+                  : "Approve for Draft"}
+              </Text>
+            </View>
           )}
-        </View>
-      )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#0f172a",
+    padding: 16,
+    gap: 14,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#334155",
-    overflow: "hidden",
+    backgroundColor: "#0f172a",
   },
   header: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
-    padding: 16,
+    gap: 12,
   },
   headerLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
     flex: 1,
-  },
-  headerInfo: {
-    gap: 2,
+    gap: 4,
   },
   slug: {
     color: "#f8fafc",
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
   },
   figureName: {
     color: "#94a3b8",
-    fontSize: 12,
+    fontSize: 13,
+    fontWeight: "500",
   },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
   },
-  badge_staging: { backgroundColor: "#f59e0b" },
-  badge_review: { backgroundColor: "#3b82f6" },
-  badge_draft: { backgroundColor: "#10b981" },
-  badge_live: { backgroundColor: "#8b5cf6" },
-  badge_closed: { backgroundColor: "#64748b" },
-  badge_default: { backgroundColor: "#64748b" },
-  badgeText: {
+  statusText: {
     color: "#fff",
     fontSize: 11,
     fontWeight: "600",
     textTransform: "uppercase",
   },
-  diffBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 4,
+  meta: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  metaChip: {
+    flex: 1,
+    padding: 8,
+    gap: 2,
+    borderRadius: 8,
     backgroundColor: "#1e293b",
+    alignItems: "center",
   },
-  diffText: {
-    color: "#94a3b8",
-    fontSize: 11,
+  metaLabel: {
+    color: "#64748b",
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
   },
-  imageCount: {
+  metaValue: {
+    color: "#f8fafc",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  metaValueError: {
+    color: "#EF4444",
+  },
+  scenesList: {
+    gap: 8,
+  },
+  scenesTitle: {
+    color: "#e2e8f0",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  sceneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: "#1e293b",
+    gap: 8,
+  },
+  sceneInfo: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  sceneIndex: {
     color: "#64748b",
     fontSize: 12,
-    fontVariant: ["tabular-nums"],
+    fontWeight: "700",
+    width: 24,
   },
-  body: {
-    padding: 16,
-    paddingTop: 0,
-    gap: 12,
+  sceneMeta: {
+    flex: 1,
+    gap: 2,
   },
-  scenes: {
+  sceneTitle: {
+    color: "#f8fafc",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  sceneLocation: {
+    color: "#64748b",
+    fontSize: 11,
+  },
+  sceneRight: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
+  },
+  mercyBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: "rgba(134, 239, 172, 0.15)",
+  },
+  mercyText: {
+    color: "#86EFAC",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  regenButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#334155",
+  },
+  pressed: {
+    opacity: 0.72,
   },
   approveButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#10b981",
-    padding: 12,
-    borderRadius: 8,
     gap: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: "#22C55E",
   },
   approveButtonDisabled: {
-    opacity: 0.6,
+    backgroundColor: "#334155",
   },
-  approveText: {
-    color: "#fff",
+  approveButtonText: {
+    color: "#111827",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });

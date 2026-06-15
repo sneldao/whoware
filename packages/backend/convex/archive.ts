@@ -75,6 +75,7 @@ const archiveEpisodeShape = v.object({
   activeAt: v.number(),
   closesAt: v.optional(v.number()),
   difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
+  competitiveMode: v.optional(v.boolean()),
   scenes: v.array(sceneShape),
   figure: archiveFigureProfile,
 });
@@ -95,6 +96,7 @@ export const getEpisode = query({
       activeAt: episode.activeAt,
       closesAt: episode.closesAt,
       difficulty: episode.difficulty,
+      competitiveMode: episode.competitiveMode ?? false,
       scenes: episode.scenes,
       figure: {
         canonicalName: figure?.canonicalName ?? episode.figureName ?? "Unknown figure",

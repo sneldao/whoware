@@ -8,6 +8,7 @@ import {
   shortenAddress,
   type WalletState,
 } from "@/lib/wallet";
+import { useSmartAccount } from "./use-smart-account";
 
 export function useWallet() {
   const [state, setState] = useState<WalletState>({
@@ -17,6 +18,7 @@ export function useWallet() {
     isCorrectChain: false,
   });
   const [isConnecting, setIsConnecting] = useState(false);
+  const smartAccount = useSmartAccount();
 
   const refresh = useCallback(async () => {
     const address = await getConnectedAddress();
@@ -72,6 +74,7 @@ export function useWallet() {
     isConnecting,
     connect,
     switchChain,
+    smartAccount,
     shortenedAddress: state.address ? shortenAddress(state.address) : null,
   };
 }
