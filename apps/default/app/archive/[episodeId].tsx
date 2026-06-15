@@ -41,10 +41,9 @@ export default function ArchiveDetailScreen() {
   );
 
   const [showReveal, setShowReveal] = useState(false);
-  const [paywallDismissed, setPaywallDismissed] = useState(false);
 
   const hasAccess = Boolean(run) || Boolean(isUnlocked);
-  const showPaywall = !hasAccess && !paywallDismissed;
+  const showPaywall = !hasAccess;
 
   if (!episodeId) {
     return (
@@ -115,7 +114,8 @@ export default function ArchiveDetailScreen() {
             figureName={episode.figure.canonicalName}
             identityId={identityId ?? ""}
             walletAddress={wallet.address}
-            onUnlockComplete={() => setPaywallDismissed(true)}
+            onUnlockComplete={() => {}} // isUnlocked query will auto-update
+            onConnectWallet={() => wallet.connect()}
           />
         ) : (
           <>

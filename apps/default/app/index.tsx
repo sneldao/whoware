@@ -589,6 +589,23 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
   const solvedSceneImageUrl = episode.scenes[episode.scenes.length - 1]?.imageUrl ?? currentScene.imageUrl;
   const solvedToday = isSolved && streak.current > 0;
   const runFinished = isSolved || isExhausted;
+  const revealFigure = useMemo(() => {
+    if (solvedFigure) return solvedFigure;
+    if (isExhausted && episode?.figureId) {
+      const f = figures.find((fig) => fig._id === episode.figureId);
+      if (f) return { name: f.canonicalName, figureId: f._id };
+    }
+    return null;
+  }, [solvedFigure, isExhausted, episode?.figureId, figures]);
+
+  const handleShareResult = useCallback(async () => {
+    const url = Platform.OS === "web" ? window.location.href : "https://whoware.vercel.app";
+    try {
+      await navigator.share({ title: "WhoWare", text: "I solved today's WhoWare!", url });
+    } catch {
+      // Share cancelled or not supported
+    }
+  }, []);
 
   const accessibleScenes = useMemo(() => {
     if (!episode) return [];
@@ -673,10 +690,16 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
               <View style={styles.logoMark}>
                 <Ionicons name="eye" size={22} color="#111827" />
               </View>
-              <View>
+              <View style={styles.brandTextCol}>
                 <Text style={styles.brand}>WhoWare</Text>
                 <Text style={styles.drop}>Daily embodied history ritual</Text>
               </View>
+              {archiveCount > 0 && (
+                <Pressable style={styles.archiveBadge} href="/archive">
+                  <Ionicons name="archive-outline" size={11} color="#FFF7ED" />
+                  <Text style={styles.archiveBadgeText}>{archiveCount}</Text>
+                </Pressable>
+              )}
             </View>
             <IdentitySection
               walletAddress={wallet.address}
@@ -696,6 +719,19 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
             <Text style={styles.headline}>Someone changed history{"\n"}from this room.</Text>
             <Text style={styles.subhead}>{status}</Text>
             <IdentityCountdown isSolved={isSolved} dropsAt={countdownTarget} statusLabel={countdownLabel} />
+
+            {runFinished && archiveCount > 0 && (
+              <View style={styles.suggestionsCard}>
+                <Pressable style={styles.suggestionRow} href="/archive">
+                  <Ionicons name="archive-outline" size={14} color="#A78BFA" />
+                  <Text style={styles.suggestionText}>{archiveCount} past episode{archiveCount !== 1 ? 's' : ''} to explore</Text>
+                </Pressable>
+                <Pressable style={styles.suggestionRow} href="/curator">
+                  <Ionicons name="layers" size={14} color="#A78BFA" />
+                  <Text style={styles.suggestionText}>How episodes are made</Text>
+                </Pressable>
+              </View>
+            )}
 
             <StreakBanner current={streak.current} best={streak.best} solvedToday={solvedToday} />
 
@@ -739,7 +775,7 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
           </View>
         </View>
 
-        {isSolved && solvedRun ? (
+        {isSolved && solvedRun && (
           <>
             <ResultShareCard
               episodeNumber={episodeNumber}
@@ -767,7 +803,43 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
               <SmartAccountBadge isUpgraded={true} isUpgrading={false} onUpgrade={async () => true} />
             )}
           </>
-        ) : null}
+        )}
+        {isSolved && (
+          <View style={styles.nextActionsRow}>
+            <Pressable style={styles.nextActionButton} href="/archive">
+              <Ionicons name="archive-outline" size={14} color="#FFF7ED" />
+              <Text style={styles.nextActionText}>Archive</Text>
+            </Pressable>
+            <Pressable style={styles.nextActionButton} onPress={handleShareResult}>
+              <Ionicons name="share-outline" size={14} color="#FFF7ED" />
+              <Text style={styles.nextActionText}>Share</Text>
+            </Pressable>
+            <Pressable style={styles.nextActionButton} onPress={() => setHistoryOpen(true)}>
+              <Ionicons name="list-outline" size={14} color="#FFF7ED" />
+              <Text style={styles.nextActionText}>History</Text>
+            </Pressable>
+            <Pressable style={styles.nextActionButton}>
+              <Ionicons name="calendar-outline" size={14} color="#FFF7ED" />
+              <Text style={styles.nextActionText}>Tomorrow</Text>
+            </Pressable>
+          </View>
+        )}
+        {isExhausted && (
+          <View style={styles.exhaustedCard}>
+            <Text style={styles.exhaustedTitle}>Case exhausted</Text>
+            <Text style={styles.exhaustedSub}>All guesses exhausted. The identity is revealed above — the archive holds what remains.</Text>
+            <View style={styles.nextActionsRow}>
+              <Pressable style={styles.nextActionButton} href="/archive">
+                <Ionicons name="archive-outline" size={14} color="#FFF7ED" />
+                <Text style={styles.nextActionText}>Learn more in archive</Text>
+              </Pressable>
+              <Pressable style={styles.nextActionButton}>
+                <Ionicons name="calendar-outline" size={14} color="#FFF7ED" />
+                <Text style={styles.nextActionText}>Try again tomorrow</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {!hasEnteredMemory ? (
           <>
@@ -1053,8 +1125,8 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
         />
       </ScrollView>
 
-      {isSolved && !revealDismissed && solvedFigure && (() => {
-        const figure = figures.find((f) => f._id === solvedFigure.figureId);
+      {(isSolved || isExhausted) && !revealDismissed && revealFigure && (() => {
+        const figure = figures.find((f) => f._id === revealFigure.figureId);
         return (
           <EnhancedIdentityReveal
             figureName={solvedFigure.name}
@@ -1506,5 +1578,86 @@ const styles = StyleSheet.create({
     color: "rgba(239, 68, 68, 0.6)",
     fontSize: 12,
     fontWeight: "700",
+  },
+  brandTextCol: {
+    flex: 1,
+  },
+  archiveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(251, 191, 36, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(251, 191, 36, 0.2)",
+  },
+  archiveBadgeText: {
+    color: "#FFF7ED",
+    fontSize: 12,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+  },
+  suggestionsCard: {
+    padding: 14,
+    gap: 10,
+    borderRadius: 18,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(167, 139, 250, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(167, 139, 250, 0.12)",
+  },
+  suggestionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  suggestionText: {
+    color: "rgba(255, 247, 237, 0.7)",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  nextActionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  nextActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 247, 237, 0.1)",
+  },
+  nextActionText: {
+    color: "#FFF7ED",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  exhaustedCard: {
+    padding: 18,
+    gap: 12,
+    borderRadius: 22,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(239, 68, 68, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.15)",
+  },
+  exhaustedTitle: {
+    color: "#FCA5A5",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  exhaustedSub: {
+    color: "rgba(255, 247, 237, 0.55)",
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 19,
   },
 });

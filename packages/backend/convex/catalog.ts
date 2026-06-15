@@ -4,6 +4,27 @@ import { v } from "convex/values";
 
 const VENICE_CHAT_URL = "https://api.venice.ai/api/v1/chat/completions";
 const VENICE_IMAGE_URL = "https://api.venice.ai/api/v1/images/generations";
+const REPLICATE_API_URL = "https://api.replicate.com/v1";
+const REPLICATE_FLUX_VERSION = "609793a667ed94b210242837d3c3c9fc9a64ae93685f15d75002ba0ed9a97f2b";
+const REPLICATE_LLAMA_VERSION = "fbfb20b472b2f3bdd101412a9f70a0ed4fc0ced78a77ff00970ee7a2383c575d";
+
+const CHAT_PRIMARY_TIMEOUT_MS = 30_000;
+const CHAT_FALLBACK_TIMEOUT_MS = 60_000;
+const IMAGE_PRIMARY_TIMEOUT_MS = 30_000;
+const IMAGE_FALLBACK_TIMEOUT_MS = 90_000;
+
+function isTransient(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  if (msg.includes("insufficient")) return true; // 402 billing
+  if (msg.includes("timeout") || msg.includes("timed out")) return true;
+  if (msg.includes("network") || msg.includes("fetch failed")) return true;
+  if (msg.includes("rate limit") || msg.includes("429")) return true;
+  if (msg.includes("500") || msg.includes("502") || msg.includes("503") || msg.includes("504")) return true;
+  if (msg.includes("503") || msg.includes("service unavailable")) return true;
+  if (msg.includes("empty response") || msg.includes("no image")) return true;
+  return false;
+}
 
 const figureTier = v.union(v.literal("iconic"), v.literal("field"), v.literal("research"));
 
@@ -501,66 +522,232 @@ function buildImagePrompt(scene: { panoramaPrompt: string; location: string; era
   return `Equirectangular cylindrical equidistant projection, seamless 360 panorama, first-person perspective, ${scene.location}, ${scene.era}. ${scene.panoramaPrompt}. No faces, no readable text, no anachronisms, no portraits of the historical figure. Photorealistic, cinematic lighting, atmospheric depth.`;
 }
 
-async function callVeniceChat(apiKey: string, systemPrompt: string, userMessage: string): Promise<string> {
-  const response = await fetch(VENICE_CHAT_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "venice-uncensored",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userMessage },
-      ],
-      max_tokens: 4000,
-      temperature: 0.6,
-    }),
-  });
+async function replicatePredict<T = unknown>(
+  version: string,
+  input: Record<string, unknown>,
+  timeoutMs = 90_000,
+): Promise<T> {
+  const replicateToken = process.env.REPLICATE_API_TOKEN;
+  if (!replicateToken) throw new Error("REPLICATE_API_TOKEN is not configured");
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Venice chat error: ${response.status} ${body}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let createRes: Response;
+  try {
+    createRes = await fetch(`${REPLICATE_API_URL}/predictions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${replicateToken}`,
+        Prefer: "wait",
+      },
+      body: JSON.stringify({ version, input }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    throw new Error(`Replicate network error: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
+  let prediction = (await createRes.json().catch(() => ({}))) as {
+    id?: string;
+    status?: string;
+    output?: T;
+    error?: string | null;
+    detail?: string;
   };
 
+  if (createRes.status >= 400 && (!prediction.id || (prediction.status !== "starting" && prediction.status !== "processing"))) {
+    clearTimeout(timer);
+    throw new Error(`Replicate create error: ${createRes.status} ${JSON.stringify(prediction)}`);
+  }
+
+  const id = prediction.id;
+  if (!id) {
+    clearTimeout(timer);
+    throw new Error(`Replicate returned no prediction id: ${createRes.status}`);
+  }
+
+  const deadline = Date.now() + timeoutMs;
+  while (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
+    if (Date.now() > deadline) {
+      await fetch(`${REPLICATE_API_URL}/predictions/${id}/cancel`, {
+        method: "POST",
+        headers: { Authorization: `Token ${replicateToken}` },
+      }).catch(() => undefined);
+      clearTimeout(timer);
+      throw new Error("Replicate prediction timed out");
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+    const pollRes = await fetch(`${REPLICATE_API_URL}/predictions/${id}`, {
+      headers: { Authorization: `Token ${replicateToken}` },
+    });
+    if (!pollRes.ok) {
+      const body = await pollRes.text();
+      clearTimeout(timer);
+      throw new Error(`Replicate poll error: ${pollRes.status} ${body}`);
+    }
+    prediction = (await pollRes.json()) as typeof prediction;
+  }
+
+  clearTimeout(timer);
+
+  if (prediction.status !== "succeeded") {
+    throw new Error(`Replicate prediction ${prediction.status}: ${prediction.error ?? "unknown"}`);
+  }
+
+  return prediction.output as T;
+}
+
+async function veniceChat(apiKey: string, systemPrompt: string, userMessage: string): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CHAT_PRIMARY_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(VENICE_CHAT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "venice-uncensored",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        max_tokens: 4000,
+        temperature: 0.6,
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    throw new Error(`Venice network error: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  const body = await response.text();
+  clearTimeout(timer);
+
+  if (!response.ok) throw new Error(`Venice chat error: ${response.status} ${body}`);
+
+  const data = JSON.parse(body) as { choices?: Array<{ message?: { content?: string } }> };
   const content = data.choices?.[0]?.message?.content?.trim();
   if (!content) throw new Error("Venice returned empty response");
   return content;
 }
 
-async function callVeniceImage(apiKey: string, prompt: string): Promise<string> {
-  const response = await fetch(VENICE_IMAGE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+async function replicateChat(systemPrompt: string, userMessage: string): Promise<string> {
+  const combinedPrompt = `[INST] ${systemPrompt}\n\n${userMessage} [/INST]`;
+  const output = await replicatePredict<string | string[]>(
+    REPLICATE_LLAMA_VERSION,
+    {
+      prompt: combinedPrompt,
+      max_tokens: 2048,
+      temperature: 0.6,
+      top_p: 0.9,
     },
-    body: JSON.stringify({
-      prompt: prompt.slice(0, 1500),
-      size: "1792x1024",
-      response_format: "b64_json",
-      output_format: "webp",
-      n: 1,
-    }),
-  });
+    CHAT_FALLBACK_TIMEOUT_MS,
+  );
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Venice image error: ${response.status} ${body}`);
+  if (Array.isArray(output)) return output.map((t) => String(t)).join("").trim();
+  if (typeof output === "string") return output.trim();
+  throw new Error("Replicate chat returned empty output");
+}
+
+async function callVeniceChat(apiKey: string, systemPrompt: string, userMessage: string): Promise<string> {
+  try {
+    return await veniceChat(apiKey, systemPrompt, userMessage);
+  } catch (primaryErr) {
+    if (!isTransient(primaryErr)) throw primaryErr;
+    if (!process.env.REPLICATE_API_TOKEN) throw primaryErr;
+    console.warn(
+      `[ai-fallback] Venice chat failed (${primaryErr instanceof Error ? primaryErr.message : String(primaryErr)}) — falling back to Replicate`,
+    );
+    return await replicateChat(systemPrompt, userMessage);
+  }
+}
+
+async function veniceImage(apiKey: string, prompt: string): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), IMAGE_PRIMARY_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(VENICE_IMAGE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "z-image-turbo",
+        prompt: prompt.slice(0, 1500),
+        size: "1792x1024",
+        response_format: "b64_json",
+        output_format: "webp",
+        n: 1,
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    throw new Error(`Venice network error: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  const data = (await response.json()) as {
-    data?: Array<{ b64_json?: string }>;
-  };
+  const body = await response.text();
+  clearTimeout(timer);
 
+  if (!response.ok) throw new Error(`Venice image error: ${response.status} ${body}`);
+
+  const data = JSON.parse(body) as { data?: Array<{ b64_json?: string }> };
   const b64 = data.data?.[0]?.b64_json;
   if (!b64) throw new Error("Venice returned no image data");
   return b64;
+}
+
+async function replicateImageToB64(prompt: string): Promise<string> {
+  const output = await replicatePredict<string | string[]>(
+    REPLICATE_FLUX_VERSION,
+    {
+      prompt: prompt.slice(0, 1500),
+      aspect_ratio: "16:9",
+      output_format: "webp",
+      output_quality: 85,
+      safety_tolerance: 6,
+      prompt_upsampling: false,
+    },
+    IMAGE_FALLBACK_TIMEOUT_MS,
+  );
+
+  const url = Array.isArray(output) ? output[0] : output;
+  if (!url) throw new Error("Replicate returned no image URL");
+
+  const imageRes = await fetch(url);
+  if (!imageRes.ok) throw new Error(`Replicate image fetch error: ${imageRes.status}`);
+  const arrayBuffer = await imageRes.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function generatePanoramaImage(apiKey: string, prompt: string): Promise<string> {
+  try {
+    return await veniceImage(apiKey, prompt);
+  } catch (primaryErr) {
+    if (!isTransient(primaryErr)) throw primaryErr;
+    if (!process.env.REPLICATE_API_TOKEN) throw primaryErr;
+    console.warn(
+      `[ai-fallback] Venice image failed (${primaryErr instanceof Error ? primaryErr.message : String(primaryErr)}) — falling back to Replicate`,
+    );
+    return await replicateImageToB64(prompt);
+  }
 }
 
 function parseJsonFromResponse(raw: string): { scenes: Array<Record<string, unknown>> } {
@@ -674,7 +861,7 @@ export const generateEpisode = action({
         prompt = `${prompt} IMPORTANT: Avoid these issues: ${evaluation.issues.join(". ")}.`;
       }
 
-      const b64 = await callVeniceImage(apiKey, prompt);
+      const b64 = await generatePanoramaImage(apiKey, prompt);
 
       const binary = atob(b64);
       const bytes = new Uint8Array(binary.length);
@@ -726,7 +913,7 @@ export const regenerateScene = action({
       era: scene.era,
     });
 
-    const b64 = await callVeniceImage(apiKey, prompt);
+    const b64 = await generatePanoramaImage(apiKey, prompt);
 
     const binary = atob(b64);
     const bytes = new Uint8Array(binary.length);

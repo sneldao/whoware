@@ -134,6 +134,11 @@ export default function AnalyticsPage() {
             <Text style={styles.emptyText}>No recent solves</Text>
           )}
         </View>
+
+        <Pressable style={styles.gameBridgeButton} href="/">
+          <Ionicons name="arrow-back" size={16} color="#111827" />
+          <Text style={styles.gameBridgeText}>Back to today's puzzle</Text>
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -302,5 +307,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     padding: 16,
+  },
+  gameBridgeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    backgroundColor: "#FBBF24",
+    marginBottom: 20,
+  },
+  gameBridgeText: {
+    color: "#111827",
+    fontSize: 15,
+    fontWeight: "900",
   },
 });

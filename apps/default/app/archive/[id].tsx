@@ -61,6 +61,7 @@ export default function ArchiveDetailScreen() {
             identityId={identityId}
             walletAddress={wallet.address}
             onUnlockComplete={() => setUnlockedLocally(true)}
+            onConnectWallet={() => wallet.connect()}
           />
         </ScrollView>
       </View>

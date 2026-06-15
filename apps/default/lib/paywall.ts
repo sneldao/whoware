@@ -61,6 +61,12 @@ export async function switchToPolygonAmoy(): Promise<boolean> {
   }
 }
 
+export async function ensureCorrectNetwork(): Promise<boolean> {
+  const chainId = await getCurrentChainId();
+  if (chainId === polygonAmoy.id) return true;
+  return switchToPolygonAmoy();
+}
+
 export async function getCurrentChainId(): Promise<number | null> {
   if (typeof window === "undefined" || !(window as any).ethereum) return null;
   try {

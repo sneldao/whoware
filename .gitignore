@@ -42,6 +42,7 @@ yarn-error.*
 # local tool directories
 .agents/
 .qoder/
+.commandcode/
 plans/
 skills-lock.json
 

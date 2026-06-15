@@ -7,6 +7,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { sendArchivePayment } from "@/lib/paywall";
 import type { Address } from "viem";
 
+const CONVEX_API_BASE = process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? "https://colorless-seal-981.convex.site";
+
 interface PaymentMetadata {
   required: boolean;
   amount: string;
@@ -22,9 +24,10 @@ interface ArchivePaywallProps {
   identityId: string;
   walletAddress: string | null;
   onUnlockComplete: () => void;
+  onConnectWallet: () => void;
 }
 
-type PaywallState = "idle" | "checking" | "paying" | "verifying" | "error";
+type PaywallState = "idle" | "checking" | "switching_network" | "paying" | "verifying" | "confirmed" | "error";
 
 const POLYGON_EXPLORER_BASE = "https://amoy.polygonscan.com/tx";
 
@@ -34,6 +37,7 @@ export function ArchivePaywall({
   identityId,
   walletAddress,
   onUnlockComplete,
+  onConnectWallet,
 }: ArchivePaywallProps) {
   const [state, setState] = useState<PaywallState>("checking");
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -48,12 +52,13 @@ export function ArchivePaywall({
       setState("idle");
       return;
     }
+    let cancelled = false;
     async function checkAccess() {
       try {
-        const baseUrl = window.location.origin;
         const res = await fetch(
-          `${baseUrl}/api/archive/${episodeId}?identityId=${encodeURIComponent(identityId)}`,
+          `${CONVEX_API_BASE}/api/archive/${episodeId}?identityId=${encodeURIComponent(identityId)}`,
         );
+        if (cancelled) return;
         if (res.status === 402) {
           const body = await res.json();
           setPaymentMeta(body.payment);
@@ -66,10 +71,11 @@ export function ArchivePaywall({
           setState("idle");
         }
       } catch {
-        setState("idle");
+        if (!cancelled) setState("idle");
       }
     }
     checkAccess();
+    return () => { cancelled = true; };
   }, [episodeId, identityId, onUnlockComplete]);
 
   async function handlePay() {
@@ -78,9 +84,20 @@ export function ArchivePaywall({
       return;
     }
 
-    setState("paying");
     setError(null);
 
+    // Step 1: Ensure correct network
+    setState("switching_network");
+    const { ensureCorrectNetwork } = await import("@/lib/paywall");
+    const onNetwork = await ensureCorrectNetwork();
+    if (!onNetwork) {
+      setState("error");
+      setError("Could not switch to Polygon Amoy. Add the network in your wallet and try again.");
+      return;
+    }
+
+    // Step 2: Send payment
+    setState("paying");
     const hash = await sendArchivePayment(walletAddress as Address);
     if (!hash) {
       setState("error");
@@ -91,6 +108,7 @@ export function ArchivePaywall({
     setTxHash(hash);
     setState("verifying");
 
+    // Step 3: Verify on-chain
     try {
       const success = await verifyAndUnlock({
         identityId,
@@ -99,7 +117,9 @@ export function ArchivePaywall({
       });
 
       if (success) {
-        onUnlockComplete();
+        setState("confirmed");
+        // Auto-dismiss after showing success state
+        setTimeout(() => onUnlockComplete(), 2000);
       } else {
         setState("error");
         setError("Payment verification failed. The transaction may still be pending.");
@@ -129,62 +149,88 @@ export function ArchivePaywall({
       ) : (
         <>
           <View style={styles.iconContainer}>
-            <Ionicons name="lock-closed" size={40} color="rgba(251, 191, 36, 0.7)" />
+            <Ionicons name={state === "confirmed" ? "lock-open" : "lock-closed"} size={40} color={state === "confirmed" ? "#22C55E" : "rgba(251, 191, 36, 0.7)"} />
           </View>
 
-          <Text style={styles.title}>Archive Locked</Text>
-          <Text style={styles.subtitle}>
-            This closed case is sealed. Pay {amount} {label} to unlock the full
-            investigation — scenes, leaderboard, and identity reveal.
-          </Text>
+          {state === "confirmed" ? (
+            <>
+              <Text style={[styles.title, { color: "#22C55E" }]}>Archive Unlocked</Text>
+              <Text style={styles.subtitle}>
+                Payment confirmed. Opening the case file…
+              </Text>
+              <View style={styles.statusRow}>
+                <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+                <Text style={[styles.statusText, { color: "#22C55E" }]}>1 USDC paid · verified on Polygon</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>Archive Locked</Text>
+              <Text style={styles.subtitle}>
+                This closed case is sealed. Pay {amount} {label} to unlock the full
+                investigation — scenes, leaderboard, and identity reveal.
+              </Text>
 
-          {had402 && (
-            <View style={styles.x402Tag}>
-              <Ionicons name="flash" size={12} color="#22C55E" />
-              <Text style={styles.x402Text}>HTTP 402 Payment Required</Text>
-            </View>
+              {had402 && (
+                <View style={styles.x402Tag}>
+                  <Ionicons name="flash" size={12} color="#22C55E" />
+                  <Text style={styles.x402Text}>HTTP 402 Payment Required</Text>
+                </View>
+              )}
+
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Price</Text>
+                <Text style={styles.priceValue}>{amount} {label}</Text>
+                <View style={styles.chainBadge}>
+                  <Text style={styles.chainBadgeText}>Polygon Amoy</Text>
+                </View>
+              </View>
+
+              {state === "idle" || state === "error" ? (
+                walletAddress ? (
+                  <Pressable
+                    onPress={handlePay}
+                    style={({ pressed }) => [
+                      styles.payButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Ionicons name="wallet" size={18} color="#111827" />
+                    <Text style={styles.payButtonText}>Unlock for {amount} {label}</Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={onConnectWallet}
+                    style={({ pressed }) => [
+                      styles.payButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Ionicons name="wallet" size={18} color="#111827" />
+                    <Text style={styles.payButtonText}>Connect wallet</Text>
+                  </Pressable>
+                )
+              ) : null}
+            </>
           )}
 
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Price</Text>
-            <Text style={styles.priceValue}>{amount} {label}</Text>
-            <View style={styles.chainBadge}>
-              <Text style={styles.chainBadgeText}>Polygon Amoy</Text>
+          {state === "switching_network" ? (
+            <View style={styles.statusRow}>
+              <Ionicons name="hourglass" size={16} color="#A78BFA" />
+              <Text style={styles.statusText}>Switching to Polygon Amoy…</Text>
             </View>
-          </View>
-
-          <View style={styles.featureRow}>
-            <Ionicons name="flash" size={14} color="#22C55E" />
-            <Text style={styles.featureText}>Gas paid in USDC via 1Shot Permissionless Relayer</Text>
-          </View>
-
-          {state === "idle" || state === "error" ? (
-            <Pressable
-              onPress={handlePay}
-              disabled={!walletAddress}
-              style={({ pressed }) => [
-                styles.payButton,
-                pressed && styles.pressed,
-                !walletAddress && styles.disabledButton,
-              ]}
-            >
-              <Ionicons name="wallet" size={18} color="#111827" />
-              <Text style={styles.payButtonText}>
-                {walletAddress ? `Unlock for ${amount} ${label}` : "Connect wallet first"}
-              </Text>
-            </Pressable>
           ) : null}
 
           {state === "paying" ? (
             <View style={styles.statusRow}>
-              <Ionicons name="hourglass" size={16} color="#A78BFA" />
+              <Ionicons name="hourglass" size={16} color="#FBBF24" />
               <Text style={styles.statusText}>Confirm payment in your wallet…</Text>
             </View>
           ) : null}
 
           {state === "verifying" ? (
             <View style={styles.statusRow}>
-              <Ionicons name="hourglass" size={16} color="#A78BFA" />
+              <Ionicons name="sync" size={16} color="#A78BFA" />
               <Text style={styles.statusText}>Verifying payment on Polygon…</Text>
             </View>
           ) : null}
@@ -196,10 +242,10 @@ export function ArchivePaywall({
             </View>
           ) : null}
 
-          {txHash ? (
+          {state === "error" && txHash ? (
             <Pressable onPress={openExplorer} style={styles.explorerLink}>
               <Ionicons name="open-outline" size={12} color="rgba(255, 247, 237, 0.5)" />
-              <Text style={styles.explorerText}>View transaction</Text>
+              <Text style={styles.explorerText}>View transaction on explorer</Text>
             </Pressable>
           ) : null}
         </>
