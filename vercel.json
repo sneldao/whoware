@@ -4,7 +4,6 @@
   "installCommand": "npm install --legacy-peer-deps",
   "framework": null,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://colorless-seal-981.convex.site/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/:path*", "destination": "https://colorless-seal-981.convex.site/api/:path*" }
   ]
 }
