@@ -47,7 +47,6 @@ export function SmartAccountUpgradeOverlay({
   useEffect(() => {
     if (!isVisible) {
       setCurrentStep(0);
-      setElapsed(0);
       return;
     }
 
