@@ -254,6 +254,73 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
     [figures],
   );
 
+  const revealFigure = useMemo(() => {
+    if (solvedFigure) return solvedFigure;
+    if (isExhausted && episode && "figureId" in episode && episode.figureId) {
+      const f = figures.find((fig) => fig._id === episode.figureId);
+      if (f) return { name: f.canonicalName, figureId: f._id };
+    }
+    return null;
+  }, [solvedFigure, isExhausted, episode, figures]);
+
+  const handleShareResult = useCallback(async () => {
+    const url = Platform.OS === "web" ? window.location.href : "https://whoware.vercel.app";
+    try {
+      await navigator.share({ title: "WhoWare", text: "I solved today's WhoWare!", url });
+    } catch {
+      // Share cancelled or not supported
+    }
+  }, []);
+
+  const accessibleScenes = useMemo(() => {
+    if (!episode) return [];
+    return episode.scenes.filter((scene: { isMercy?: boolean }) => isSolved || isExhausted || !scene.isMercy);
+  }, [episode, isSolved, isExhausted]);
+
+  const nextAccessibleIndex = useMemo(() => {
+    if (!episode) return -1;
+    for (let i = sceneIndex + 1; i < episode.scenes.length; i++) {
+      const s = episode.scenes[i] as { isMercy?: boolean };
+      if (!s.isMercy || isSolved || isExhausted) return i;
+    }
+    return -1;
+  }, [episode, sceneIndex, isSolved, isExhausted]);
+
+  const accessiblePosition = useMemo(() => {
+    if (!episode) return 0;
+    const idx = accessibleScenes.findIndex(
+      (s: { title: string }) => s.title === episode.scenes[sceneIndex]?.title,
+    );
+    return idx >= 0 ? idx : 0;
+  }, [episode, accessibleScenes, sceneIndex]);
+
+  const visibleScenes = useMemo<{ scene: Scene; episodeIndex: number }[]>(() => {
+    if (!episode || !hasEnteredMemory) return [];
+    return accessibleScenes
+      .map((raw: { title: string; location: string; era: string; palette: string[]; panoramaPrompt: string; imageKey?: string; imageAspectRatio?: string; detailImageKeys?: string[]; mediaKind?: "image" | "motion" | "video"; motionPrompt?: string; ambientText: string; clues: { label: string; detail: string; x: number; y: number }[] }) => {
+        const episodeIndex = episode.scenes.findIndex((s: { title: string }) => s.title === raw.title);
+        if (episodeIndex < 0 || episodeIndex > sceneIndex) return null;
+        return {
+          scene: {
+            title: raw.title,
+            location: raw.location,
+            era: raw.era,
+            palette: raw.palette,
+            panoramaPrompt: raw.panoramaPrompt,
+            imageKey: raw.imageKey,
+            imageAspectRatio: raw.imageAspectRatio,
+            detailImageKeys: raw.detailImageKeys,
+            mediaKind: raw.mediaKind,
+            motionPrompt: raw.motionPrompt,
+            ambientText: raw.ambientText,
+            clues: raw.clues,
+          },
+          episodeIndex,
+        };
+      })
+      .filter((entry): entry is { scene: Scene; episodeIndex: number } => entry !== null);
+  }, [episode, hasEnteredMemory, sceneIndex, accessibleScenes]);
+
   async function ensureRun() {
     if (!episode || !identity.identityId) {
       throw new Error("Episode or identity not ready");
@@ -589,74 +656,7 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
   const solvedSceneImageUrl = episode.scenes[episode.scenes.length - 1]?.imageUrl ?? currentScene.imageUrl;
   const solvedToday = isSolved && streak.current > 0;
   const runFinished = isSolved || isExhausted;
-  const revealFigure = useMemo(() => {
-    if (solvedFigure) return solvedFigure;
-    if (isExhausted && episode?.figureId) {
-      const f = figures.find((fig) => fig._id === episode.figureId);
-      if (f) return { name: f.canonicalName, figureId: f._id };
-    }
-    return null;
-  }, [solvedFigure, isExhausted, episode?.figureId, figures]);
-
-  const handleShareResult = useCallback(async () => {
-    const url = Platform.OS === "web" ? window.location.href : "https://whoware.vercel.app";
-    try {
-      await navigator.share({ title: "WhoWare", text: "I solved today's WhoWare!", url });
-    } catch {
-      // Share cancelled or not supported
-    }
-  }, []);
-
-  const accessibleScenes = useMemo(() => {
-    if (!episode) return [];
-    return episode.scenes.filter((scene: { isMercy?: boolean }) => runFinished || !scene.isMercy);
-  }, [episode, runFinished]);
-
-  const nextAccessibleIndex = useMemo(() => {
-    if (!episode) return -1;
-    for (let i = sceneIndex + 1; i < episode.scenes.length; i++) {
-      const s = episode.scenes[i] as { isMercy?: boolean };
-      if (!s.isMercy || runFinished) return i;
-    }
-    return -1;
-  }, [episode, sceneIndex, runFinished]);
-
   const moreMemoriesAvailable = nextAccessibleIndex >= 0;
-
-  const accessiblePosition = useMemo(() => {
-    if (!episode) return 0;
-    const idx = accessibleScenes.findIndex(
-      (s: { title: string }) => s.title === episode.scenes[sceneIndex]?.title,
-    );
-    return idx >= 0 ? idx : 0;
-  }, [episode, accessibleScenes, sceneIndex]);
-
-  const visibleScenes = useMemo<{ scene: Scene; episodeIndex: number }[]>(() => {
-    if (!episode || !hasEnteredMemory) return [];
-    return accessibleScenes
-      .map((raw: { title: string; location: string; era: string; palette: string[]; panoramaPrompt: string; imageKey?: string; imageAspectRatio?: string; detailImageKeys?: string[]; mediaKind?: "image" | "motion" | "video"; motionPrompt?: string; ambientText: string; clues: { label: string; detail: string; x: number; y: number }[] }) => {
-        const episodeIndex = episode.scenes.findIndex((s: { title: string }) => s.title === raw.title);
-        if (episodeIndex < 0 || episodeIndex > sceneIndex) return null;
-        return {
-          scene: {
-            title: raw.title,
-            location: raw.location,
-            era: raw.era,
-            palette: raw.palette,
-            panoramaPrompt: raw.panoramaPrompt,
-            imageKey: raw.imageKey,
-            imageAspectRatio: raw.imageAspectRatio,
-            detailImageKeys: raw.detailImageKeys,
-            mediaKind: raw.mediaKind,
-            motionPrompt: raw.motionPrompt,
-            ambientText: raw.ambientText,
-            clues: raw.clues,
-          },
-          episodeIndex,
-        };
-      })
-      .filter((entry): entry is { scene: Scene; episodeIndex: number } => entry !== null);
-  }, [episode, hasEnteredMemory, sceneIndex, accessibleScenes]);
 
   async function handleGenerateHint(clueLabel: string) {
     setActiveHint(null);
