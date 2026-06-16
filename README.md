@@ -2,6 +2,10 @@
 
 **Daily embodied history ritual.** Someone changed history from this room — can you name them?
 
+> **Live demo:** https://whoware-lhlw4wcza-snel.vercel.app
+> **Demo walkthrough:** see [`DEMO.md`](./DEMO.md)
+> **Treasury wallet:** see [`TREASURY.md`](./TREASURY.md)
+
 WhoWare is a daily history guessing game where you step into panoramic memory scenes, inspect contextual clues, and identify the historical figure before your guesses run out. Think Wordle meets immersive history.
 
 ## How it works
@@ -61,7 +65,7 @@ Required variables:
 - `CONVEX_DEPLOYMENT` / `EXPO_PUBLIC_CONVEX_URL` — Run `bunx convex dev` in `packages/backend/`
 - `DEPLOYER_PRIVATE_KEY` — Ethereum private key for oracle signing
 - `VENICE_API_KEY` — Sign up at [venice.ai](https://venice.ai)
-- `PAYWALL_TREASURY_ADDRESS` — Ethereum address that receives USDC payments for archive unlocks
+- `PAYWALL_TREASURY_ADDRESS` — Polygon Amoy address that receives 1 USDC payments for archive unlocks. The submission's live deployment uses a fresh wallet (`0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a`). See `TREASURY.md` for rotation.
 - `POLYGON_AMOY_RPC_URL` — Optional custom RPC URL for Polygon Amoy (defaults to public RPC)
 - `AGENTS_API_KEY` — Optional API key for `POST /api/agents/pipeline` auth (omit to skip auth)
 

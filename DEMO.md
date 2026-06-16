@@ -2,30 +2,39 @@
 
 **Tracks targeted:** Best x402 + ERC-7710, Best use of Venice AI, Best Agent
 
+**Deployed URL:** https://whoware-lhlw4wcza-snel.vercel.app
+
 ---
 
 ## Setup (5 min before recording)
 
 ```bash
-# 1. Make sure dev env is up
+# 1. Make sure you're on the latest commit
 cd /Users/udingethe/Dev/whoware
-git log --oneline -1   # should be 8b1398f
+git log --oneline -1   # should be 8b23796 or later
 
-# 2. Make one of the generated episodes "closed" so it shows in the archive
-#    with the paywall gate. Pick the most photogenic one.
-CONVEX_DEPLOY_KEY="colorless-seal-981|01d0a90a9be6ae72b801a5a03ebf66fe5e189368e26d42b4e01efd821f93978a13d46b7a67119a" \
-CONVEX_DEPLOYMENT="colorless-seal-981" npx convex run "daily:openExpired" "{}"
+# 2. Confirm the archive is populated
+curl -s https://colorless-seal-981.convex.site/api/archive/<episode-id>?identityId=test
+# Should return 402 with the treasury address below.
 
-# 3. Start the web dev server (or use the deployed URL if you have one)
-cd apps/default
-npx expo start --web --port 19006
-# open http://localhost:19006
+# 3. Open the deployed URL
+open https://whoware-lhlw4wcza-snel.vercel.app
 
 # 4. Prep a wallet with Polygon Amoy USDC
 #    - Add Polygon Amoy to MetaMask (chainId 80002)
 #    - Get test USDC: https://faucet.circle.com/ (select Amoy, USDC)
-#    - Need ~0.05 USDC for the demo unlock
+#    - Need ~0.1 USDC for the demo unlock
+#    - Have ~0.001 MATIC for gas in case the direct fallback path is used
 ```
+
+**Treasury (the address you'll be paying):**
+
+```
+0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a   (Polygon Amoy)
+```
+
+The treasury is generated fresh for this submission. See `TREASURY.md`
+for the rotation procedure.
 
 ---
 
@@ -37,11 +46,12 @@ npx expo start --web --port 19006
 > You walk into it first-person, scan for clues, and have to name the figure
 > before your guesses run out."
 
-1. Open `http://localhost:19006`
-2. Land on the daily drop. Show the panorama.
-3. Click a clue hotspot. Reveal the clue.
-4. Type a guess and submit.
-5. Show the score / result / leaderboard.
+1. Open `https://whoware-lhlw4wcza-snel.vercel.app`
+2. Skip through the onboarding (3 screens, ~15s).
+3. Land on the daily drop. Show the panorama.
+4. Click a clue hotspot. Reveal the clue.
+5. Type a guess and submit.
+6. Show the score / result / leaderboard.
 
 > "All scoring, history, and leaderboard state is real-time on Convex.
 > Scores and streaks are minted as on-chain attestations on Mantle Sepolia
@@ -55,27 +65,35 @@ npx expo start --web --port 19006
 > client does the approve + transfer on Polygon Amoy; we verify the receipt
 > on-chain and unlock the episode."
 
-Walk through `/archive`:
+Walk through `/archive` (click the "2" badge in the header — there are
+two closed episodes: Marie Curie and Ibn Battuta):
 
-1. Show the locked archive list (closed episodes).
-2. Click an episode.
+1. Show the locked archive list.
+2. Click Ibn Battuta (or Marie Curie).
 3. **Show the network:** MetaMask is on Ethereum mainnet → the paywall
    detects this, prompts to switch to Polygon Amoy.
-4. **Show the 402:** Network tab → `GET /api/archive/<id>?identityId=...` →
+4. **Show the 402:** DevTools Network tab → `GET https://colorless-seal-981.convex.site/api/archive/<id>?identityId=...` →
    response is 402 with the payment metadata:
    ```json
    {
-     "required": true,
-     "amount": "0.05",
-     "token": "USDC",
-     "recipient": "0x742d...bEb",
-     "chainId": 80002
+     "access": false,
+     "episodeId": "k172qs7br38jdyqr394bt3k5q188qbph",
+     "payment": {
+       "required": true,
+       "amount": "1",
+       "token": "0x41E94Eb019C0762f9Bfcf9FB1E58725BfB0e7582",
+       "chainId": 80002,
+       "treasury": "0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a",
+       "label": "USDC"
+     }
    }
    ```
-5. Click "Unlock for 0.05 USDC" → MetaMask pops with the USDC approval
+5. Click "Unlock for 1 USDC" → MetaMask pops with the USDC approval
    (caller approves the paywall contract to spend USDC) → then the
-   transfer tx.
-6. Show Polygonscan link: "Receipt verified on-chain, episode unlocked."
+   transfer tx to `0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a`.
+6. **Show the on-chain receipt:** Polygonscan link, e.g.
+   `https://amoy.polygonscan.com/tx/<txHash>` — shows 1 USDC Transfer
+   to the treasury address.
 7. The locked panorama/clues render.
 
 > "ERC-7710 delegation makes this repeatable: once you grant a session,
@@ -90,8 +108,10 @@ Walk through `/archive`:
 1. Open a terminal. Run:
    ```bash
    CONVEX_DEPLOY_KEY="colorless-seal-981|01d0a90a9be6ae72b801a5a03ebf66fe5e189368e26d42b4e01efd821f93978a13d46b7a67119a" \
-   CONVEX_DEPLOYMENT="colorless-seal-981" npx convex run "catalog:autonomousGenerateEpisode" '{"slug":"demo-X","sceneCount":4}'
+   CONVEX_DEPLOYMENT="colorless-seal-981" \
+     npx convex run "catalog:autonomousGenerateEpisode" '{"slug":"demo-X","sceneCount":4}'
    ```
+   (run this in `packages/backend/`)
 2. **Show the [ai-fallback] log line** — this is the resilience story:
    ```
    [ai-fallback] Venice chat failed (Venice chat error: 402 Insufficient USD or Diem balance)
@@ -134,7 +154,7 @@ or the curator queue — whichever looks best.
   and doesn't train on inputs, ideal for a public game with creative
   prompts. Primary provider for both chat (curator, scene briefs,
   evaluation, calibration) and image (panoramas).
-- **Replicate fallback**: `packages/backend/convex/catalog.ts:493` —
+- **Replicate fallback**: `packages/backend/convex/catalog.ts` —
   `isTransient()` classifier decides when to fail over (402/429/5xx/
   timeout/empty response, never validation errors). Per-call
   `AbortController` timeouts (30s primary, 60-90s fallback). Logs the
@@ -142,6 +162,10 @@ or the curator queue — whichever looks best.
 - **Mantle**: Score NFTs + streak SBTs on Mantle Sepolia for tamper-proof
   on-chain history. Commit-reveal guessing scheme for the daily drop
   prevents late-stage answer leaks.
+- **Treasury control**: We generate a fresh Polygon Amoy wallet as the
+  paywall treasury. The address is in Convex env `PAYWALL_TREASURY_ADDRESS`
+  and the 402 response carries it at runtime. Demo USDC can be swept
+  out by the maintainer after recording.
 
 ---
 

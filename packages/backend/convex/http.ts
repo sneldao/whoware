@@ -49,7 +49,7 @@ http.route({
           amount: "1",
           token: "0x41E94EB019C0762f9Bfcf9FB1E58725BfB0e7582",
           chainId: 80002,
-          treasury: process.env.PAYWALL_TREASURY_ADDRESS ?? "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb",
+          treasury: process.env.PAYWALL_TREASURY_ADDRESS ?? "0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a",
           label: "USDC",
         },
       }),
