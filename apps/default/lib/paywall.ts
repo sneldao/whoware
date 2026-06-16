@@ -6,7 +6,7 @@ export const POLYGON_AMOY_CHAIN: Chain = polygonAmoy;
 
 export const ARCHIVE_PRICE_USDC = 1_000_000n; // 1 USDC (6 decimals)
 
-export const TREASURY_ADDRESS: Address = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb";
+export const TREASURY_ADDRESS: Address = "0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a";
 
 const ERC20_TRANSFER_ABI = [
   {
@@ -86,12 +86,22 @@ export async function getCurrentChainId(): Promise<number | null> {
  * tokens rather than MATIC. No signup or pre-funding needed.
  *
  * Falls back to direct MetaMask transaction if 1Shot is unavailable.
+ *
+ * The `treasuryOverride` and `amountOverride` come from the 402 response —
+ * the server is the source of truth for the recipient and price. The
+ * defaults below match Convex env `PAYWALL_TREASURY_ADDRESS` and the
+ * hardcoded 1 USDC archive price; passing the 402 values keeps client and
+ * server in agreement if those change.
  */
 export async function sendArchivePayment(
   playerAddress: Address,
+  options: { treasuryOverride?: Address; amountOverride?: bigint } = {},
 ): Promise<string | null> {
+  const treasury = options.treasuryOverride ?? TREASURY_ADDRESS;
+  const amount = options.amountOverride ?? ARCHIVE_PRICE_USDC;
+
   // Try 1Shot Permissionless Relayer first for gasless experience
-  const transferData = encodeTransfer(TREASURY_ADDRESS, ARCHIVE_PRICE_USDC);
+  const transferData = encodeTransfer(treasury, amount);
   const taskId = await sendVia1ShotRelayer(USDC_AMOY_ADDRESS, transferData);
 
   if (taskId) {
@@ -116,7 +126,7 @@ export async function sendArchivePayment(
       address: USDC_AMOY_ADDRESS,
       abi: ERC20_TRANSFER_ABI,
       functionName: "transfer",
-      args: [TREASURY_ADDRESS, ARCHIVE_PRICE_USDC],
+      args: [treasury, amount],
     });
     return hash;
   } catch (error) {

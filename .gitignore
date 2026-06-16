@@ -43,6 +43,7 @@ yarn-error.*
 .agents/
 .qoder/
 .commandcode/
+.local/
 plans/
 skills-lock.json
 

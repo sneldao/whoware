@@ -98,7 +98,14 @@ export function ArchivePaywall({
 
     // Step 2: Send payment
     setState("paying");
-    const hash = await sendArchivePayment(walletAddress as Address);
+    const treasuryOverride = paymentMeta?.treasury as Address | undefined;
+    const amountOverride = paymentMeta?.amount
+      ? BigInt(Math.floor(parseFloat(paymentMeta.amount) * 1_000_000))
+      : undefined;
+    const hash = await sendArchivePayment(walletAddress as Address, {
+      treasuryOverride,
+      amountOverride,
+    });
     if (!hash) {
       setState("error");
       setError("Payment failed. Make sure you have USDC on Polygon Amoy.");
