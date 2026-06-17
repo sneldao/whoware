@@ -23,6 +23,23 @@ export interface Clue {
   y: number;
 }
 
+export interface SceneProp {
+  id: string;
+  kind: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale?: number;
+  clueLabel?: string;
+}
+
+export interface SceneLighting {
+  ambient: number;
+  keyColor: string;
+  keyIntensity: number;
+  fillColor?: string;
+  fillIntensity?: number;
+}
+
 export interface Scene {
   title: string;
   location: string;
@@ -37,6 +54,8 @@ export interface Scene {
   ambientText: string;
   clues: Clue[];
   imageUrl?: string;
+  props?: SceneProp[];
+  lighting?: SceneLighting;
 }
 
 interface PanoramaSceneProps {

@@ -24,6 +24,21 @@ const scene = v.object({
   clues: v.array(sceneClue),
   isMercy: v.optional(v.boolean()),
   imageUrl: v.optional(v.string()),
+  props: v.optional(v.array(v.object({
+    id: v.string(),
+    kind: v.string(),
+    position: v.array(v.number()),
+    rotation: v.array(v.number()),
+    scale: v.optional(v.number()),
+    clueLabel: v.optional(v.string()),
+  }))),
+  lighting: v.optional(v.object({
+    ambient: v.number(),
+    keyColor: v.string(),
+    keyIntensity: v.number(),
+    fillColor: v.optional(v.string()),
+    fillIntensity: v.optional(v.number()),
+  })),
 });
 
 export default defineSchema({

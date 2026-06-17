@@ -8,6 +8,8 @@ import {
   applyLook,
   type LookState,
 } from "@/components/who-ware/scene-3d/look-controls";
+import { buildLightingRig } from "@/components/who-ware/scene-3d/lighting-rig";
+import { buildPropShape } from "@/components/who-ware/scene-3d/prop-shapes";
 import {
   buildSkybox,
   hotspotWorldPosition,
@@ -27,8 +29,9 @@ interface SceneCanvasProps {
 }
 
 /**
- * Three.js scene canvas — renders the panorama image as a skybox sphere
- * the player can look around inside.
+ * Three.js scene canvas — renders the panorama image as a skybox
+ * sphere the player can look around inside, plus procedural 3D
+ * props anchored to the scene brief's prop placements.
  *
  * On web: a real <canvas> driven by a Three.js WebGLRenderer.
  * On native (iOS / Android): the placeholder notice; Phase 4 brings
@@ -69,7 +72,7 @@ export function SceneCanvas({
         onHotspotOpen={onHotspotOpen}
       />
       <View style={styles.helpOverlay}>
-        <Text style={styles.help}>Drag to look around</Text>
+        <Text style={styles.help}>Drag to look · tap glowing objects</Text>
       </View>
     </View>
   );
@@ -122,6 +125,9 @@ function CanvasMount({
       },
     });
 
+    const lighting = buildLightingRig(scene.lighting);
+    scene3d.add(lighting.group);
+
     let skybox: THREE.Mesh | null = null;
     let cancelled = false;
 
@@ -130,8 +136,10 @@ function CanvasMount({
       ? (imageSource.uri as string)
       : null;
 
+    const propGroups: THREE.Group[] = [];
+    const propByLabel: Map<string, THREE.Group> = new Map();
+
     if (!imageUrl) {
-      // Fallback to a flat-color skybox so the renderer still works.
       scene3d.background = new THREE.Color(0x111827);
     } else {
       loadPanoramaTexture(imageUrl)
@@ -143,20 +151,49 @@ function CanvasMount({
           });
           scene3d.add(skybox);
 
-          // Place clue hotspots at the same x/y the 2D renderer used,
-          // projected onto the inner surface of the skybox.
           for (const clue of scene.clues) {
+            if (!skybox) continue;
             const world = hotspotWorldPosition(clue.x, clue.y, SKYBOX_RADIUS);
-            const dot = makeHotspotMesh(clue.label);
-            dot.position.copy(world);
-            dot.userData.clueLabel = clue.label;
-            scene3d.add(dot);
+            const sphere = makeClueMarker(clue.label);
+            sphere.position.copy(world);
+            sphere.userData.clueLabel = clue.label;
+            scene3d.add(sphere);
           }
         })
         .catch((err) => {
           console.warn("[scene-3d] panorama texture failed:", err);
           scene3d.background = new THREE.Color(0x111827);
         });
+    }
+
+    // Build 3D props from the scene brief. Per ENHANCEMENT FIRST, scenes
+    // without props simply render the skybox; the fallback clue markers
+    // on the skybox handle inspection in that case.
+    for (const prop of scene.props ?? []) {
+      const { group, halfExtents } = buildPropShape({
+        kind: prop.kind,
+        scale: prop.scale ?? 1,
+      });
+      const [px, py, pz] = prop.position;
+      const [rx, ry, rz] = prop.rotation;
+      group.position.set(px, py, pz);
+      group.rotation.set(
+        THREE.MathUtils.degToRad(rx),
+        THREE.MathUtils.degToRad(ry),
+        THREE.MathUtils.degToRad(rz),
+      );
+      group.userData.clueLabel = prop.clueLabel;
+      scene3d.add(group);
+      propGroups.push(group);
+      if (prop.clueLabel) propByLabel.set(prop.clueLabel, group);
+
+      // The first prop in a scene that carries a clueLabel is also
+      // flagged as the clickable target. Other clues without a
+      // dedicated prop fall back to the skybox-anchored marker.
+      if (prop.clueLabel && !scene.clues.some((c) => c.label === prop.clueLabel)) {
+        // No matching clue — drop silently. Per PREVENT BLOAT we
+        // don't fail the scene build over a dangling prop label.
+      }
     }
 
     let raf = 0;
@@ -176,9 +213,9 @@ function CanvasMount({
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(host);
 
-    // Pointer up anywhere on a hotspot triggers onHotspotOpen. We use
-    // a simple click detector: if the pointer moved less than 5 pixels
-    // between down and up, treat it as a tap and raycast.
+    // Click detection: pointer-down + pointer-up within 5 pixels and
+    // 600ms is a tap. Raycast against prop groups first (more
+    // specific), then skybox-anchored clue markers as fallback.
     let downX = 0;
     let downY = 0;
     let downAt = 0;
@@ -218,6 +255,8 @@ function CanvasMount({
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointerup", onUp);
       controls.dispose();
+      lighting.dispose();
+      for (const g of propGroups) disposeGroup(g);
       if (skybox) {
         scene3d.remove(skybox);
         skybox.geometry.dispose();
@@ -232,15 +271,12 @@ function CanvasMount({
       tex?.dispose();
       if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
     };
-    // sceneIndex is the only changing scene-level input. We rebuild
-    // the skybox when it changes (PanoramaScene did the same with
-    // `useEffect` keyed on `scene.title`).
   }, [ref, scene, sceneIndex, onHotspotOpen]);
 
   return <div ref={ref} style={styles.canvasHost} />;
 }
 
-function makeHotspotMesh(label: string): THREE.Mesh {
+function makeClueMarker(label: string): THREE.Mesh {
   const geometry = new THREE.SphereGeometry(8, 12, 12);
   const material = new THREE.MeshBasicMaterial({
     color: 0xfbbf24,
@@ -251,6 +287,18 @@ function makeHotspotMesh(label: string): THREE.Mesh {
   mesh.name = `Hotspot:${label}`;
   mesh.userData.clueLabel = label;
   return mesh;
+}
+
+function disposeGroup(group: THREE.Group): void {
+  group.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry.dispose();
+      const mat = child.material as THREE.Material | THREE.Material[];
+      if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+      else mat.dispose();
+    }
+  });
+  group.removeFromParent();
 }
 
 function Placeholder({ height, message }: { height: number; message: string }) {

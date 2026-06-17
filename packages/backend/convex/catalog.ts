@@ -1,6 +1,7 @@
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
+import { isKnownPropKind } from "./props";
 
 const VENICE_CHAT_URL = "https://api.venice.ai/api/v1/chat/completions";
 const VENICE_IMAGE_URL = "https://api.venice.ai/api/v1/images/generations";
@@ -35,6 +36,23 @@ const sceneClueShape = v.object({
   y: v.number(),
 });
 
+const scenePropShape = v.object({
+  id: v.string(),
+  kind: v.string(),
+  position: v.array(v.number()),
+  rotation: v.array(v.number()),
+  scale: v.optional(v.number()),
+  clueLabel: v.optional(v.string()),
+});
+
+const sceneLightingShape = v.object({
+  ambient: v.number(),
+  keyColor: v.string(),
+  keyIntensity: v.number(),
+  fillColor: v.optional(v.string()),
+  fillIntensity: v.optional(v.number()),
+});
+
 const sceneBriefShape = v.object({
   title: v.string(),
   location: v.string(),
@@ -45,6 +63,8 @@ const sceneBriefShape = v.object({
   ambientText: v.string(),
   clues: v.array(sceneClueShape),
   isMercy: v.optional(v.boolean()),
+  props: v.optional(v.array(scenePropShape)),
+  lighting: v.optional(sceneLightingShape),
 });
 
 // =============================================================================
@@ -265,6 +285,8 @@ export const saveSceneBriefs = internalMutation({
         ambientText: s.ambientText,
         clues: s.clues,
         isMercy: s.isMercy ?? false,
+        props: s.props,
+        lighting: s.lighting,
       })),
     });
 
@@ -324,6 +346,9 @@ export const saveRecalibratedScenes = internalMutation({
     const updated = episode.scenes.map((existing, i) => {
       const recalibrated = args.scenes[i];
       if (!recalibrated) return existing;
+      // Calibration rewrites clues + ambientText only; props and
+      // lighting are preserved from the original brief so the 3D
+      // scene composition doesn't get rewritten mid-pipeline.
       return {
         ...existing,
         clues: recalibrated.clues,
@@ -498,6 +523,22 @@ Rules:
 - Scenes 6-7 (mercy) can be more revealing — they appear only after the player has exhausted guesses.
 - Each clue must be inspectable visual detail, not abstract concept.
 
+Prop vocabulary (use ONLY these kinds; unknown props will be dropped):
+- room: floor, wall, ceiling, doorway, window, fireplace
+- furniture: desk, chair, bed, table, shelf, cabinet, sofa
+- era: candle, lantern, oil_lamp, gramophone, typewriter, telegraph,
+       vintage_radio, rotary_phone, ledger, parchment, scroll,
+       globe, telescope, sextant, hourglass, pocket_watch, compass
+- doc: book, newspaper, telegram, map, photograph, letter, journal
+- object: bottle, vase, painting, mirror, curtain, rug, statue,
+          bust, weapon, scroll, chalice, weapon_rack, bookshelf
+
+Positioning conventions:
+- The player camera sits at world origin looking down -z.
+- Place props in front of (-z) and to the sides (±x), heights (-y to +y).
+- Typical distances: 2-8 units from origin. Closer = larger in view.
+- Rotations in degrees on (x, y, z). y-rotation turns the prop to face the player.
+
 Output format: a JSON object with a "scenes" array:
 {
   "scenes": [
@@ -511,12 +552,29 @@ Output format: a JSON object with a "scenes" array:
       "clues": [
         { "label": "short visual label", "detail": "observation that narrows identity", "x": 0-100, "y": 0-100 }
       ],
-      "isMercy": false
+      "isMercy": false,
+      "props": [
+        {
+          "id": "p1",
+          "kind": "writing_desk",
+          "position": [-2.5, -0.8, -3.5],
+          "rotation": [0, 30, 0],
+          "scale": 1.0,
+          "clueLabel": "Half-written page"
+        }
+      ],
+      "lighting": {
+        "ambient": 0.3,
+        "keyColor": "#FFE4B5",
+        "keyIntensity": 1.2
+      }
     }
   ]
 }
 
-Each scene must have exactly 3 clues with x/y between 0-100.`;
+Each scene must have exactly 3 clues with x/y between 0-100 and
+between 4 and 8 props. Each clue label must be referenced by exactly
+one prop's clueLabel field (so the player can find the clue in 3D).`;
 
 function buildImagePrompt(scene: { panoramaPrompt: string; location: string; era: string }): string {
   return `Equirectangular cylindrical equidistant projection, seamless 360 panorama, first-person perspective, ${scene.location}, ${scene.era}. ${scene.panoramaPrompt}. No faces, no readable text, no anachronisms, no portraits of the historical figure. Photorealistic, cinematic lighting, atmospheric depth.`;
@@ -756,6 +814,72 @@ function parseJsonFromResponse(raw: string): { scenes: Array<Record<string, unkn
   return JSON.parse(jsonStr) as { scenes: Array<Record<string, unknown>> };
 }
 
+type ParsedProp = {
+  id: string;
+  kind: string;
+  position: [number, number, number];
+  rotation: [number, number, number];
+  scale?: number;
+  clueLabel?: string;
+};
+
+type ParsedLighting = {
+  ambient: number;
+  keyColor: string;
+  keyIntensity: number;
+  fillColor?: string;
+  fillIntensity?: number;
+};
+
+function parseProps(raw: unknown, sceneIndex: number): ParsedProp[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ParsedProp[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const r = raw[i] as Partial<ParsedProp> | null;
+    if (!r || typeof r !== "object") continue;
+    const id = typeof r.id === "string" ? r.id : `p${sceneIndex}-${i}`;
+    const kind = typeof r.kind === "string" ? r.kind : null;
+    if (!kind) continue;
+    // Drop unknown kinds — they would have no renderer mapping. Per
+    // PREVENT BLOAT we silently skip rather than crash the pipeline.
+    if (!isKnownPropKind(kind)) continue;
+    const position = isVec3(r.position)
+      ? [Number(r.position[0]), Number(r.position[1]), Number(r.position[2])]
+      : [0, 0, -3];
+    const rotation = isVec3(r.rotation)
+      ? [Number(r.rotation[0]), Number(r.rotation[1]), Number(r.rotation[2])]
+      : [0, 0, 0];
+    out.push({
+      id,
+      kind,
+      position: position as [number, number, number],
+      rotation: rotation as [number, number, number],
+      scale: typeof r.scale === "number" ? r.scale : undefined,
+      clueLabel: typeof r.clueLabel === "string" ? r.clueLabel : undefined,
+    });
+  }
+  return out;
+}
+
+function isVec3(value: unknown): value is number[] {
+  return Array.isArray(value) && value.length === 3 && value.every((n) => typeof n === "number");
+}
+
+function parseLighting(raw: unknown): ParsedLighting | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Partial<ParsedLighting>;
+  if (typeof r.ambient !== "number" || typeof r.keyColor !== "string" || typeof r.keyIntensity !== "number") {
+    return undefined;
+  }
+  return {
+    ambient: Math.max(0, Math.min(2, r.ambient)),
+    keyColor: r.keyColor,
+    keyIntensity: Math.max(0, Math.min(4, r.keyIntensity)),
+    fillColor: typeof r.fillColor === "string" ? r.fillColor : undefined,
+    fillIntensity: typeof r.fillIntensity === "number" ? r.fillIntensity : undefined,
+  };
+}
+
 export const generateEpisode = action({
   args: {
     figureId: v.id("figures"),
@@ -804,6 +928,8 @@ export const generateEpisode = action({
           }))
         : [],
       isMercy: i >= investigationCount,
+      props: parseProps(s.props, i),
+      lighting: parseLighting(s.lighting),
     }));
 
     await ctx.runMutation(internal.catalog.saveSceneBriefs, { episodeId, scenes });

@@ -23,6 +23,7 @@ import type * as mantle from "../mantle.js";
 import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as paywall from "../paywall.js";
+import type * as props from "../props.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as runs from "../runs.js";
 import type * as scoring from "../scoring.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   notifications: typeof notifications;
   paywall: typeof paywall;
+  props: typeof props;
   rateLimit: typeof rateLimit;
   runs: typeof runs;
   scoring: typeof scoring;
