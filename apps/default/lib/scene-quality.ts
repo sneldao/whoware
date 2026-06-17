@@ -92,16 +92,16 @@ function isLowPowerGpu(renderer: string): boolean {
  * Returns the renderer mode for this client. Pure function over current
  * environment — no side effects, safe to call inside React render.
  *
- * Phase 0: defaults to "panorama" so existing behaviour is preserved
- * end-to-end. Phase 1 will flip the default to "three-d" once the
- * skybox implementation lands in SceneCanvas.
+ * Phase 1: defaults to "three-d" on WebGL2-capable clients. Falls back
+ * to "panorama" on missing WebGL2, low-power GPUs, explicit user
+ * override, or non-web platforms.
  *
  * Resolution order (first match wins):
  * 1. User stored override ("three-d" / "panorama")
  * 2. Server is not web → "panorama"
  * 3. No WebGL2 support → "panorama"
  * 4. Low-power GPU detected → "panorama"
- * 5. Default → "panorama" (Phase 0)
+ * 5. Default → "three-d"
  */
 export function detectSceneQuality(): SceneQualityResult {
   if (typeof window === "undefined") {
@@ -125,7 +125,7 @@ export function detectSceneQuality(): SceneQualityResult {
     return { mode: "panorama", reason: "low-power-gpu", attempted3D: false };
   }
 
-  return { mode: "panorama", reason: "ok", attempted3D: false };
+  return { mode: "three-d", reason: "ok", attempted3D: false };
 }
 
 /** Persist a user-chosen renderer override. Called from a future settings UI. */

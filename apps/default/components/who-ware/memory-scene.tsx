@@ -42,7 +42,11 @@ export function MemoryScene({
   if (mode === "three-d") {
     return (
       <SceneCanvas
+        scene={scene}
+        sceneIndex={sceneIndex}
+        totalScenes={totalScenes}
         height={430}
+        onHotspotOpen={onHotspotOpen}
       />
     );
   }
