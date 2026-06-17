@@ -16,7 +16,7 @@ import { EnhancedIdentityReveal } from "@/components/who-ware/enhanced-identity-
 import { IdentityHintButton } from "@/components/who-ware/identity-hint-button";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { OnChainBadge } from "@/components/who-ware/on-chain-badge";
-import { PanoramaScene } from "@/components/who-ware/panorama-scene";
+import { MemoryScene } from "@/components/who-ware/memory-scene";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
 import { OnboardingFlow } from "@/components/who-ware/onboarding-flow";
 import { EnhancedSceneTransition } from "@/components/who-ware/enhanced-scene-transition";
@@ -873,7 +873,7 @@ function GameContent({ insets }: { insets: ReturnType<typeof useSafeAreaInsets> 
               era={currentScene.era}
               palette={currentScene.palette}
             >
-              <PanoramaScene
+              <MemoryScene
                 scene={currentScene}
                 sceneIndex={accessiblePosition}
                 totalScenes={accessibleScenes.length}

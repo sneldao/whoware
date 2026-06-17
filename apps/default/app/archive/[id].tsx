@@ -8,7 +8,7 @@ import { useQuery } from "convex/react";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { PanoramaScene } from "@/components/who-ware/panorama-scene";
+import { MemoryScene } from "@/components/who-ware/memory-scene";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
 import { ArchivePaywall } from "@/components/who-ware/archive-paywall";
 
@@ -103,7 +103,7 @@ export default function ArchiveDetailScreen() {
                 <Text style={styles.sceneIndex}>#{index + 1}</Text>
                 <Text style={styles.sceneTitle}>{scene.title}</Text>
               </View>
-              <PanoramaScene
+              <MemoryScene
                 scene={scene}
                 sceneIndex={index}
                 totalScenes={episode.scenes.length}

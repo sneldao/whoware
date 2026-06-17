@@ -11,7 +11,7 @@ import { useLocalSearchParams } from "expo-router";
 import { IdentityReveal } from "@/components/who-ware/identity-reveal";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
-import { PanoramaScene } from "@/components/who-ware/panorama-scene";
+import { MemoryScene } from "@/components/who-ware/memory-scene";
 import { ArchivePaywall } from "@/components/who-ware/archive-paywall";
 import { useStreak } from "@/lib/use-streak";
 import { useWallet } from "@/hooks/use-wallet";
@@ -153,7 +153,7 @@ export default function ArchiveDetailScreen() {
               {episode.scenes
                 .filter((s) => !s.isMercy)
                 .map((scene, i) => (
-                  <PanoramaScene
+                  <MemoryScene
                     key={`${scene.title}-${i}`}
                     scene={scene}
                     sceneIndex={i}
