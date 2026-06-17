@@ -46,6 +46,7 @@ yarn-error.*
 .local/
 plans/
 skills-lock.json
+/tsconfig.json
 
 # Lock files
 *.lockb
