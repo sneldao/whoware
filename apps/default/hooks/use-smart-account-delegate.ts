@@ -7,6 +7,7 @@ import {
   getEnvironment,
   signWithMetaMask,
 } from "@/lib/smart-account";
+import { MANTLE_SEPOLIA_ORACLE, MANTLE_SEPOLIA_SCORE_CONTRACT } from "@/lib/contracts";
 
 export interface UseSmartAccountDelegateParams {
   wallet: ReturnType<typeof import("./use-wallet").useWallet>;
@@ -96,10 +97,8 @@ export function useSmartAccountDelegate(
     setIsDelegating(true);
     try {
       const env = getEnvironment();
-      const oracleAddr =
-        "0xfb8a7B42070334CB196e94E542cEA13655e2f394" as `0x${string}`;
-      const scoreContract =
-        "0xd6ad76bed934ea5e5b25d635fba7889e782e691a" as `0x${string}`;
+      const oracleAddr = MANTLE_SEPOLIA_ORACLE;
+      const scoreContract = MANTLE_SEPOLIA_SCORE_CONTRACT;
       const delegation = buildMintDelegation(
         env,
         wallet.address as `0x${string}`,

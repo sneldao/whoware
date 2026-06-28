@@ -175,7 +175,8 @@ export function buildMintDelegation(
   } as any);
 }
 
-export const ORACLE_ADDRESS: Address = "0xfb8a7B42070334CB196e94E542cEA13655e2f394";
+import { MANTLE_SEPOLIA_ORACLE as ORACLE_ADDRESS } from "./contracts";
+export { ORACLE_ADDRESS };
 
 const DELEGATION_TYPES = {
   Delegation: [
