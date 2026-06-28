@@ -15,6 +15,32 @@ http.route({
     const pathParts = url.pathname.split("/").filter(Boolean);
     const episodeId = pathParts[pathParts.length - 1];
     const identityId = url.searchParams.get("identityId");
+    const detail = url.searchParams.get("detail") ?? "full";
+
+    if (detail === "summary") {
+      if (!episodeId) {
+        return new Response(JSON.stringify({ error: "Missing episodeId" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      const summary = await ctx.runQuery(api.archive.getArchiveSummary, {
+        episodeId: episodeId as any,
+      });
+      if (!summary) {
+        return new Response(JSON.stringify({ error: "Episode not found" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(summary), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    }
 
     if (!identityId || !episodeId) {
       return new Response(JSON.stringify({ error: "Missing identityId or episodeId" }), {

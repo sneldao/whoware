@@ -9,6 +9,14 @@
 | Address | `0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a` |
 | Chain | Polygon Amoy (chainId 80002) |
 | Purpose | Receives 1 USDC archive unlock payments |
+
+> **Note:** The 1 USDC payment unlocks the rich archive content (scenes,
+> imagery, hotspots, ambient text, leaderboard). Summary metadata about a
+> closed episode (figure name, era, region, tags, difficulty, scene count,
+> blurb) is publicly readable via the free
+> `GET /api/archive/:episodeId?detail=summary` endpoint and the
+> `api.archive.getArchiveSummary` Convex query — no payment required.
+
 | Env var on Convex | `PAYWALL_TREASURY_ADDRESS` |
 
 ## How to watch

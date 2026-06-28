@@ -10,9 +10,9 @@
     "dev:backend": "turbo run dev --filter=@bloom/backend",
     "dev:mobile": "turbo run dev --filter=@bloom/mobile",
     "build": "turbo run build",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
+    "lint": "node node_modules/eslint/bin/eslint.js . || turbo run lint",
+    "typecheck": "node ./node_modules/typescript/bin/tsc --noEmit -p apps/default || turbo run typecheck",
+    "test": "node node_modules/vitest/vitest.mjs run || turbo run test",
     "prepare": "husky"
   },
   "devDependencies": {

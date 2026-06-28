@@ -222,3 +222,45 @@ export const getRun = query({
       .first();
   },
 });
+
+const archiveSummaryShape = v.object({
+  slug: v.string(),
+  difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
+  figureName: v.string(),
+  era: v.string(),
+  region: v.string(),
+  tags: v.array(v.string()),
+  sceneCount: v.number(),
+  blurb: v.string(),
+});
+
+export const getArchiveSummary = query({
+  args: { episodeId: v.id("episodes") },
+  returns: v.union(archiveSummaryShape, v.null()),
+  handler: async (ctx, args) => {
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode) return null;
+
+    const figure = episode.figureId ? await ctx.db.get(episode.figureId) : null;
+
+    const figureName = figure?.canonicalName ?? episode.figureName ?? "Unknown figure";
+    const era = figure?.era ?? "";
+    const region = figure?.region ?? "";
+    const tags = figure?.tags ?? [];
+    const placeBit = [era, region].filter(Boolean).join(", ");
+    const locationBit = placeBit ? ` (${placeBit})` : "";
+    const tagsBit = tags.length > 0 ? ` — ${tags.slice(0, 3).join(", ")}` : "";
+    const blurb = `${figureName}${locationBit}${tagsBit}`;
+
+    return {
+      slug: episode.slug,
+      difficulty: episode.difficulty,
+      figureName,
+      era,
+      region,
+      tags,
+      sceneCount: episode.scenes.length,
+      blurb,
+    };
+  },
+});

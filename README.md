@@ -15,7 +15,7 @@ WhoWare is a daily history guessing game where you step into a 3D memory scene, 
 - **AI-powered hints** — Venice AI generates privacy-preserving hints that guide without spoiling
 - **Scoring by restraint** — highest scores go to players who guess with fewer memories, clues, and time
 - **On-chain verification** — score NFTs and streak tokens minted on Mantle Sepolia for tamper-proof leaderboards
-- **x402 archive paywall** — closed episodes unlock via USDC payment on Polygon Amoy, verified on-chain
+- **x402 archive paywall** — closed episodes' rich content (scenes, hotspots, ambient text) unlocks via USDC payment on Polygon Amoy, verified on-chain. Episode summaries (figure name, era, region, difficulty, tags, scene count) are freely accessible to any visitor.
 
 ## Architecture
 
@@ -113,6 +113,7 @@ cd packages/contracts && bun install && bun run test
 | Endpoint | Description |
 |----------|-------------|
 | `GET /api/archive/:episodeId?identityId=` | Access check — returns `200` if unlocked, `402 Payment Required` with metadata |
+| `GET /api/archive/:episodeId?detail=summary` | Free summary — returns `{ slug, difficulty, figureName, era, region, tags, sceneCount, blurb }` with `200`, no paywall check |
 | `GET /api/agents/card` | A2A Agent Card manifest (Google A2A spec lite) |
 | `POST /api/agents/pipeline` | Trigger autonomous episode generation pipeline |
 | `POST /api/agents/curator` | Standalone curator agent — selects next figure from catalog |
