@@ -3,7 +3,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { useIdentity } from "@/hooks/use-identity";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
@@ -11,12 +11,18 @@ import { useLocalSearchParams } from "expo-router";
 import { IdentityReveal } from "@/components/who-ware/identity-reveal";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
-import { MemoryScene } from "@/components/who-ware/memory-scene";
 import { ArchivePaywall } from "@/components/who-ware/archive-paywall";
 import { useStreak } from "@/hooks/use-streak";
 import { useWallet } from "@/hooks/use-wallet";
 import { usePaymentGate } from "@/hooks/use-payment-gate";
 import { useWalletMint } from "@/hooks/use-wallet-mint";
+
+// 3D scene bundle (MemoryScene + components/who-ware/scene-3d/*) is lazy-loaded
+// so free-summary users never parse or download it. Paid users see the same
+// component tree, fetched via dynamic import + Suspense fallback.
+const MemoryScene = lazy(() =>
+  import("@/components/who-ware/memory-scene").then((m) => ({ default: m.MemoryScene })),
+);
 
 export default function ArchiveDetailScreen() {
   const { episodeId } = useLocalSearchParams<{ episodeId: string }>();
@@ -90,6 +96,7 @@ export default function ArchiveDetailScreen() {
 
   const showPaywall = !hasAccess;
   const episodeNumber = episode ? Math.floor((episode.activeAt - 0) / 86_400_000) + 1 : 0;
+  const memoryScenes = episode?.scenes.filter((s) => !s.isMercy) ?? [];
   const playerRank = run?.status === "solved" && run.score !== undefined && leaderboard
     ? findPlayerRank(leaderboard.entries, run.score)
     : null;
@@ -188,16 +195,16 @@ export default function ArchiveDetailScreen() {
 
                 <View style={styles.scenesSection}>
                   <Text style={styles.sectionTitle}>Memory scenes</Text>
-                  {episode.scenes
-                    .filter((s) => !s.isMercy)
-                    .map((scene, i) => (
+                  <Suspense fallback={<ActivityIndicator size="large" color="#FBBF24" />}>
+                    {memoryScenes.map((scene, i) => (
                       <MemoryScene
                         key={`${scene.title}-${i}`}
                         scene={scene}
                         sceneIndex={i}
-                        totalScenes={episode.scenes.filter((s) => !s.isMercy).length}
+                        totalScenes={memoryScenes.length}
                       />
                     ))}
+                  </Suspense>
                 </View>
 
                 <Leaderboard
