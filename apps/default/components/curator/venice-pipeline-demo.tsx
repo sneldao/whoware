@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -123,7 +124,7 @@ export function VenicePipelineDemo({
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.headerIcon}>
-            <Ionicons name="layers" size={16} color="#FBBF24" />
+            <Ionicons name="layers" size={16} color={theme.accent} />
           </View>
           <View>
             <Text style={styles.title}>Autonomous Agent Pipeline</Text>
@@ -160,7 +161,7 @@ export function VenicePipelineDemo({
                       entering={FadeIn.duration(200)}
                       style={styles.connectorPulse}
                     >
-                      <Ionicons name="arrow-down" size={14} color="#A78BFA" />
+                      <Ionicons name="arrow-down" size={14} color={theme.violet} />
                     </Animated.View>
                   ) : null}
                 </View>
@@ -190,11 +191,11 @@ export function VenicePipelineDemo({
                       ]}
                     >
                       {isActive ? (
-                        <ActivityIndicator size="small" color="#111827" />
+                        <ActivityIndicator size="small" color={theme.inkOnAccent} />
                       ) : isCompleted ? (
-                        <Ionicons name="checkmark" size={12} color="#111827" />
+                        <Ionicons name="checkmark" size={12} color={theme.inkOnAccent} />
                       ) : isError ? (
-                        <Ionicons name="close" size={12} color="#111827" />
+                        <Ionicons name="close" size={12} color={theme.inkOnAccent} />
                       ) : (
                         <Text style={styles.stepNumber}>{index + 1}</Text>
                       )}
@@ -207,7 +208,7 @@ export function VenicePipelineDemo({
                           name={step.icon as any}
                           size={14}
                           color={
-                            isActive ? "#A78BFA" : isCompleted ? "#22C55E" : "rgba(255, 247, 237, 0.5)"
+                            isActive ? theme.violet : isCompleted ? theme.success : theme.inkAlpha50
                           }
                         />
                         <Text
@@ -299,14 +300,14 @@ export function VenicePipelineDemo({
       >
         {isRunning ? (
           <>
-            <ActivityIndicator size="small" color="#FFF7ED" />
+            <ActivityIndicator size="small" color={theme.ink} />
             <Text style={styles.startButtonText}>
               Pipeline running — step {currentStepIndex + 1} of {PIPELINE_STEPS.length}…
             </Text>
           </>
         ) : (
           <>
-            <Ionicons name="play" size={16} color="#111827" />
+            <Ionicons name="play" size={16} color={theme.inkOnAccent} />
             <Text style={styles.startButtonText}>
               Auto-Generate Episode
             </Text>
@@ -318,7 +319,7 @@ export function VenicePipelineDemo({
       {result && !isRunning ? (
         <Animated.View entering={FadeInDown.duration(400)} style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
-            <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+            <Ionicons name="checkmark-circle" size={18} color={theme.success} />
             <Text style={styles.summaryTitle}>Episode Generated</Text>
           </View>
           <View style={styles.summaryBody}>
@@ -350,8 +351,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(248, 231, 201, 0.13)",
-    backgroundColor: "#1C1106",
+    borderColor: theme.parchmentLight,
+    backgroundColor: theme.inkInverted,
     overflow: "hidden",
     gap: 20,
     padding: 20,
@@ -373,16 +374,16 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
+    backgroundColor: theme.accentAlpha15,
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 17,
     fontWeight: "900",
     letterSpacing: -0.3,
   },
   subtitle: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 12,
     fontWeight: "700",
     marginTop: 2,
@@ -404,7 +405,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(167, 139, 250, 0.4)",
   },
   connectorInactive: {
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
   },
   connectorPulse: {
     position: "absolute",
@@ -414,13 +415,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.06)",
-    backgroundColor: "rgba(255, 247, 237, 0.03)",
+    borderColor: theme.inkAlpha6,
+    backgroundColor: theme.inkAlpha3,
     gap: 10,
   },
   stepActive: {
     borderColor: "rgba(167, 139, 250, 0.3)",
-    backgroundColor: "rgba(167, 139, 250, 0.06)",
+    backgroundColor: theme.violetMuted,
   },
   stepCompleted: {
     borderColor: "rgba(34, 197, 94, 0.15)",
@@ -428,7 +429,7 @@ const styles = StyleSheet.create({
   },
   stepError: {
     borderColor: "rgba(239, 68, 68, 0.3)",
-    backgroundColor: "rgba(239, 68, 68, 0.06)",
+    backgroundColor: theme.dangerBg,
   },
   pressed: {
     opacity: 0.72,
@@ -453,19 +454,19 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   stepDotActive: {
-    backgroundColor: "#A78BFA",
+    backgroundColor: theme.violet,
   },
   stepDotCompleted: {
-    backgroundColor: "#22C55E",
+    backgroundColor: theme.success,
   },
   stepDotError: {
     backgroundColor: "#EF4444",
   },
   stepDotUpcoming: {
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha8,
   },
   stepNumber: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 11,
     fontWeight: "900",
   },
@@ -479,15 +480,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   stepTitle: {
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 14,
     fontWeight: "800",
   },
   stepTitleActive: {
-    color: "#A78BFA",
+    color: theme.violet,
   },
   stepTitleCompleted: {
-    color: "#22C55E",
+    color: theme.success,
   },
   stepDescription: {
     color: "rgba(255, 247, 237, 0.45)",
@@ -505,10 +506,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
-    backgroundColor: "rgba(167, 139, 250, 0.15)",
+    backgroundColor: theme.violetBorder,
   },
   pulsingTagText: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 9,
     fontWeight: "900",
   },
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(34, 197, 94, 0.12)",
   },
   doneTagText: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 9,
     fontWeight: "900",
   },
@@ -538,7 +539,7 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 247, 237, 0.06)",
+    borderTopColor: theme.inkAlpha6,
   },
   detailList: {
     gap: 4,
@@ -549,11 +550,11 @@ const styles = StyleSheet.create({
     paddingLeft: 2,
   },
   detailBullet: {
-    color: "rgba(251, 191, 36, 0.6)",
+    color: theme.accentAlpha60,
     fontSize: 13,
   },
   detailText: {
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 12,
     fontWeight: "600",
     flex: 1,
@@ -568,18 +569,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   resultLabel: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 10,
     fontWeight: "700",
     textTransform: "uppercase",
   },
   resultValue: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 15,
     fontWeight: "900",
   },
   resultReason: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 11,
     fontWeight: "600",
     fontStyle: "italic",
@@ -609,15 +610,15 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   startButtonRunning: {
-    backgroundColor: "rgba(167, 139, 250, 0.15)",
+    backgroundColor: theme.violetBorder,
     borderWidth: 1,
     borderColor: "rgba(167, 139, 250, 0.3)",
   },
   startButtonText: {
-    color: "#111827",
+    color: theme.inkOnAccent,
     fontSize: 15,
     fontWeight: "900",
   },
@@ -636,7 +637,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   summaryTitle: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 15,
     fontWeight: "900",
   },
@@ -649,12 +650,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   summaryLabel: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 12,
     fontWeight: "700",
   },
   summaryValue: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 12,
     fontWeight: "800",
     flex: 1,

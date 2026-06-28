@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { ConvexReactClient } from "convex/react";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { Stack } from "expo-router";
@@ -37,7 +38,7 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
     root: {
         flex: 1,
-        backgroundColor: "#070A12",
+        backgroundColor: theme.canvas,
     },
     rootWeb: {
         backgroundColor: "#080D1A",
@@ -49,9 +50,9 @@ const styles = StyleSheet.create({
     innerWeb: {
         width: "100%",
         maxWidth: 560,
-        backgroundColor: "#070A12",
+        backgroundColor: theme.canvas,
         borderLeftWidth: 1,
         borderRightWidth: 1,
-        borderColor: "rgba(255, 247, 237, 0.04)",
+        borderColor: theme.inkAlpha4,
     },
 });

@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { theme } from "@/lib/theme";
 
 interface SceneThumbnailProps {
   title: string;
@@ -148,7 +149,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   regenButtonDisabled: {
-    backgroundColor: "#475569",
+    backgroundColor: theme.neutralDark,
   },
   regenText: {
     color: "#fff",

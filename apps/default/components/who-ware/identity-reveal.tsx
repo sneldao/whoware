@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useEffect } from "react";
@@ -61,7 +62,7 @@ export function IdentityReveal({
 
       <Animated.View style={[styles.content, contentStyle]}>
         <View style={styles.iconWrapper}>
-          <Ionicons name="person" size={32} color="#FBBF24" />
+          <Ionicons name="person" size={32} color={theme.accent} />
         </View>
 
         <Text style={styles.revealLabel}>You were</Text>
@@ -86,7 +87,7 @@ export function IdentityReveal({
           onPress={onContinue}
         >
           <Text style={styles.continueText}>View your result</Text>
-          <Ionicons name="arrow-forward" size={16} color="#1C1106" />
+          <Ionicons name="arrow-forward" size={16} color={theme.inkInverted} />
         </Pressable>
       </Animated.View>
     </Animated.View>
@@ -107,7 +108,7 @@ const styles = StyleSheet.create({
   },
   scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    backgroundColor: theme.scrim,
   },
   content: {
     alignItems: "center",
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
+    backgroundColor: theme.accentAlpha15,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
@@ -155,12 +156,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
+    backgroundColor: theme.accentAlpha15,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.3)",
+    borderColor: theme.accentAlpha30,
   },
   tagText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 12,
     fontWeight: "500",
   },
@@ -171,10 +172,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 24,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   continueText: {
-    color: "#1C1106",
+    color: theme.inkInverted,
     fontSize: 15,
     fontWeight: "600",
   },

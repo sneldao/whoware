@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { theme } from "@/lib/theme";
 
 export interface TooltipDefinition {
   title: string;
@@ -132,7 +133,7 @@ export function TooltipOverlay({
         <Text style={styles.tooltipDesc}>{def.description}</Text>
       </View>
       <Pressable style={styles.tooltipDismiss} onPress={onDismiss}>
-        <Ionicons name="close" size={10} color="rgba(255, 247, 237, 0.4)" />
+        <Ionicons name="close" size={10} color={theme.inkAlpha40} />
       </Pressable>
     </Animated.View>
   );
@@ -167,7 +168,7 @@ const styles = StyleSheet.create({
   },
   tooltipDesc: {
     flex: 1,
-    color: "rgba(255, 247, 237, 0.65)",
+    color: theme.inkAlpha65,
     fontSize: 10,
     fontWeight: "600",
     lineHeight: 15,

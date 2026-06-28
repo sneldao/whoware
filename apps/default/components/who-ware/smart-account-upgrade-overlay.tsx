@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -123,15 +124,15 @@ export function SmartAccountUpgradeOverlay({
         <View style={styles.iconSection}>
           {showSpinner ? (
             <Animated.View style={[styles.spinnerContainer, spinnerStyle]}>
-              <Ionicons name="shield-outline" size={52} color="#A78BFA" />
+              <Ionicons name="shield-outline" size={52} color={theme.violet} />
             </Animated.View>
           ) : isReady ? (
             <Animated.View style={[styles.iconCircle, styles.successCircle, pulseStyle]}>
-              <Ionicons name="shield-checkmark" size={44} color="#22C55E" />
+              <Ionicons name="shield-checkmark" size={44} color={theme.success} />
             </Animated.View>
           ) : (
             <View style={[styles.iconCircle, styles.errorCircle]}>
-              <Ionicons name="alert-circle" size={44} color="#F87171" />
+              <Ionicons name="alert-circle" size={44} color={theme.danger} />
             </View>
           )}
         </View>
@@ -162,7 +163,7 @@ export function SmartAccountUpgradeOverlay({
               <View key={step.key} style={[styles.stepRow, !isActiveStep && styles.stepInactive]}>
                 <View style={[styles.stepDot, isCompleted && styles.stepDotCompleted, isCurrent && styles.stepDotCurrent]}>
                   {isCompleted ? (
-                    <Ionicons name="checkmark" size={12} color="#111827" />
+                    <Ionicons name="checkmark" size={12} color={theme.inkOnAccent} />
                   ) : isCurrent && showSpinner ? (
                     <View style={styles.stepLoadingDot} />
                   ) : (
@@ -173,7 +174,7 @@ export function SmartAccountUpgradeOverlay({
                   {step.label}
                 </Text>
                 {isCompleted ? (
-                  <Ionicons name="checkmark-circle" size={16} color="#22C55E" style={styles.stepStatus} />
+                  <Ionicons name="checkmark-circle" size={16} color={theme.success} style={styles.stepStatus} />
                 ) : null}
               </View>
             );
@@ -204,7 +205,7 @@ export function SmartAccountUpgradeOverlay({
               style={({ pressed }) => [styles.dismissButton, pressed && styles.pressed]}
             >
               <Text style={styles.dismissButtonText}>Continue</Text>
-              <Ionicons name="arrow-forward" size={18} color="#1C1106" />
+              <Ionicons name="arrow-forward" size={18} color={theme.inkInverted} />
             </Pressable>
           </View>
         ) : null}
@@ -247,7 +248,7 @@ const styles = StyleSheet.create({
     borderRadius: 44,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(167, 139, 250, 0.12)",
+    backgroundColor: theme.violetIconBg,
     borderWidth: 2,
     borderColor: "rgba(167, 139, 250, 0.3)",
   },
@@ -269,14 +270,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(248, 113, 113, 0.4)",
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 24,
     fontWeight: "900",
     textAlign: "center",
     letterSpacing: -0.5,
   },
   subtitle: {
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 14,
     lineHeight: 21,
     fontWeight: "600",
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 12,
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
   },
   stepInactive: {
     opacity: 0.35,
@@ -305,38 +306,38 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 247, 237, 0.1)",
+    backgroundColor: theme.inkAlpha10,
   },
   stepDotCompleted: {
-    backgroundColor: "#22C55E",
+    backgroundColor: theme.success,
   },
   stepDotCurrent: {
     backgroundColor: "rgba(167, 139, 250, 0.3)",
     borderWidth: 1,
-    borderColor: "#A78BFA",
+    borderColor: theme.violet,
   },
   stepLoadingDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#A78BFA",
+    backgroundColor: theme.violet,
   },
   stepNumber: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 11,
     fontWeight: "900",
   },
   stepNumberCurrent: {
-    color: "#A78BFA",
+    color: theme.violet,
   },
   stepLabel: {
     flex: 1,
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 13,
     fontWeight: "700",
   },
   stepLabelActive: {
-    color: "#FFF7ED",
+    color: theme.ink,
   },
   stepStatus: {
     marginLeft: "auto",
@@ -356,12 +357,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   techLabel: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 12,
     fontWeight: "700",
   },
   techValue: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 12,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
@@ -377,10 +378,10 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 54,
     borderRadius: 20,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   dismissButtonText: {
-    color: "#1C1106",
+    color: theme.inkInverted,
     fontSize: 16,
     fontWeight: "900",
   },

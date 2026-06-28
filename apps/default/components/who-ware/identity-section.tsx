@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -53,8 +54,8 @@ export function IdentitySection({
       {/* Collapsed state: single row showing wallet + status */}
       <Pressable onPress={toggle} style={({ pressed }) => [styles.header, pressed && styles.pressed]}>
         <View style={styles.headerLeft}>
-          <View style={[styles.statusDot, { backgroundColor: isWalletConnected ? (isCorrectChain ? "#22C55E" : "#FBBF24") : "#64748B" }]} />
-          <Ionicons name="shield" size={16} color={isSmartAccountUpgraded ? "#22C55E" : "#64748B"} />
+          <View style={[styles.statusDot, { backgroundColor: isWalletConnected ? (isCorrectChain ? theme.success : theme.accent) : theme.neutral }]} />
+          <Ionicons name="shield" size={16} color={isSmartAccountUpgraded ? theme.success : theme.neutral} />
           <Text style={[styles.headerText, isSmartAccountUpgraded && styles.headerTextActive]}>
             {isSmartAccountUpgraded ? "Smart Account" : isWalletConnected ? "Wallet" : "Identity"}
           </Text>
@@ -71,7 +72,7 @@ export function IdentitySection({
             </View>
           ) : null}
           <Animated.View style={chevronStyle}>
-            <Ionicons name="chevron-down" size={16} color="rgba(255, 247, 237, 0.4)" />
+            <Ionicons name="chevron-down" size={16} color={theme.inkAlpha40} />
           </Animated.View>
         </View>
       </Pressable>
@@ -82,7 +83,7 @@ export function IdentitySection({
           {/* Wallet */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
-              <Ionicons name="wallet" size={14} color={isWalletConnected ? "#22C55E" : "#64748B"} />
+              <Ionicons name="wallet" size={14} color={isWalletConnected ? theme.success : theme.neutral} />
               <Text style={styles.rowLabel}>Wallet</Text>
             </View>
             {isWalletConnected ? (
@@ -113,7 +114,7 @@ export function IdentitySection({
               <Ionicons
                 name={isSmartAccountUpgraded ? "shield-checkmark" : "shield-outline"}
                 size={14}
-                color={isSmartAccountUpgraded ? "#22C55E" : "#64748B"}
+                color={isSmartAccountUpgraded ? theme.success : theme.neutral}
               />
               <Text style={styles.rowLabel}>Smart Account</Text>
             </View>
@@ -145,7 +146,7 @@ export function IdentitySection({
               <Ionicons
                 name={isMinted ? "checkmark-circle" : isMinting ? "hourglass" : "ellipse-outline"}
                 size={14}
-                color={isMinted ? "#22C55E" : isMinting ? "#A78BFA" : "#64748B"}
+                color={isMinted ? theme.success : isMinting ? theme.violet : theme.neutral}
               />
               <Text style={styles.rowLabel}>Score</Text>
             </View>
@@ -163,7 +164,7 @@ export function IdentitySection({
                 <Ionicons
                   name={hasStreakTx ? "checkmark-circle" : "hourglass"}
                   size={14}
-                  color={hasStreakTx ? "#22C55E" : "#A78BFA"}
+                  color={hasStreakTx ? theme.success : theme.violet}
                 />
                 <Text style={styles.rowLabel}>Streak</Text>
               </View>
@@ -179,7 +180,7 @@ export function IdentitySection({
           {isWalletConnected ? (
             <View style={styles.row}>
               <View style={styles.rowLeft}>
-                <Ionicons name="flash" size={14} color="#22C55E" />
+                <Ionicons name="flash" size={14} color={theme.success} />
                 <Text style={styles.rowLabel}>Payments</Text>
               </View>
               <View style={styles.rowRight}>
@@ -193,7 +194,7 @@ export function IdentitySection({
           {/* Upgrade prompt */}
           {showUpgradePrompt && type === "start" ? (
             <View style={styles.upgradePrompt}>
-              <Ionicons name="shield-outline" size={14} color="#A78BFA" />
+              <Ionicons name="shield-outline" size={14} color={theme.violet} />
               <Text style={styles.upgradePromptText}>
                 Upgrade to a Smart Account for gas abstraction and ERC-7710 delegation
               </Text>
@@ -212,9 +213,9 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    borderColor: theme.inkAlpha8,
     overflow: "hidden",
   },
   header: {
@@ -235,12 +236,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   headerText: {
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 13,
     fontWeight: "800",
   },
   headerTextActive: {
-    color: "#22C55E",
+    color: theme.success,
   },
   headerRight: {
     flexDirection: "row",
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(34, 197, 94, 0.12)",
   },
   miniBadgeText: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 0.3,
@@ -281,7 +282,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rowLabel: {
-    color: "rgba(255, 247, 237, 0.7)",
+    color: theme.inkAlpha70,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   rowValueDim: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 12,
     fontWeight: "700",
     fontStyle: "italic",
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(34, 197, 94, 0.1)",
   },
   statusTagText: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 10,
     fontWeight: "800",
   },
@@ -319,7 +320,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(34, 197, 94, 0.08)",
   },
   techTagText: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 0.3,
@@ -328,10 +329,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: "rgba(251, 191, 36, 0.12)",
+    backgroundColor: theme.accentAlpha12,
   },
   actionTagText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 10,
     fontWeight: "800",
   },
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
   },
   upgradePromptText: {
     flex: 1,
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 11,
     fontWeight: "700",
     lineHeight: 16,
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(167, 139, 250, 0.2)",
   },
   upgradeActionText: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 11,
     fontWeight: "900",
   },

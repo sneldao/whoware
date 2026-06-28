@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -26,7 +27,7 @@ export function IdentityCountdown({ isSolved, dropsAt, statusLabel }: IdentityCo
   return (
     <View style={styles.card}>
       <View style={styles.iconWrap}>
-        <Ionicons name={isSolved ? "moon" : "hourglass"} size={20} color="#111827" />
+        <Ionicons name={isSolved ? "moon" : "hourglass"} size={20} color={theme.inkOnAccent} />
       </View>
       <View style={styles.copy}>
         <Text style={styles.label}>{label}</Text>
@@ -56,9 +57,9 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 22,
     borderCurve: "continuous",
-    backgroundColor: "rgba(251, 191, 36, 0.12)",
+    backgroundColor: theme.accentAlpha12,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.24)",
+    borderColor: theme.accentAlpha24,
   },
   iconWrap: {
     width: 38,
@@ -67,21 +68,21 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 15,
     borderCurve: "continuous",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   copy: {
     flex: 1,
     gap: 2,
   },
   label: {
-    color: "rgba(255, 247, 237, 0.58)",
+    color: theme.inkAlpha58,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1,
     textTransform: "uppercase",
   },
   time: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 22,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],

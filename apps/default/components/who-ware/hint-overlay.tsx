@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { theme } from "@/lib/theme";
 
 interface HintOverlayProps {
   hint: string | null;
@@ -26,14 +27,14 @@ export function HintOverlay({ hint, isGenerating, clueLabel }: HintOverlayProps)
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="sparkles" size={14} color="#A78BFA" />
+        <Ionicons name="sparkles" size={14} color={theme.violet} />
         <Text style={styles.label}>Memory whisper</Text>
         <Text style={styles.source}>Venice AI</Text>
       </View>
 
       {isGenerating ? (
         <View style={styles.loadingRow}>
-          <ActivityIndicator size="small" color="#A78BFA" />
+          <ActivityIndicator size="small" color={theme.violet} />
           <Text style={styles.loadingText}>Probing the memory…</Text>
         </View>
       ) : (
@@ -62,7 +63,7 @@ const styles = StyleSheet.create({
   },
   label: {
     flex: 1,
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1,

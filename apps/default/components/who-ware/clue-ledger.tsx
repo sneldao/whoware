@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -32,7 +33,7 @@ export function ClueLedger({ clues, totalCluesAvailable }: ClueLedgerProps) {
         onPress={() => setExpanded(!expanded)}
       >
         <View style={styles.headerLeft}>
-          <Ionicons name="search" size={16} color="#FBBF24" />
+          <Ionicons name="search" size={16} color={theme.accent} />
           <Text style={styles.title}>Clues discovered</Text>
         </View>
         <View style={styles.headerRight}>
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.15)",
+    borderColor: theme.accentAlpha15,
     overflow: "hidden",
   },
   header: {
@@ -105,7 +106,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   count: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 13,
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   clueLabel: {
     color: "#e2e8f0",

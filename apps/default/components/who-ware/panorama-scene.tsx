@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -174,9 +175,9 @@ export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, o
               style={({ pressed }) => [styles.hintButton, pressed && styles.pressed, isHintGenerating && styles.disabledButton]}
             >
               {isHintGenerating ? (
-                <ActivityIndicator size="small" color="#A78BFA" />
+                <ActivityIndicator size="small" color={theme.violet} />
               ) : (
-                <Ionicons name="sparkles" size={16} color="#A78BFA" />
+                <Ionicons name="sparkles" size={16} color={theme.violet} />
               )}
               <Text style={styles.hintButtonText}>
                 {isHintGenerating ? "Probing memory…" : "Ask the memory (AI hint)"}
@@ -201,7 +202,7 @@ export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, o
 }
 
 function normalizePalette(palette: string[]): [string, string, string] {
-  return [palette[0] ?? "#111827", palette[1] ?? "#92400E", palette[2] ?? "#F8E7C9"];
+  return [palette[0] ?? theme.inkOnAccent, palette[1] ?? "#92400E", palette[2] ?? "#F8E7C9"];
 }
 
 const styles = StyleSheet.create({
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
   scanline: {
     ...StyleSheet.absoluteFillObject,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    borderColor: theme.inkAlpha8,
   },
   shimmerContainer: {
     overflow: "hidden",
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
   shimmerBar: {
     width: 100,
     height: "100%",
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
   },
   sceneMeta: {
     position: "absolute",
@@ -260,14 +261,14 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   sceneCounter: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 1.3,
     textTransform: "uppercase",
   },
   sceneTitle: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 25,
     fontWeight: "900",
     letterSpacing: -0.7,
@@ -286,22 +287,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 24,
-    backgroundColor: "rgba(251, 191, 36, 0.14)",
+    backgroundColor: theme.accentAlpha14,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.78)",
+    borderColor: theme.accentAlpha78,
   },
   hotspotHalo: {
     position: "absolute",
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "rgba(251, 191, 36, 0.18)",
+    backgroundColor: theme.accentAlpha18,
   },
   hotspotDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   ambient: {
     color: "rgba(255, 247, 237, 0.84)",
@@ -313,12 +314,12 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 22,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
     borderWidth: 1,
     borderColor: "rgba(248, 231, 201, 0.1)",
   },
   transmissionLabel: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1.2,
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     flex: 1,
-    color: "rgba(255, 247, 237, 0.58)",
+    color: theme.inkAlpha58,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -373,7 +374,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(167, 139, 250, 0.25)",
   },
   hintButtonText: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 13,
     fontWeight: "800",
   },

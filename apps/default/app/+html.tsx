@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
@@ -26,7 +27,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="twitter:description" content="Step into panoramic memories from a historical figure's life. Inspect clues. Name the figure. New puzzle every day." />
         <meta name="twitter:image" content="https://whoware.vercel.app/og-image.png" />
 
-        <meta name="theme-color" content="#070A12" />
+        <meta name="theme-color" content={theme.canvas} />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 

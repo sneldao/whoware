@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { StyleSheet, Text, View } from "react-native";
@@ -30,7 +31,7 @@ export function MemoryMediaStrip({ imageKey, detailImageKeys, sceneIndex, motion
           <Text style={styles.title}>Cinematic memory plates</Text>
         </View>
         <View style={styles.videoBadge}>
-          <Ionicons name={hasMotionPlan ? "videocam" : "images"} size={15} color="#111827" />
+          <Ionicons name={hasMotionPlan ? "videocam" : "images"} size={15} color={theme.inkOnAccent} />
           <Text style={styles.videoBadgeText}>{hasMotionPlan ? "Video-ready" : "Still-first"}</Text>
         </View>
       </View>
@@ -62,9 +63,9 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 24,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.1)",
+    borderColor: theme.inkAlpha10,
   },
   headerRow: {
     flexDirection: "row",
@@ -73,14 +74,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   eyebrow: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 10,
     fontWeight: "900",
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 17,
     fontWeight: "900",
     letterSpacing: -0.3,
@@ -93,10 +94,10 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 14,
     borderCurve: "continuous",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   videoBadgeText: {
-    color: "#111827",
+    color: theme.inkOnAccent,
     fontSize: 11,
     fontWeight: "900",
   },
@@ -123,7 +124,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 10,
     bottom: 9,
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 11,
     fontWeight: "900",
     textShadowColor: "rgba(0, 0, 0, 0.8)",

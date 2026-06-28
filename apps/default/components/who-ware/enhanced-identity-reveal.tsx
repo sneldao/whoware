@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -171,7 +172,7 @@ export function EnhancedIdentityReveal({
         {/* Icon */}
         <Animated.View entering={FadeInDown.delay(200).duration(400).springify()} style={styles.iconWrapper}>
           <View style={styles.iconCircle}>
-            <Ionicons name="eye" size={28} color="#FBBF24" />
+            <Ionicons name="eye" size={28} color={theme.accent} />
           </View>
         </Animated.View>
 
@@ -194,7 +195,7 @@ export function EnhancedIdentityReveal({
         {showContent ? (
           <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.metaSection}>
             <View style={styles.contextRow}>
-              <Ionicons name="globe-outline" size={14} color="rgba(255, 247, 237, 0.5)" />
+              <Ionicons name="globe-outline" size={14} color={theme.inkAlpha50} />
               <Text style={styles.contextText}>{region} · {era}</Text>
             </View>
 
@@ -218,7 +219,7 @@ export function EnhancedIdentityReveal({
               style={({ pressed }) => [styles.continueButton, pressed && styles.pressed]}
             >
               <Text style={styles.continueText}>View your result</Text>
-              <Ionicons name="arrow-forward" size={18} color="#1C1106" />
+              <Ionicons name="arrow-forward" size={18} color={theme.inkInverted} />
             </Pressable>
           </Animated.View>
         ) : null}
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
   },
   particleText: {
     fontSize: 24,
-    color: "#FBBF24",
+    color: theme.accent,
   },
   iconWrapper: {},
   iconCircle: {
@@ -258,20 +259,20 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
+    backgroundColor: theme.accentAlpha15,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.3)",
+    borderColor: theme.accentAlpha30,
     marginBottom: 8,
   },
   revealLabel: {
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 15,
     fontWeight: "800",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   figureName: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 38,
     fontWeight: "900",
     textAlign: "center",
@@ -279,7 +280,7 @@ const styles = StyleSheet.create({
     lineHeight: 44,
   },
   cursor: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontWeight: "300",
     opacity: 0.7,
   },
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   contextText: {
-    color: "rgba(255, 247, 237, 0.65)",
+    color: theme.inkAlpha65,
     fontSize: 15,
     fontWeight: "700",
   },
@@ -308,12 +309,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "rgba(251, 191, 36, 0.12)",
+    backgroundColor: theme.accentAlpha12,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.25)",
+    borderColor: theme.accentAlpha25,
   },
   tagText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 11,
     fontWeight: "800",
   },
@@ -328,10 +329,10 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 54,
     borderRadius: 20,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   continueText: {
-    color: "#1C1106",
+    color: theme.inkInverted,
     fontSize: 16,
     fontWeight: "900",
   },

@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -37,7 +38,7 @@ export function Leaderboard({ entries, playerRank, rankedCount }: LeaderboardPro
           <Text style={styles.eyebrow}>Daily standing</Text>
           <Text style={styles.title}>Sharpest awakenings</Text>
         </View>
-        <Ionicons name="trophy" size={20} color="#FBBF24" />
+        <Ionicons name="trophy" size={20} color={theme.accent} />
       </View>
 
       <View style={styles.playerCard}>
@@ -117,14 +118,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   eyebrow: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 18,
     fontWeight: "900",
   },
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
   },
   rank: {
     width: 36,
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 15,
     fontWeight: "900",
   },
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 15,
     fontWeight: "800",
   },
@@ -161,7 +162,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   score: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 15,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
@@ -171,12 +172,12 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 20,
     borderCurve: "continuous",
-    backgroundColor: "rgba(251, 191, 36, 0.1)",
+    backgroundColor: theme.accentAlpha10,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.2)",
+    borderColor: theme.accentAlpha20,
   },
   playerLabel: {
-    color: "rgba(255, 247, 237, 0.58)",
+    color: theme.inkAlpha58,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1,
@@ -188,7 +189,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   playerRank: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 30,
     lineHeight: 34,
     fontWeight: "900",
@@ -198,13 +199,13 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   playerScore: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 16,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
   },
   playerMeta: {
-    color: "rgba(255, 247, 237, 0.72)",
+    color: theme.inkAlpha72,
     fontSize: 13,
     lineHeight: 19,
     fontWeight: "800",

@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -83,7 +84,7 @@ export function CinematicHero({ imageKey, revealProgress, isSolved, solvedImageK
         </Animated.View>
         {isSolved ? (
           <View style={styles.solvedBadge}>
-            <Ionicons name="sparkles" size={13} color="#1C1106" />
+            <Ionicons name="sparkles" size={13} color={theme.inkInverted} />
           </View>
         ) : null}
       </View>
@@ -120,7 +121,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.4)",
+    borderColor: theme.accentAlpha40,
     backgroundColor: "rgba(12, 8, 4, 0.6)",
   },
   figureInner: {
@@ -144,7 +145,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   vignette: {
     ...StyleSheet.absoluteFillObject,

@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { TappableMetric } from "@/components/shared/tappable-metric";
+import { theme } from "@/lib/theme";
 
 export function VeniceStatsPanel() {
   const stats = useQuery(api.venice.getVeniceStats);
@@ -19,7 +20,7 @@ export function VeniceStatsPanel() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="pulse" size={14} color="#A78BFA" />
+          <Ionicons name="pulse" size={14} color={theme.violet} />
           <Text style={styles.headerTitle}>Venice AI Activity</Text>
         </View>
         <View style={styles.headerBadge}>
@@ -32,14 +33,14 @@ export function VeniceStatsPanel() {
         <TappableMetric
           variant="badge"
           icon="film"
-          iconColor="#A78BFA"
+          iconColor={theme.violet}
           label="Episodes Generated"
           value={stats.totalEpisodesGenerated.toLocaleString()}
         />
         <TappableMetric
           variant="badge"
           icon="chatbubbles"
-          iconColor="#22C55E"
+          iconColor={theme.success}
           label="Hints Provided"
           value={stats.totalHintsProvided.toLocaleString()}
           sublabel={`${stats.cachedHintsAvailable} cached`}
@@ -47,7 +48,7 @@ export function VeniceStatsPanel() {
         <TappableMetric
           variant="badge"
           icon="image"
-          iconColor="#FBBF24"
+          iconColor={theme.accent}
           label="Images Rendered"
           value={stats.totalImagesRendered.toLocaleString()}
         />
@@ -68,7 +69,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.12)",
+    borderColor: theme.violetIconBg,
     backgroundColor: "rgba(167, 139, 250, 0.04)",
     overflow: "hidden",
   },
@@ -78,7 +79,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.12)",
+    borderColor: theme.violetIconBg,
     backgroundColor: "rgba(167, 139, 250, 0.04)",
   },
   header: {
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerTitle: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.3,
@@ -115,10 +116,10 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: "#22C55E",
+    backgroundColor: theme.success,
   },
   headerBadgeText: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 9,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: "rgba(167, 139, 250, 0.06)",
+    borderTopColor: theme.violetMuted,
   },
   footerText: {
     color: "rgba(167, 139, 250, 0.4)",

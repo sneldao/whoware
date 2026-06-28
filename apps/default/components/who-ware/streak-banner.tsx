@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -16,7 +17,7 @@ interface StreakBannerProps {
  */
 export function StreakBanner({ current, best, solvedToday }: StreakBannerProps) {
   const isLive = current > 0;
-  const flameColor = solvedToday ? "#FB923C" : isLive ? "#F59E0B" : "rgba(255, 247, 237, 0.4)";
+  const flameColor = solvedToday ? "#FB923C" : isLive ? theme.goldGradientEnd : theme.inkAlpha40;
   const headline = isLive
     ? solvedToday
       ? `${current}-day streak — secured today`
@@ -62,7 +63,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 14,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
   },
   flameWrapLive: {
     backgroundColor: "rgba(251, 146, 60, 0.2)",
@@ -72,12 +73,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   headline: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 14,
     fontWeight: "900",
   },
   sub: {
-    color: "rgba(255, 247, 237, 0.55)",
+    color: theme.inkAlpha55,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -92,7 +93,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FB923C",
   },
   countValue: {
-    color: "#1C1106",
+    color: theme.inkInverted,
     fontSize: 16,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],

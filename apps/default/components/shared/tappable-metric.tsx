@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { theme } from "@/lib/theme";
 
 interface TappableMetricProps {
   label: string;
@@ -91,9 +92,9 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    borderColor: theme.inkAlpha8,
   },
   cardIcon: {
     width: 34,
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardValue: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 22,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     backgroundColor: "rgba(255, 247, 237, 0.07)",
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.1)",
+    borderColor: theme.inkAlpha10,
   },
   pillLabel: {
     color: "rgba(255, 247, 237, 0.48)",
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   pillValue: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 15,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.06)",
+    borderColor: theme.inkAlpha6,
     backgroundColor: "rgba(0, 0, 0, 0.25)",
   },
   badgeIcon: {
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   badgeLabel: {
-    color: "rgba(255, 247, 237, 0.55)",
+    color: theme.inkAlpha55,
     fontSize: 9,
     fontWeight: "700",
     textTransform: "uppercase",

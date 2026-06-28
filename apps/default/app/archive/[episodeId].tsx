@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useIdentity } from "@/hooks/use-identity";
@@ -8,7 +9,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 
-import { IdentityReveal } from "@/components/who-ware/identity-reveal";
+import { EnhancedIdentityReveal as IdentityReveal } from "@/components/who-ware/enhanced-identity-reveal";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
 import { ArchivePaywall } from "@/components/who-ware/archive-paywall";
@@ -80,7 +81,7 @@ export default function ArchiveDetailScreen() {
   if (summary === undefined) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FBBF24" />
+        <ActivityIndicator size="large" color={theme.accent} />
         <Text style={styles.loadingText}>Loading case file…</Text>
       </View>
     );
@@ -123,7 +124,7 @@ export default function ArchiveDetailScreen() {
       >
         <View style={styles.header}>
           <Pressable style={styles.backButton} href="/archive">
-            <Ionicons name="arrow-back" size={20} color="#FFF7ED" />
+            <Ionicons name="arrow-back" size={20} color={theme.ink} />
           </Pressable>
           <View style={styles.headerMeta}>
             <Text style={styles.eyebrow}>Archive</Text>
@@ -162,7 +163,7 @@ export default function ArchiveDetailScreen() {
           <>
             {!episode || leaderboard === undefined ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FBBF24" />
+                <ActivityIndicator size="large" color={theme.accent} />
                 <Text style={styles.loadingText}>Loading full content…</Text>
               </View>
             ) : (
@@ -170,9 +171,9 @@ export default function ArchiveDetailScreen() {
                 {/* Identity reveal for unlocked players who haven't played */}
                 {!run && isUnlocked && (
                   <Pressable style={styles.revealCard} onPress={() => setShowReveal(true)}>
-                    <Ionicons name="person" size={20} color="#FBBF24" />
+                    <Ionicons name="person" size={20} color={theme.accent} />
                     <Text style={styles.revealText}>Tap to reveal the identity</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#FBBF24" />
+                    <Ionicons name="chevron-forward" size={16} color={theme.accent} />
                   </Pressable>
                 )}
                 {run && (
@@ -195,7 +196,7 @@ export default function ArchiveDetailScreen() {
 
                 <View style={styles.scenesSection}>
                   <Text style={styles.sectionTitle}>Memory scenes</Text>
-                  <Suspense fallback={<ActivityIndicator size="large" color="#FBBF24" />}>
+                  <Suspense fallback={<ActivityIndicator size="large" color={theme.accent} />}>
                     {memoryScenes.map((scene, i) => (
                       <MemoryScene
                         key={`${scene.title}-${i}`}
@@ -235,8 +236,8 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 22, gap: 18 },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, backgroundColor: "#0C0704" },
-  loadingText: { color: "#FFF7ED", fontSize: 16, fontWeight: "800" },
-  errorText: { color: "rgba(255, 247, 237, 0.6)", fontSize: 16, fontWeight: "600", textAlign: "center", marginTop: 40 },
+  loadingText: { color: theme.ink, fontSize: 16, fontWeight: "800" },
+  errorText: { color: theme.inkAlpha60, fontSize: 16, fontWeight: "600", textAlign: "center", marginTop: 40 },
   header: { gap: 14 },
   backButton: {
     width: 40,
@@ -245,40 +246,40 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha8,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.12)",
+    borderColor: theme.inkAlpha12,
   },
   headerMeta: { gap: 4 },
-  eyebrow: { color: "rgba(251, 191, 36, 0.7)", fontSize: 11, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase" },
-  title: { color: "#FFF7ED", fontSize: 32, fontWeight: "900", letterSpacing: -0.8 },
-  subhead: { color: "rgba(255, 247, 237, 0.6)", fontSize: 14, fontWeight: "700" },
+  eyebrow: { color: theme.accentAlpha70, fontSize: 11, fontWeight: "900", letterSpacing: 1.4, textTransform: "uppercase" },
+  title: { color: theme.ink, fontSize: 32, fontWeight: "900", letterSpacing: -0.8 },
+  subhead: { color: theme.inkAlpha60, fontSize: 14, fontWeight: "700" },
   summaryCard: {
     padding: 18,
     borderRadius: 20,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.12)",
+    borderColor: theme.inkAlpha12,
     gap: 12,
   },
-  summaryName: { color: "#FFF7ED", fontSize: 20, fontWeight: "800" },
+  summaryName: { color: theme.ink, fontSize: 20, fontWeight: "800" },
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   tagPill: {
-    backgroundColor: "rgba(251, 191, 36, 0.12)",
+    backgroundColor: theme.accentAlpha12,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   tagText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 12,
     fontWeight: "700",
   },
-  blurbText: { color: "rgba(255, 247, 237, 0.7)", fontSize: 14, fontWeight: "500", lineHeight: 20 },
-  sceneCount: { color: "rgba(255, 247, 237, 0.5)", fontSize: 13, fontWeight: "600" },
+  blurbText: { color: theme.inkAlpha70, fontSize: 14, fontWeight: "500", lineHeight: 20 },
+  sceneCount: { color: theme.inkAlpha50, fontSize: 13, fontWeight: "600" },
   hintText: {
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 14,
     fontWeight: "600",
     textAlign: "center",
@@ -291,11 +292,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     borderCurve: "continuous",
-    backgroundColor: "rgba(251, 191, 36, 0.1)",
+    backgroundColor: theme.accentAlpha10,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.25)",
+    borderColor: theme.accentAlpha25,
   },
-  revealText: { flex: 1, color: "#FBBF24", fontSize: 15, fontWeight: "800" },
+  revealText: { flex: 1, color: theme.accent, fontSize: 15, fontWeight: "800" },
   scenesSection: { gap: 14 },
-  sectionTitle: { color: "rgba(255, 247, 237, 0.5)", fontSize: 12, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
+  sectionTitle: { color: theme.inkAlpha50, fontSize: 12, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
 });

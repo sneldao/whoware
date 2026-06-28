@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { TooltipOverlay, useTooltip } from "./tooltip";
+import { theme } from "@/lib/theme";
 
 type LeaderTab = "hints" | "speed" | "solvers" | "episodes";
 
@@ -13,9 +14,9 @@ const TABS: {
   icon: keyof typeof Ionicons.glyphMap;
   accent: string;
 }[] = [
-  { key: "hints", label: "Most Hints", icon: "search", accent: "#A78BFA" },
-  { key: "speed", label: "Fastest Solves", icon: "flash", accent: "#22C55E" },
-  { key: "solvers", label: "Top Solvers", icon: "trophy", accent: "#FBBF24" },
+  { key: "hints", label: "Most Hints", icon: "search", accent: theme.violet },
+  { key: "speed", label: "Fastest Solves", icon: "flash", accent: theme.success },
+  { key: "solvers", label: "Top Solvers", icon: "trophy", accent: theme.accent },
   { key: "episodes", label: "Episodes", icon: "film", accent: "#F472B6" },
 ];
 
@@ -38,7 +39,7 @@ function formatValueLabel(key: LeaderTab): string {
 
 function RankIcon({ rank }: { rank: number }) {
   if (rank === 1) {
-    return <Ionicons name="trophy" size={16} color="#FBBF24" />;
+    return <Ionicons name="trophy" size={16} color={theme.accent} />;
   }
   if (rank === 2) {
     return <Ionicons name="medal" size={14} color="#94A3B8" />;
@@ -83,19 +84,19 @@ export function CuratorLeaderboard() {
     activeTab === "episodes"
       ? "#F472B6"
       : activeTab === "hints"
-        ? "#A78BFA"
+        ? theme.violet
         : activeTab === "speed"
-          ? "#22C55E"
-          : "#FBBF24";
+          ? theme.success
+          : theme.accent;
 
   const loading = activeTab === "episodes" ? !episodeBreakdowns : !weeklyLeaders;
-  const accent = TABS.find((t) => t.key === activeTab)?.accent ?? "#A78BFA";
+  const accent = TABS.find((t) => t.key === activeTab)?.accent ?? theme.violet;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="podium" size={14} color="#A78BFA" />
+          <Ionicons name="podium" size={14} color={theme.violet} />
           <Text style={styles.headerTitle}>Weekly Leaders</Text>
         </View>
         <View style={styles.countBadge}>
@@ -118,7 +119,7 @@ export function CuratorLeaderboard() {
             <Ionicons
               name={tab.icon}
               size={12}
-              color={activeTab === tab.key ? tab.accent : "rgba(255, 247, 237, 0.35)"}
+              color={activeTab === tab.key ? tab.accent : theme.inkAlpha35}
             />
             <Text
               style={[
@@ -168,7 +169,7 @@ export function CuratorLeaderboard() {
         ) : showPlayerTab ? (
           playerData.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="analytics-outline" size={24} color="rgba(255, 247, 237, 0.12)" />
+              <Ionicons name="analytics-outline" size={24} color={theme.inkAlpha12} />
               <Text style={styles.emptyTitle}>No data yet this week</Text>
               <Text style={styles.emptyText}>
                 Leaderboards populate as players solve episodes
@@ -204,7 +205,7 @@ export function CuratorLeaderboard() {
           /* Episodes tab */
           episodeData.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="film-outline" size={24} color="rgba(255, 247, 237, 0.12)" />
+              <Ionicons name="film-outline" size={24} color={theme.inkAlpha12} />
               <Text style={styles.emptyTitle}>No episodes solved this week</Text>
               <Text style={styles.emptyText}>
                 Episode breakdowns appear once players start solving
@@ -238,7 +239,7 @@ export function CuratorLeaderboard() {
                               backgroundColor: "#A78BFA30",
                               borderColor: "#A78BFA60",
                               elevation: 3,
-                              shadowColor: "#A78BFA",
+                              shadowColor: theme.violet,
                               shadowOffset: { width: 0, height: 1 },
                               shadowOpacity: 0.4,
                               shadowRadius: 4,
@@ -246,11 +247,11 @@ export function CuratorLeaderboard() {
                           : { backgroundColor: "#A78BFA15", borderColor: "#A78BFA20" },
                       ]}
                     >
-                      <Ionicons name="search" size={9} color={episodeSort === "hints" ? "#C4B5FD" : "#A78BFA"} />
+                      <Ionicons name="search" size={9} color={episodeSort === "hints" ? "#C4B5FD" : theme.violet} />
                       <Text
                         style={[
                           styles.episodeBadgeText,
-                          { color: episodeSort === "hints" ? "#C4B5FD" : "#A78BFA" },
+                          { color: episodeSort === "hints" ? "#C4B5FD" : theme.violet },
                         ]}
                       >
                         {entry.mostHintsUsed}
@@ -270,7 +271,7 @@ export function CuratorLeaderboard() {
                               backgroundColor: "#FBBF2430",
                               borderColor: "#FBBF2460",
                               elevation: 3,
-                              shadowColor: "#FBBF24",
+                              shadowColor: theme.accent,
                               shadowOffset: { width: 0, height: 1 },
                               shadowOpacity: 0.4,
                               shadowRadius: 4,
@@ -278,11 +279,11 @@ export function CuratorLeaderboard() {
                           : { backgroundColor: "#FBBF2410", borderColor: "#FBBF2415" },
                       ]}
                     >
-                      <Ionicons name="star" size={9} color={entry.averageScore >= maxAvgScore && maxAvgScore > 0 ? "#FDE68A" : "#FBBF24"} />
+                      <Ionicons name="star" size={9} color={entry.averageScore >= maxAvgScore && maxAvgScore > 0 ? theme.goldSoft : theme.accent} />
                       <Text
                         style={[
                           styles.episodeBadgeText,
-                          { color: entry.averageScore >= maxAvgScore && maxAvgScore > 0 ? "#FDE68A" : "#FBBF24" },
+                          { color: entry.averageScore >= maxAvgScore && maxAvgScore > 0 ? theme.goldSoft : theme.accent },
                         ]}
                       >
                         {entry.averageScore.toLocaleString()}
@@ -312,7 +313,7 @@ export function CuratorLeaderboard() {
                               backgroundColor: "#22C55E30",
                               borderColor: "#22C55E60",
                               elevation: 3,
-                              shadowColor: "#22C55E",
+                              shadowColor: theme.success,
                               shadowOffset: { width: 0, height: 1 },
                               shadowOpacity: 0.4,
                               shadowRadius: 4,
@@ -320,11 +321,11 @@ export function CuratorLeaderboard() {
                           : { backgroundColor: "#22C55E15", borderColor: "#22C55E20" },
                       ]}
                     >
-                      <Ionicons name="flash" size={9} color={episodeSort === "speed" ? "#86EFAC" : "#22C55E"} />
+                      <Ionicons name="flash" size={9} color={episodeSort === "speed" ? "#86EFAC" : theme.success} />
                       <Text
                         style={[
                           styles.episodeBadgeText,
-                          { color: episodeSort === "speed" ? "#86EFAC" : "#22C55E" },
+                          { color: episodeSort === "speed" ? "#86EFAC" : theme.success },
                         ]}
                       >
                         {formatElapsedSeconds(entry.fastestSolveMs)}
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.12)",
+    borderColor: theme.violetIconBg,
     backgroundColor: "rgba(167, 139, 250, 0.04)",
     overflow: "hidden",
   },
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerTitle: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.3,
@@ -417,10 +418,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: "rgba(251, 191, 36, 0.1)",
+    backgroundColor: theme.accentAlpha10,
   },
   countBadgeText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 9,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -442,11 +443,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.06)",
-    backgroundColor: "rgba(255, 247, 237, 0.03)",
+    borderColor: theme.inkAlpha6,
+    backgroundColor: theme.inkAlpha3,
   },
   tabLabel: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 10,
     fontWeight: "700",
   },
@@ -485,7 +486,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rankNum: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 12,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
@@ -495,12 +496,12 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   playerName: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 13,
     fontWeight: "800",
   },
   secondary: {
-    color: "rgba(255, 247, 237, 0.35)",
+    color: theme.inkAlpha35,
     fontSize: 9,
     fontWeight: "700",
   },
@@ -559,11 +560,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.06)",
-    backgroundColor: "rgba(255, 247, 237, 0.03)",
+    borderColor: theme.inkAlpha6,
+    backgroundColor: theme.inkAlpha3,
   },
   sortChipText: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 10,
     fontWeight: "700",
   },
@@ -573,7 +574,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   emptyTitle: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 13,
     fontWeight: "800",
   },
@@ -590,7 +591,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: "rgba(167, 139, 250, 0.06)",
+    borderTopColor: theme.violetMuted,
   },
   footerText: {
     color: "rgba(167, 139, 250, 0.3)",

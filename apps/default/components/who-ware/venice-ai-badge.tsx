@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -17,7 +18,7 @@ export function VeniceAiBadge({ type = "hint", compact = false }: VeniceAiBadgeP
 
   return (
     <View style={[styles.badge, compact && styles.compact]}>
-      <Ionicons name={config.icon} size={compact ? 10 : 12} color="#A78BFA" />
+      <Ionicons name={config.icon} size={compact ? 10 : 12} color={theme.violet} />
       <Text style={[styles.label, compact && styles.labelCompact]}>{config.label}</Text>
     </View>
   );
@@ -41,7 +42,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   label: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.3,

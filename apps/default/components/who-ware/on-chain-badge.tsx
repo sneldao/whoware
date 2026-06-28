@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -15,7 +16,7 @@ export function OnChainBadge({ txHash, isMinting, mintingLabel = "Minting on Man
   if (isMinting) {
     return (
       <View style={styles.badge}>
-        <Ionicons name="hourglass" size={12} color="#A78BFA" />
+        <Ionicons name="hourglass" size={12} color={theme.violet} />
         <Text style={styles.mintingText}>{mintingLabel}</Text>
       </View>
     );
@@ -55,7 +56,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(74, 222, 128, 0.12)",
   },
   mintingText: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 11,
     fontWeight: "800",
   },

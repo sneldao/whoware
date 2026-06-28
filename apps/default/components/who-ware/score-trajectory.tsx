@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { useEffect, useRef } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
@@ -77,9 +78,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 16,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    borderColor: theme.inkAlpha8,
   },
   header: {
     flexDirection: "row",
@@ -87,7 +88,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   label: {
-    color: "rgba(255, 247, 237, 0.58)",
+    color: theme.inkAlpha58,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 0.8,
@@ -99,13 +100,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   value: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 15,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
   },
   valueHigh: {
-    color: "#22C55E",
+    color: theme.success,
   },
   separator: {
     color: "rgba(255, 247, 237, 0.25)",
@@ -128,22 +129,22 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha8,
     overflow: "hidden",
   },
   fill: {
     height: "100%",
     borderRadius: 3,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   fillMid: {
     backgroundColor: "#86EFAC",
   },
   fillHigh: {
-    backgroundColor: "#22C55E",
+    backgroundColor: theme.success,
   },
   percentile: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 11,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
@@ -151,6 +152,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   percentileHigh: {
-    color: "#22C55E",
+    color: theme.success,
   },
 });

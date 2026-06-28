@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
@@ -54,7 +55,7 @@ export default function AnalyticsPage() {
       >
         <View style={styles.headerRow}>
           <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={20} color="#FFF7ED" />
+            <Ionicons name="chevron-back" size={20} color={theme.ink} />
           </Pressable>
           <View>
             <Text style={styles.title}>WhoWare Pulse</Text>
@@ -66,7 +67,7 @@ export default function AnalyticsPage() {
           <View style={styles.statsGrid}>
             <TappableMetric variant="card" label="Total Solves" value={formatNumber(stats.totalSolves)} icon="checkmark-circle" iconColor="#86EFAC" onPress={() => tooltip.show("totalSolves")} />
             <TappableMetric variant="card" label="Unique Players" value={formatNumber(stats.uniqueSolvers)} icon="people" iconColor="#93C5FD" onPress={() => tooltip.show("uniquePlayers")} />
-            <TappableMetric variant="card" label="Avg Score" value={formatNumber(stats.averageScore)} icon="star" iconColor="#FBBF24" onPress={() => tooltip.show("avgScore")} />
+            <TappableMetric variant="card" label="Avg Score" value={formatNumber(stats.averageScore)} icon="star" iconColor={theme.accent} onPress={() => tooltip.show("avgScore")} />
             <TappableMetric variant="card" label="Total Runs" value={formatNumber(stats.totalRuns)} icon="play" iconColor="#C084FC" onPress={() => tooltip.show("totalRuns")} />
             <TappableMetric variant="card" label="On-Chain Mints" value={formatNumber(stats.totalMints)} icon="cube" iconColor="#FB923C" onPress={() => tooltip.show("onChainMints")} />
             <TappableMetric variant="card" label="Archive Unlocks" value={formatNumber(stats.totalArchiveUnlocks)} icon="lock-open" iconColor="#F472B6" onPress={() => tooltip.show("archiveUnlocks")} />
@@ -82,7 +83,7 @@ export default function AnalyticsPage() {
           activeBadge={tooltip.activeBadge}
           onDismiss={tooltip.hide}
           definitions={STAT_DEFINITIONS}
-          accentColor="#FBBF24"
+          accentColor={theme.accent}
         />
 
         <View style={styles.section}>
@@ -136,7 +137,7 @@ export default function AnalyticsPage() {
         </View>
 
         <Pressable style={styles.gameBridgeButton} href="/">
-          <Ionicons name="arrow-back" size={16} color="#111827" />
+          <Ionicons name="arrow-back" size={16} color={theme.inkOnAccent} />
           <Text style={styles.gameBridgeText}>Back to today's puzzle</Text>
         </Pressable>
       </ScrollView>
@@ -159,7 +160,7 @@ function timeAgo(timestamp: number): string {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#070A12",
+    backgroundColor: theme.canvas,
   },
   scroll: {
     flex: 1,
@@ -180,16 +181,16 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha8,
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 26,
     fontWeight: "900",
     letterSpacing: -0.8,
   },
   subtitle: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 13,
     fontWeight: "800",
   },
@@ -203,7 +204,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loadingText: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 14,
     fontWeight: "800",
   },
@@ -211,7 +212,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionTitle: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 12,
     fontWeight: "900",
     letterSpacing: 1.2,
@@ -220,15 +221,15 @@ const styles = StyleSheet.create({
   table: {
     borderRadius: 16,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    borderColor: theme.inkAlpha8,
     overflow: "hidden",
   },
   tableHeader: {
     flexDirection: "row",
     padding: 12,
-    backgroundColor: "rgba(255, 247, 237, 0.03)",
+    backgroundColor: theme.inkAlpha3,
   },
   tableRow: {
     flexDirection: "row",
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
   },
   tableCellValue: {
     textTransform: "none",
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 14,
   },
   tableCellRank: {
@@ -271,9 +272,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.06)",
+    borderColor: theme.inkAlpha6,
   },
   feedIcon: {
     width: 28,
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   feedPlayer: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 14,
     fontWeight: "800",
   },
@@ -298,12 +299,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   feedTime: {
-    color: "rgba(255, 247, 237, 0.35)",
+    color: theme.inkAlpha35,
     fontSize: 11,
     fontWeight: "800",
   },
   emptyText: {
-    color: "rgba(255, 247, 237, 0.35)",
+    color: theme.inkAlpha35,
     fontSize: 14,
     fontWeight: "700",
     padding: 16,
@@ -316,11 +317,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 20,
     borderCurve: "continuous",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
     marginBottom: 20,
   },
   gameBridgeText: {
-    color: "#111827",
+    color: theme.inkOnAccent,
     fontSize: 15,
     fontWeight: "900",
   },

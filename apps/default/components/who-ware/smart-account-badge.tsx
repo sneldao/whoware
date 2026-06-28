@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -15,7 +16,7 @@ export function SmartAccountBadge({
   if (isUpgrading) {
     return (
       <View style={[styles.badge, styles.upgrading]}>
-        <ActivityIndicator size="small" color="#A78BFA" />
+        <ActivityIndicator size="small" color={theme.violet} />
         <Text style={[styles.label, styles.upgradingLabel]}>Upgrading…</Text>
       </View>
     );
@@ -24,7 +25,7 @@ export function SmartAccountBadge({
   if (isUpgraded) {
     return (
       <View style={[styles.badge, styles.upgraded]}>
-        <Ionicons name="shield-checkmark" size={14} color="#22C55E" />
+        <Ionicons name="shield-checkmark" size={14} color={theme.success} />
         <Text style={[styles.label, styles.upgradedLabel]}>Smart Account</Text>
         <View style={styles.techBadge}>
           <Text style={styles.techBadgeText}>ERC-7710</Text>
@@ -38,7 +39,7 @@ export function SmartAccountBadge({
       onPress={onUpgrade as any}
       style={({ pressed }) => [styles.badge, styles.promptBadge, pressed && styles.pressed]}
     >
-      <Ionicons name="shield-outline" size={14} color="#A78BFA" />
+      <Ionicons name="shield-outline" size={14} color={theme.violet} />
       <Text style={[styles.label, styles.promptLabel]}>Upgrade to Smart Account</Text>
     </Pressable>
   );
@@ -67,20 +68,20 @@ const styles = StyleSheet.create({
   promptBadge: {
     backgroundColor: "rgba(167, 139, 250, 0.08)",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.15)",
+    borderColor: theme.violetBorder,
   },
   label: {
     fontSize: 12,
     fontWeight: "800",
   },
   upgradedLabel: {
-    color: "#22C55E",
+    color: theme.success,
   },
   upgradingLabel: {
-    color: "#A78BFA",
+    color: theme.violet,
   },
   promptLabel: {
-    color: "#A78BFA",
+    color: theme.violet,
   },
   techBadge: {
     paddingHorizontal: 5,
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(34, 197, 94, 0.15)",
   },
   techBadgeText: {
-    color: "#22C55E",
+    color: theme.success,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 0.5,

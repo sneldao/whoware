@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Ionicons } from "@expo/vector-icons";
@@ -154,7 +155,7 @@ export default function CuratorScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.logoMark}>
-            <Ionicons name="eye" size={20} color="#111827" />
+            <Ionicons name="eye" size={20} color={theme.inkOnAccent} />
           </View>
           <View>
             <Text style={styles.title}>Curator</Text>
@@ -162,7 +163,7 @@ export default function CuratorScreen() {
           </View>
         </View>
         <Pressable style={styles.backButton} href="/">
-          <Ionicons name="close" size={20} color="rgba(255, 247, 237, 0.5)" />
+          <Ionicons name="close" size={20} color={theme.inkAlpha50} />
         </Pressable>
       </View>
 
@@ -170,7 +171,7 @@ export default function CuratorScreen() {
       <View style={styles.veniceBanner}>
         <View style={styles.veniceBannerLeft}>
           <View style={styles.veniceIcon}>
-            <Ionicons name="sparkles" size={14} color="#A78BFA" />
+            <Ionicons name="sparkles" size={14} color={theme.violet} />
           </View>
           <View>
             <Text style={styles.veniceBannerTitle}>Powered by Venice AI</Text>
@@ -202,7 +203,7 @@ export default function CuratorScreen() {
             <Ionicons
               name={tab.icon}
               size={14}
-              color={activeTab === tab.key ? "#111827" : "rgba(255, 247, 237, 0.5)"}
+              color={activeTab === tab.key ? theme.inkOnAccent : theme.inkAlpha50}
             />
             <Text style={[styles.tabLabel, activeTab === tab.key && styles.tabLabelActive]}>
               {tab.label}
@@ -252,7 +253,7 @@ export default function CuratorScreen() {
           {/* Staging queue */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="cube" size={16} color="#FBBF24" />
+              <Ionicons name="cube" size={16} color={theme.accent} />
               <Text style={styles.sectionTitle}>Staging Queue</Text>
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>{queue?.length ?? 0}</Text>
@@ -261,7 +262,7 @@ export default function CuratorScreen() {
 
             {!queue && (
               <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color="rgba(255, 247, 237, 0.4)" />
+                <ActivityIndicator size="small" color={theme.inkAlpha40} />
               </View>
             )}
 
@@ -356,7 +357,7 @@ export default function CuratorScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#070A12",
+    backgroundColor: theme.canvas,
   },
   content: {
     maxWidth: 720,
@@ -382,16 +383,16 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 22,
     fontWeight: "900",
     letterSpacing: -0.4,
   },
   subtitle: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 13,
     fontWeight: "700",
     marginTop: 1,
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
   },
   veniceBanner: {
     flexDirection: "row",
@@ -412,9 +413,9 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "rgba(167, 139, 250, 0.06)",
+    backgroundColor: theme.violetMuted,
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.15)",
+    borderColor: theme.violetBorder,
   },
   veniceBannerLeft: {
     flexDirection: "row",
@@ -429,15 +430,15 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(167, 139, 250, 0.15)",
+    backgroundColor: theme.violetBorder,
   },
   veniceBannerTitle: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 13,
     fontWeight: "900",
   },
   veniceBannerSub: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 10,
     fontWeight: "600",
     marginTop: 1,
@@ -456,21 +457,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 14,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.06)",
+    borderColor: theme.inkAlpha6,
   },
   tabActive: {
-    backgroundColor: "#FBBF24",
-    borderColor: "#FBBF24",
+    backgroundColor: theme.accent,
+    borderColor: theme.accent,
   },
   tabLabel: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 13,
     fontWeight: "800",
   },
   tabLabelActive: {
-    color: "#111827",
+    color: theme.inkOnAccent,
   },
   section: {
     gap: 12,
@@ -481,7 +482,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 16,
     fontWeight: "900",
   },
@@ -489,10 +490,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 999,
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha8,
   },
   countText: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 11,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
@@ -509,7 +510,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     backgroundColor: "rgba(255, 247, 237, 0.02)",
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.04)",
+    borderColor: theme.inkAlpha4,
   },
   emptyIcon: {
     width: 56,
@@ -517,16 +518,16 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     marginBottom: 4,
   },
   emptyTitle: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 15,
     fontWeight: "800",
   },
   emptyText: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 12,
     fontWeight: "600",
     textAlign: "center",
@@ -543,8 +544,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.06)",
-    backgroundColor: "rgba(255, 247, 237, 0.03)",
+    borderColor: theme.inkAlpha6,
+    backgroundColor: theme.inkAlpha3,
   },
   queueItemLeft: {
     flexDirection: "row",
@@ -556,7 +557,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   queueSlug: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 14,
     fontWeight: "800",
   },
@@ -576,20 +577,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   statusStaging: {
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
+    backgroundColor: theme.accentAlpha15,
   },
   statusReview: {
     backgroundColor: "rgba(96, 165, 250, 0.15)",
   },
   statusText: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 10,
     fontWeight: "900",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   queueCount: {
-    color: "rgba(255, 247, 237, 0.35)",
+    color: theme.inkAlpha35,
     fontSize: 12,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],

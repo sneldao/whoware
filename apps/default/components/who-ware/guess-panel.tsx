@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { theme } from "@/lib/theme";
 
 export interface FigureOption {
   figureId: string;
@@ -44,14 +45,14 @@ export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlaye
           <Text style={styles.eyebrow}>Identity search</Text>
           <Text style={styles.title}>{isSolved ? "Identity anchored" : `${guessesLeft} guesses left`}</Text>
         </View>
-        <Ionicons name={isSolved ? "checkmark-circle" : "finger-print"} size={28} color="#FBBF24" />
+        <Ionicons name={isSolved ? "checkmark-circle" : "finger-print"} size={28} color={theme.accent} />
       </View>
 
       <TextInput
         value={playerName}
         onChangeText={onPlayerNameChange}
         placeholder="Leaderboard name"
-        placeholderTextColor="rgba(255, 247, 237, 0.38)"
+        placeholderTextColor={theme.inkAlpha38}
         style={styles.input}
         maxLength={32}
       />
@@ -60,7 +61,7 @@ export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlaye
         value={query}
         onChangeText={setQuery}
         placeholder="Whose body are you inside?"
-        placeholderTextColor="rgba(255, 247, 237, 0.38)"
+        placeholderTextColor={theme.inkAlpha38}
         style={styles.input}
         editable={!isSolved && guessesLeft > 0}
       />
@@ -74,7 +75,7 @@ export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlaye
             style={({ pressed }) => [styles.option, pressed && styles.pressed]}
           >
             <Text style={styles.optionText}>{figure.displayName}</Text>
-            <Ionicons name="arrow-forward" size={16} color="rgba(255, 247, 237, 0.58)" />
+            <Ionicons name="arrow-forward" size={16} color={theme.inkAlpha58} />
           </Pressable>
         ))}
       </View>
@@ -88,9 +89,9 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 28,
     borderCurve: "continuous",
-    backgroundColor: "rgba(15, 23, 42, 0.82)",
+    backgroundColor: theme.slateDeep,
     borderWidth: 1,
-    borderColor: "rgba(248, 231, 201, 0.13)",
+    borderColor: theme.parchmentLight,
   },
   headerRow: {
     flexDirection: "row",
@@ -98,14 +99,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   eyebrow: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 12,
     fontWeight: "900",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 22,
     fontWeight: "900",
   },
@@ -114,11 +115,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 16,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
-    color: "#FFF7ED",
+    backgroundColor: theme.inkAlpha8,
+    color: theme.ink,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.1)",
+    borderColor: theme.inkAlpha10,
   },
   options: {
     gap: 8,
@@ -131,13 +132,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     borderRadius: 15,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
   },
   pressed: {
     opacity: 0.72,
   },
   optionText: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 15,
     fontWeight: "800",
   },

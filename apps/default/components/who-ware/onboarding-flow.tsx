@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -74,7 +75,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <View style={styles.topBar}>
         <View style={styles.brandRow}>
           <View style={styles.brandMark}>
-            <Ionicons name="eye" size={14} color="#1C1106" />
+            <Ionicons name="eye" size={14} color={theme.inkInverted} />
           </View>
           <Text style={styles.brandName}>WhoWare</Text>
         </View>
@@ -92,7 +93,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <Animated.View key={`step-${step}`} entering={SlideInRight.duration(350)} exiting={SlideOutLeft.duration(250)} style={styles.stepContent}>
           <View style={styles.iconRow}>
             <View style={styles.iconBadge}>
-              <Ionicons name={current.icon} size={20} color="#FBBF24" />
+              <Ionicons name={current.icon} size={20} color={theme.accent} />
             </View>
             <Text style={styles.stepCounter}>
               {step + 1} / {STEPS.length}
@@ -119,7 +120,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}
         >
           <Text style={styles.nextButtonText}>{isLast ? "Start Playing" : "Continue"}</Text>
-          <Ionicons name="chevron-forward" size={18} color="#1C1106" />
+          <Ionicons name="chevron-forward" size={18} color={theme.inkInverted} />
         </Pressable>
       </View>
     </Animated.View>
@@ -231,10 +232,10 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   brandName: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 17,
     fontWeight: "900",
   },
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   skipText: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 14,
     fontWeight: "800",
   },
@@ -262,7 +263,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: "rgba(251, 191, 36, 0.08)",
+    backgroundColor: theme.accentAlpha8,
   },
   contentSection: {
     flex: 1,
@@ -284,25 +285,25 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
+    backgroundColor: theme.accentAlpha15,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.3)",
+    borderColor: theme.accentAlpha30,
   },
   stepCounter: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 13,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 30,
     lineHeight: 36,
     fontWeight: "900",
     letterSpacing: -1,
   },
   narration: {
-    color: "rgba(255, 247, 237, 0.65)",
+    color: theme.inkAlpha65,
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "700",
@@ -313,16 +314,16 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.15)",
+    borderColor: theme.accentAlpha15,
   },
   demoPanorama: {
     padding: 20,
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     alignItems: "center",
     gap: 12,
   },
   demoSceneLabel: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 1,
@@ -334,22 +335,22 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(251, 191, 36, 0.14)",
+    backgroundColor: theme.accentAlpha14,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.7)",
+    borderColor: theme.accentAlpha70,
   },
   demoHotspotActive: {
-    backgroundColor: "rgba(251, 191, 36, 0.35)",
-    borderColor: "#FBBF24",
+    backgroundColor: theme.accentAlpha35,
+    borderColor: theme.accent,
   },
   demoHotspotDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   demoTapHint: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 12,
     fontWeight: "800",
   },
@@ -369,29 +370,29 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   demoClueDetail: {
-    color: "rgba(255, 247, 237, 0.7)",
+    color: theme.inkAlpha70,
     fontSize: 14,
     lineHeight: 20,
   },
   demoGuessRow: {
     padding: 12,
     gap: 8,
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
   },
   demoGuessOption: {
     padding: 12,
     borderRadius: 12,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.06)",
+    backgroundColor: theme.inkAlpha6,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.1)",
+    borderColor: theme.inkAlpha10,
   },
   demoGuessCorrect: {
     backgroundColor: "rgba(134, 239, 172, 0.15)",
     borderColor: "rgba(134, 239, 172, 0.5)",
   },
   demoGuessText: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 14,
     fontWeight: "800",
   },
@@ -428,17 +429,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: "rgba(251, 191, 36, 0.15)",
+    backgroundColor: theme.accentAlpha15,
     alignItems: "center",
   },
   demoScoreValue: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 16,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
   },
   demoScoreLabel: {
-    color: "rgba(251, 191, 36, 0.6)",
+    color: theme.accentAlpha60,
     fontSize: 10,
     fontWeight: "800",
   },
@@ -458,10 +459,10 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 24,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   dotDone: {
-    backgroundColor: "rgba(251, 191, 36, 0.4)",
+    backgroundColor: theme.accentAlpha40,
   },
   nextButton: {
     minHeight: 54,
@@ -471,10 +472,10 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 20,
     borderCurve: "continuous",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   nextButtonText: {
-    color: "#1C1106",
+    color: theme.inkInverted,
     fontSize: 16,
     fontWeight: "900",
   },

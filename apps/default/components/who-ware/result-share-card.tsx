@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -25,7 +26,7 @@ interface ResultShareCardProps {
 }
 
 const DIFFICULTY_PALETTE: Record<string, { bg: string; fg: string; label: string }> = {
-  iconic: { bg: "rgba(251, 191, 36, 0.22)", fg: "#FBBF24", label: "Iconic" },
+  iconic: { bg: theme.accentAlpha22, fg: theme.accent, label: "Iconic" },
   field: { bg: "rgba(134, 239, 172, 0.22)", fg: "#86EFAC", label: "Field" },
   research: { bg: "rgba(147, 197, 253, 0.22)", fg: "#93C5FD", label: "Research" },
 };
@@ -34,15 +35,15 @@ function getStreakTier(streak: number): { label: string; color: string; icon: st
   if (streak >= 100) return { label: "Eternal", color: "#C084FC", icon: "diamond", glow: "rgba(192, 132, 252, 0.3)" };
   if (streak >= 30) return { label: "Inferno", color: "#EF4444", icon: "flame", glow: "rgba(239, 68, 68, 0.3)" };
   if (streak >= 7) return { label: "Flame", color: "#FB923C", icon: "flame", glow: "rgba(251, 146, 60, 0.3)" };
-  if (streak >= 1) return { label: "Spark", color: "#FBBF24", icon: "flash", glow: "rgba(251, 191, 36, 0.3)" };
+  if (streak >= 1) return { label: "Spark", color: theme.accent, icon: "flash", glow: theme.accentAlpha30 };
   return { label: "", color: "#FB923C", icon: "flame", glow: "rgba(251, 146, 60, 0.3)" };
 }
 
 function getScoreTierGradient(percentile: number | null): string[] {
-  if (percentile !== null && percentile <= 10) return ["#FBBF24", "#F59E0B", "#FBBF24"];
+  if (percentile !== null && percentile <= 10) return [theme.accent, theme.goldGradientEnd, theme.accent];
   if (percentile !== null && percentile <= 25) return ["#D1D5DB", "#9CA3AF", "#D1D5DB"];
   if (percentile !== null && percentile <= 50) return ["#D97706", "#B45309", "#D97706"];
-  return ["rgba(251, 191, 36, 0.28)", "rgba(251, 191, 36, 0.12)", "rgba(251, 191, 36, 0.28)"];
+  return [theme.accentAlpha28, theme.accentAlpha12, theme.accentAlpha28];
 }
 
 export function ResultShareCard({
@@ -145,7 +146,7 @@ export function ResultShareCard({
             <LinearGradient colors={["#2A1A09", "#140C04"]} style={StyleSheet.absoluteFill} />
             <View style={styles.cardHeader}>
               <View style={styles.brandMark}>
-                <Ionicons name="eye" size={16} color="#1C1106" />
+                <Ionicons name="eye" size={16} color={theme.inkInverted} />
               </View>
               <Text style={styles.brandName}>WhoWare</Text>
               <View style={styles.headerChips}>
@@ -223,7 +224,7 @@ export function ResultShareCard({
           disabled={isCopied}
           style={({ pressed }) => [styles.copyButton, pressed && styles.pressed, isCopied && styles.copyButtonDone]}
         >
-          <Ionicons name={isCopied ? "checkmark" : "copy-outline"} size={18} color="#FBBF24" />
+          <Ionicons name={isCopied ? "checkmark" : "copy-outline"} size={18} color={theme.accent} />
           <Text style={styles.copyButtonText}>{isCopied ? "Copied" : "Copy text"}</Text>
         </Pressable>
 
@@ -233,7 +234,7 @@ export function ResultShareCard({
           disabled={isImageSharing}
           style={({ pressed }) => [styles.imageButton, pressed && styles.pressed, isImageSharing && styles.shareButtonBusy]}
         >
-          <Ionicons name="image-outline" size={18} color="#FBBF24" />
+          <Ionicons name="image-outline" size={18} color={theme.accent} />
           <Text style={styles.imageButtonText}>{isImageSharing ? "…" : "Image"}</Text>
         </Pressable>
 
@@ -243,7 +244,7 @@ export function ResultShareCard({
           disabled={isSharing}
           style={({ pressed }) => [styles.shareButton, pressed && styles.pressed, isSharing && styles.shareButtonBusy]}
         >
-          <Ionicons name="share-outline" size={18} color="#1C1106" />
+          <Ionicons name="share-outline" size={18} color={theme.inkInverted} />
           <Text style={styles.shareButtonText}>{isSharing ? "…" : "Share"}</Text>
         </Pressable>
       </View>
@@ -338,17 +339,17 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   brandName: {
     flex: 1,
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 18,
     fontWeight: "900",
     letterSpacing: -0.4,
   },
   episodeTag: {
-    color: "rgba(251, 191, 36, 0.9)",
+    color: theme.accentAlpha90,
     fontSize: 16,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
@@ -384,14 +385,14 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   solvedLabel: {
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1.4,
     textTransform: "uppercase",
   },
   figureContext: {
-    color: "rgba(255, 247, 237, 0.7)",
+    color: theme.inkAlpha70,
     fontSize: 13,
     fontWeight: "800",
     letterSpacing: 0.2,
@@ -416,10 +417,10 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     backgroundColor: "rgba(255, 247, 237, 0.07)",
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    borderColor: theme.inkAlpha8,
   },
   shareStatValue: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 17,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
@@ -437,14 +438,14 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   scoreValue: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 32,
     fontWeight: "900",
     fontVariant: ["tabular-nums"],
     letterSpacing: -1,
   },
   scoreSuffix: {
-    color: "rgba(251, 191, 36, 0.6)",
+    color: theme.accentAlpha60,
     fontSize: 14,
     fontWeight: "800",
   },
@@ -453,10 +454,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha8,
   },
   percentile: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 13,
     fontWeight: "900",
   },
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   tagline: {
-    color: "rgba(255, 247, 237, 0.38)",
+    color: theme.inkAlpha38,
     fontSize: 11,
     fontWeight: "800",
     marginTop: 2,
@@ -495,16 +496,16 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "rgba(251, 191, 36, 0.1)",
+    backgroundColor: theme.accentAlpha10,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.35)",
+    borderColor: theme.accentAlpha35,
   },
   copyButtonDone: {
     backgroundColor: "rgba(134, 239, 172, 0.14)",
     borderColor: "rgba(134, 239, 172, 0.5)",
   },
   copyButtonText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 13,
     fontWeight: "900",
   },
@@ -517,12 +518,12 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "rgba(251, 191, 36, 0.1)",
+    backgroundColor: theme.accentAlpha10,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.35)",
+    borderColor: theme.accentAlpha35,
   },
   imageButtonText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 13,
     fontWeight: "900",
   },
@@ -535,13 +536,13 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   shareButtonBusy: {
     opacity: 0.7,
   },
   shareButtonText: {
-    color: "#1C1106",
+    color: theme.inkInverted,
     fontSize: 14,
     fontWeight: "900",
   },

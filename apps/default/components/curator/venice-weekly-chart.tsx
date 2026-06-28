@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { api } from "@/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
@@ -82,7 +83,7 @@ export function VeniceWeeklyChart() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Ionicons name="trending-up" size={14} color="#A78BFA" />
+          <Ionicons name="trending-up" size={14} color={theme.violet} />
           <Text style={styles.headerTitle}>7-Day Trend</Text>
         </View>
         <View style={styles.weekTotalBadge}>
@@ -109,7 +110,7 @@ export function VeniceWeeklyChart() {
         <MetricRow
           label="Episodes"
           icon="film"
-          color="#A78BFA"
+          color={theme.violet}
           data={episodes}
           maxValue={weeklyStats.maxDaily}
           weeklyTotal={weeklyStats.weeklyEpisodes}
@@ -117,7 +118,7 @@ export function VeniceWeeklyChart() {
         <MetricRow
           label="Hints"
           icon="chatbubbles"
-          color="#22C55E"
+          color={theme.success}
           data={hints}
           maxValue={weeklyStats.maxDaily}
           weeklyTotal={weeklyStats.weeklyHints}
@@ -125,7 +126,7 @@ export function VeniceWeeklyChart() {
         <MetricRow
           label="Images"
           icon="image"
-          color="#FBBF24"
+          color={theme.accent}
           data={images}
           maxValue={weeklyStats.maxDaily}
           weeklyTotal={weeklyStats.weeklyImages}
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.12)",
+    borderColor: theme.violetIconBg,
     backgroundColor: "rgba(167, 139, 250, 0.04)",
     overflow: "hidden",
   },
@@ -157,7 +158,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderCurve: "continuous",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.12)",
+    borderColor: theme.violetIconBg,
     backgroundColor: "rgba(167, 139, 250, 0.04)",
   },
   header: {
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerTitle: {
-    color: "#A78BFA",
+    color: theme.violet,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.3,
@@ -185,10 +186,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: "rgba(251, 191, 36, 0.1)",
+    backgroundColor: theme.accentAlpha10,
   },
   weekTotalText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 9,
     fontWeight: "900",
     textTransform: "uppercase",
@@ -260,7 +261,7 @@ const styles = StyleSheet.create({
     minHeight: 4,
   },
   barValue: {
-    color: "rgba(255, 247, 237, 0.35)",
+    color: theme.inkAlpha35,
     fontSize: 8,
     fontWeight: "700",
     fontVariant: ["tabular-nums"],
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: "rgba(167, 139, 250, 0.06)",
+    borderTopColor: theme.violetMuted,
   },
   footerText: {
     color: "rgba(167, 139, 250, 0.35)",

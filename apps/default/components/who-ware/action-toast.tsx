@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
@@ -19,7 +20,7 @@ interface ActionToastProps {
 
 const TYPE_STYLES = {
   info: { bg: "rgba(96, 165, 250, 0.15)", border: "rgba(96, 165, 250, 0.3)", icon: "ℹ️" },
-  warning: { bg: "rgba(251, 191, 36, 0.15)", border: "rgba(251, 191, 36, 0.3)", icon: "⚠️" },
+  warning: { bg: theme.accentAlpha15, border: theme.accentAlpha30, icon: "⚠️" },
   success: { bg: "rgba(34, 197, 94, 0.15)", border: "rgba(34, 197, 94, 0.3)", icon: "✅" },
   error: { bg: "rgba(248, 113, 113, 0.15)", border: "rgba(248, 113, 113, 0.3)", icon: "❌" },
 };
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
   },
   message: {
     flex: 1,
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 14,
     fontWeight: "800",
     lineHeight: 20,
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
   progressTrack: {
     height: 2,
     borderRadius: 1,
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha8,
     overflow: "hidden",
   },
   progressFill: {

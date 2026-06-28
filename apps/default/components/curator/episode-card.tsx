@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import type { Id } from "@/convex/_generated/dataModel";
+import { theme } from "@/lib/theme";
 
 interface Scene {
   title: string;
@@ -29,11 +30,11 @@ interface EpisodeCardProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  staging: "#F59E0B",
+  staging: theme.goldGradientEnd,
   review: "#3B82F6",
   draft: "#8B5CF6",
-  live: "#22C55E",
-  closed: "#64748B",
+  live: theme.success,
+  closed: theme.neutral,
 };
 
 export function EpisodeCard({
@@ -58,7 +59,7 @@ export function EpisodeCard({
           <Text style={styles.slug}>{slug}</Text>
           {figureName && <Text style={styles.figureName}>{figureName}</Text>}
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[status] ?? "#64748B" }]}>
+        <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[status] ?? theme.neutral }]}>
           <Text style={styles.statusText}>{status}</Text>
         </View>
       </View>
@@ -103,7 +104,7 @@ export function EpisodeCard({
                   </View>
                 )}
                 {hasImage ? (
-                  <Ionicons name="image" size={14} color="#22C55E" />
+                  <Ionicons name="image" size={14} color={theme.success} />
                 ) : (
                   <Ionicons name="image-outline" size={14} color="#EF4444" />
                 )}
@@ -135,10 +136,10 @@ export function EpisodeCard({
           disabled={isApproving || missingImages.length > 0}
         >
           {isApproving ? (
-            <ActivityIndicator size="small" color="#111827" />
+            <ActivityIndicator size="small" color={theme.inkOnAccent} />
           ) : (
             <View style={styles.approveButtonContent}>
-              <Ionicons name="checkmark-circle" size={16} color="#111827" />
+              <Ionicons name="checkmark-circle" size={16} color={theme.inkOnAccent} />
               <Text style={styles.approveButtonText}>
                 {missingImages.length > 0
                   ? `Approve (${missingImages.length} scene${missingImages.length > 1 ? "s" : "s"} missing images)`
@@ -294,13 +295,13 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: "#22C55E",
+    backgroundColor: theme.success,
   },
   approveButtonDisabled: {
     backgroundColor: "#334155",
   },
   approveButtonText: {
-    color: "#111827",
+    color: theme.inkOnAccent,
     fontSize: 14,
     fontWeight: "700",
   },

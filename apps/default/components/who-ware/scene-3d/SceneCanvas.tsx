@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { useEffect, useRef } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
+import { theme } from "@/lib/theme";
 
 import type { Scene } from "@/components/who-ware/panorama-scene";
 import {
@@ -335,14 +336,14 @@ const styles = StyleSheet.create({
     pointerEvents: "none",
   },
   counter: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 1.3,
     textTransform: "uppercase",
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 25,
     fontWeight: "900",
     letterSpacing: -0.7,
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
     pointerEvents: "none",
   },
   help: {
-    color: "rgba(255, 247, 237, 0.55)",
+    color: theme.inkAlpha55,
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.8,
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   placeholderText: {
-    color: "rgba(255, 247, 237, 0.7)",
+    color: theme.inkAlpha70,
     fontSize: 14,
     fontWeight: "700",
     textAlign: "center",

@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { Id } from "@/convex/_generated/dataModel";
+import { theme } from "@/lib/theme";
 
 interface FigureOption {
   _id: Id<"figures">;
@@ -73,7 +74,7 @@ export function GenerateForm({ figures, onGenerate, isGenerating }: GenerateForm
                   </Text>
                 </View>
                 {selectedFigureId === figure._id && (
-                  <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+                  <Ionicons name="checkmark-circle" size={18} color={theme.success} />
                 )}
               </Pressable>
             ))
@@ -83,7 +84,7 @@ export function GenerateForm({ figures, onGenerate, isGenerating }: GenerateForm
 
       {selectedFigure && (
         <View style={styles.selectedPreview}>
-          <Ionicons name="person" size={16} color="#FBBF24" />
+          <Ionicons name="person" size={16} color={theme.accent} />
           <Text style={styles.selectedText}>
             Selected: {selectedFigure.canonicalName} ({selectedFigure.era})
           </Text>
@@ -96,7 +97,7 @@ export function GenerateForm({ figures, onGenerate, isGenerating }: GenerateForm
           value={slug}
           onChangeText={setSlug}
           placeholder="e.g. episode-2026-06-08"
-          placeholderTextColor="#475569"
+          placeholderTextColor={theme.neutralDark}
           style={styles.input}
         />
         <Text style={styles.hint}>Auto-generated if left blank</Text>
@@ -120,12 +121,12 @@ export function GenerateForm({ figures, onGenerate, isGenerating }: GenerateForm
       >
         {isGenerating ? (
           <>
-            <ActivityIndicator size="small" color="#111827" />
+            <ActivityIndicator size="small" color={theme.inkOnAccent} />
             <Text style={styles.submitButtonText}>Generating…</Text>
           </>
         ) : (
           <>
-            <Ionicons name="sparkles" size={16} color="#111827" />
+            <Ionicons name="sparkles" size={16} color={theme.inkOnAccent} />
             <Text style={styles.submitButtonText}>Generate Episode</Text>
           </>
         )}
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   emptyText: {
-    color: "#475569",
+    color: theme.neutralDark,
     fontSize: 13,
     fontStyle: "italic",
   },
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   figureOptionSelected: {
-    borderColor: "#22C55E",
+    borderColor: theme.success,
     backgroundColor: "rgba(34, 197, 94, 0.08)",
   },
   figureInfo: {
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   figureNameSelected: {
-    color: "#22C55E",
+    color: theme.success,
   },
   figureMeta: {
     color: "#64748b",
@@ -203,12 +204,12 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 10,
     borderRadius: 8,
-    backgroundColor: "rgba(251, 191, 36, 0.08)",
+    backgroundColor: theme.accentAlpha8,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.2)",
+    borderColor: theme.accentAlpha20,
   },
   selectedText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 13,
     fontWeight: "700",
   },
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   hint: {
-    color: "#475569",
+    color: theme.neutralDark,
     fontSize: 11,
   },
   errorRow: {
@@ -247,13 +248,13 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 12,
     borderRadius: 10,
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   submitButtonDisabled: {
     opacity: 0.5,
   },
   submitButtonText: {
-    color: "#111827",
+    color: theme.inkOnAccent,
     fontSize: 14,
     fontWeight: "700",
   },

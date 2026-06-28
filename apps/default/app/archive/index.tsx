@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useIdentity } from "@/hooks/use-identity";
@@ -26,7 +27,7 @@ export default function ArchiveScreen() {
 
         {closed.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="lock-closed" size={32} color="rgba(251, 191, 36, 0.5)" />
+            <Ionicons name="lock-closed" size={32} color={theme.accentAlpha50} />
             <Text style={styles.emptyText}>No cases have closed yet.</Text>
             <Text style={styles.emptySub}>Archived episodes appear here after the daily window ends.</Text>
           </View>
@@ -82,7 +83,7 @@ function ArchiveRow({ episodeId, figureName, difficulty, activeAt, identityId }:
       <View style={styles.row}>
         <View style={styles.rowHeader}>
           {isLocked ? (
-            <Ionicons name="lock-closed" size={14} color="rgba(251, 191, 36, 0.5)" />
+            <Ionicons name="lock-closed" size={14} color={theme.accentAlpha50} />
           ) : null}
           <Text style={styles.figureName}>{figureName}</Text>
           <DifficultyBadge difficulty={difficulty} />
@@ -93,7 +94,7 @@ function ArchiveRow({ episodeId, figureName, difficulty, activeAt, identityId }:
             <Ionicons
               name={run.status === "solved" ? "checkmark-circle" : "close-circle"}
               size={14}
-              color={run.status === "solved" ? "#FBBF24" : "rgba(255, 247, 237, 0.5)"}
+              color={run.status === "solved" ? theme.accent : theme.inkAlpha50}
             />
             <Text style={styles.resultText}>
               {run.status === "solved" ? `Solved · ${formatScore(run.score ?? 0)} pts` : "Unsolved"}
@@ -113,7 +114,7 @@ function ArchiveRow({ episodeId, figureName, difficulty, activeAt, identityId }:
 
 function DifficultyBadge({ difficulty }: { difficulty: "iconic" | "field" | "research" }) {
   const palette: Record<string, { bg: string; fg: string }> = {
-    iconic: { bg: "rgba(251, 191, 36, 0.2)", fg: "#FBBF24" },
+    iconic: { bg: theme.accentAlpha20, fg: theme.accent },
     field: { bg: "rgba(134, 239, 172, 0.18)", fg: "#86EFAC" },
     research: { bg: "rgba(147, 197, 253, 0.18)", fg: "#93C5FD" },
   };
@@ -142,20 +143,20 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   eyebrow: {
-    color: "rgba(251, 191, 36, 0.7)",
+    color: theme.accentAlpha70,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1.4,
     textTransform: "uppercase",
   },
   title: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 28,
     fontWeight: "900",
     letterSpacing: -0.6,
   },
   subhead: {
-    color: "rgba(255, 247, 237, 0.6)",
+    color: theme.inkAlpha60,
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 8,
@@ -169,9 +170,9 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: 20,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
+    backgroundColor: theme.inkAlpha4,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    borderColor: theme.inkAlpha8,
   },
   rowHeader: {
     flexDirection: "row",
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
   },
   figureName: {
     flex: 1,
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 18,
     fontWeight: "900",
     letterSpacing: -0.3,
@@ -198,7 +199,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   date: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -209,13 +210,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   resultText: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 13,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
   noRun: {
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 12,
     fontWeight: "700",
     marginTop: 4,
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   lockedText: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 12,
     fontWeight: "800",
   },
@@ -237,17 +238,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 24,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.03)",
+    backgroundColor: theme.inkAlpha3,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    borderColor: theme.inkAlpha8,
   },
   emptyText: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 16,
     fontWeight: "800",
   },
   emptySub: {
-    color: "rgba(255, 247, 237, 0.5)",
+    color: theme.inkAlpha50,
     fontSize: 13,
     fontWeight: "600",
     textAlign: "center",

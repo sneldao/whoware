@@ -1,3 +1,4 @@
+import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { ReactNode, useEffect, useState } from "react";
@@ -48,7 +49,7 @@ export function EnhancedSceneTransition({
   const [transmissionText, setTransmissionText] = useState("");
 
   const colors = [
-    palette[0] ?? "#111827",
+    palette[0] ?? theme.inkOnAccent,
     palette[1] ?? "#92400E",
     palette[2] ?? "#F8E7C9",
   ];
@@ -197,7 +198,7 @@ export function EnhancedSceneTransition({
               <Text style={[styles.memoryLabel, { color: colors[2] ?? "#F8E7C9" }]}>
                 Memory {currentIndex + 1}
               </Text>
-              <Text style={[styles.titleText, { color: "#FFF7ED" }]}>{title}</Text>
+              <Text style={[styles.titleText, { color: theme.ink }]}>{title}</Text>
               <Text style={styles.locationText}>{location}</Text>
               <View style={[styles.eraBadge, { backgroundColor: `${colors[1]}44`, borderColor: `${colors[1]}66` }]}>
                 <Text style={[styles.eraText, { color: colors[2] ?? "#F8E7C9" }]}>{era}</Text>
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
   },
   noiseBar: {
     position: "absolute",
-    backgroundColor: "#FFF7ED",
+    backgroundColor: theme.ink,
   },
   transmissionContainer: {
     alignItems: "center",
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha8,
     borderWidth: 1,
     borderColor: "rgba(255, 247, 237, 0.15)",
   },
@@ -307,7 +308,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.8,
   },
   locationText: {
-    color: "rgba(255, 247, 237, 0.65)",
+    color: theme.inkAlpha65,
     fontSize: 16,
     fontWeight: "700",
     textAlign: "center",

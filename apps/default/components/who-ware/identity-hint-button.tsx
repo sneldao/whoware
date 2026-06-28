@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { theme } from "@/lib/theme";
 
 interface IdentityHintButtonProps {
   episodeId: Id<"episodes">;
@@ -40,7 +41,7 @@ export function IdentityHintButton({
   if (!isUnlocked) {
     return (
       <View style={[styles.container, styles.locked]}>
-        <Ionicons name="lock-closed" size={14} color="rgba(255, 247, 237, 0.4)" />
+        <Ionicons name="lock-closed" size={14} color={theme.inkAlpha40} />
         <Text style={styles.lockedText}>
           Identity nudge unlocks after {3 - scenesRevealed > 0 ? 3 - scenesRevealed : 0} more{" "}
           {scenesRevealed === 2 ? "memory" : "memories"}
@@ -67,7 +68,7 @@ export function IdentityHintButton({
     return (
       <View style={styles.container}>
         <View style={styles.hintHeader}>
-          <Ionicons name="compass-outline" size={14} color="#FBBF24" />
+          <Ionicons name="compass-outline" size={14} color={theme.accent} />
           <Text style={styles.hintLabel}>Identity nudge</Text>
         </View>
         <Text style={styles.hintText}>{hint}</Text>
@@ -83,9 +84,9 @@ export function IdentityHintButton({
       style={({ pressed }) => [styles.button, pressed && styles.pressed, isLoading && styles.busy]}
     >
       {isLoading ? (
-        <ActivityIndicator color="#1C1106" size="small" />
+        <ActivityIndicator color={theme.inkInverted} size="small" />
       ) : (
-        <Ionicons name="compass-outline" size={16} color="#1C1106" />
+        <Ionicons name="compass-outline" size={16} color={theme.inkInverted} />
       )}
       <Text style={styles.buttonText}>
         {error ? error : isLoading ? "Listening…" : "Ask the memory who it was"}
@@ -99,21 +100,21 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "rgba(251, 191, 36, 0.08)",
+    backgroundColor: theme.accentAlpha8,
     borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.22)",
+    borderColor: theme.accentAlpha22,
     gap: 8,
   },
   locked: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 247, 237, 0.04)",
-    borderColor: "rgba(255, 247, 237, 0.08)",
+    backgroundColor: theme.inkAlpha4,
+    borderColor: theme.inkAlpha8,
     gap: 8,
   },
   lockedText: {
     flex: 1,
-    color: "rgba(255, 247, 237, 0.4)",
+    color: theme.inkAlpha40,
     fontSize: 12,
     fontWeight: "700",
   },
@@ -123,14 +124,14 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   hintLabel: {
-    color: "#FBBF24",
+    color: theme.accent,
     fontSize: 11,
     fontWeight: "900",
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   hintText: {
-    color: "#FFF7ED",
+    color: theme.ink,
     fontSize: 14,
     fontWeight: "700",
     lineHeight: 20,
@@ -143,10 +144,10 @@ const styles = StyleSheet.create({
     minHeight: 50,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "#FBBF24",
+    backgroundColor: theme.accent,
   },
   buttonText: {
-    color: "#1C1106",
+    color: theme.inkInverted,
     fontSize: 14,
     fontWeight: "900",
   },
