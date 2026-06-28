@@ -1,16 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useCallback, useRef, useState } from "react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { revealGuessOnChain } from "@/lib/wallet";
-import {
-  getEnvironment,
-  buildMintDelegation,
-  getDelegationTypedData,
-  signWithMetaMask,
-  sendViaSmartAccount,
-} from "@/lib/smart-account";
+import { sendViaSmartAccount } from "@/lib/smart-account";
 
+/**
+ * Arguments required to commit a solve on-chain. The guesser supplies these
+ * from its own state when it invokes `handleSolveOnchain`.
+ */
 export interface SolveOnchainArgs {
   runId: Id<"runs">;
   finalScore: number;
@@ -29,7 +27,7 @@ export interface SolveOnchainArgs {
   } | null;
 }
 
-export interface UseOnchainMintingParams {
+export interface UseSolveMinterParams {
   wallet: ReturnType<typeof import("./use-wallet").useWallet>;
   episode: { dropsAt: number; competitiveMode?: boolean } | null | undefined;
   streak: { current: number; best: number; totalSolved: number };
@@ -37,132 +35,76 @@ export interface UseOnchainMintingParams {
     message: string,
     type?: "info" | "warning" | "success" | "error",
   ) => void;
+  /**
+   * ERC-7710 delegation callback owned by `useSmartAccountDelegate`.
+   * Invoked once per solve when the smart account is upgraded and a
+   * delegation manager address has resolved.
+   */
+  delegate: () => Promise<void>;
+  /** True iff the delegation manager address has resolved from the backend. */
+  hasDelegationManager: boolean;
+  /**
+   * Setter for the userOpHash owned by `useSmartAccountDelegate`. Only
+   * invoked when the smart-account path actually broadcasts a user op.
+   */
+  setUserOpHash?: (hash: string | null) => void;
 }
 
-export interface UseOnchainMintingReturn {
+export interface UseSolveMinterReturn {
   state: {
     mintTxHash: string | null;
     streakTxHash: string | null;
     isMinting: boolean;
     isStreakUpdating: boolean;
-    showUpgradeOverlay: boolean;
-    delegationHash: string | null;
-    userOpHash: string | null;
-    isDelegating: boolean;
   };
   reset: () => void;
   handleSolveOnchain: (args: SolveOnchainArgs) => Promise<void>;
-  delegate: () => Promise<void>;
-  setShowUpgradeOverlay: (v: boolean) => void;
 }
 
-export function useOnchainMinting(
-  params: UseOnchainMintingParams,
-): UseOnchainMintingReturn {
-  const { wallet, episode, streak, showToast } = params;
+/**
+ * Orchestrates the on-chain solve commit:
+ *   1. reveal on-chain if the episode is competitive and we previously committed,
+ *   2. ERC-7710 delegate if the smart account is upgraded,
+ *   3. submit the score via the smart account OR the EOA,
+ *   4. submit the streak update.
+ *
+ * State machine: `isMinting` / `isStreakUpdating` flip true while the
+ * corresponding Convex action is in-flight and resolve to a tx hash. The
+ * hook guards re-entry with `hasMintedRef`.
+ */
+export function useSolveMinter(
+  params: UseSolveMinterParams,
+): UseSolveMinterReturn {
+  const {
+    wallet,
+    episode,
+    streak,
+    showToast,
+    delegate,
+    hasDelegationManager,
+    setUserOpHash,
+  } = params;
 
-  // State extracted from index.tsx lines 121-125, 131, 135-137
   const [mintTxHash, setMintTxHash] = useState<string | null>(null);
   const [streakTxHash, setStreakTxHash] = useState<string | null>(null);
   const [isMinting, setIsMinting] = useState(false);
   const [isStreakUpdating, setIsStreakUpdating] = useState(false);
   const hasMintedRef = useRef(false);
-  const [showUpgradeOverlay, setShowUpgradeOverlay] = useState(false);
-  const [delegationHash, setDelegationHash] = useState<string | null>(null);
-  const [userOpHash, setUserOpHash] = useState<string | null>(null);
-  const [isDelegating, setIsDelegating] = useState(false);
 
-  // Convex bindings from index.tsx lines 164-168
   const mintScoreOnChain = useAction(api.mantle.mintScore);
   const prepareMint = useAction(api.mantle.prepareMint);
   const updateStreakOnChain = useAction(api.mantle.updateStreak);
-  const submitDelegation = useMutation(api.delegation.submitDelegation);
-  const delegationManagerAddress = useQuery(
-    api.delegation.getDelegationManagerAddress,
-  );
 
-  const { isUpgraded: isSmartAccountUpgraded, isUpgrading: isSmartAccountUpgrading } =
-    wallet.smartAccount;
+  const { isUpgraded: isSmartAccountUpgraded } = wallet.smartAccount;
 
-  // Upgrade overlay effects from index.tsx lines 150-162
-  useEffect(() => {
-    if (isSmartAccountUpgrading) {
-      setShowUpgradeOverlay(true);
-    }
-  }, [isSmartAccountUpgrading]);
-
-  useEffect(() => {
-    if (isSmartAccountUpgraded && showUpgradeOverlay) {
-      const timer = setTimeout(() => setShowUpgradeOverlay(false), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [isSmartAccountUpgraded, showUpgradeOverlay]);
-
-  // Reset method from index.tsx lines 214-218 (plus additional state owned by this hook)
   const reset = useCallback(() => {
     setMintTxHash(null);
     setStreakTxHash(null);
     setIsMinting(false);
     setIsStreakUpdating(false);
     hasMintedRef.current = false;
-    setDelegationHash(null);
-    setUserOpHash(null);
-    setIsDelegating(false);
   }, []);
 
-  // ERC-7710 delegation logic extracted from the solved branch
-  const delegate = useCallback(async () => {
-    if (
-      !isSmartAccountUpgraded ||
-      !wallet.smartAccount ||
-      !delegationManagerAddress ||
-      !wallet.address
-    ) {
-      return;
-    }
-    setIsDelegating(true);
-    try {
-      const env = getEnvironment();
-      const oracleAddr =
-        "0xfb8a7B42070334CB196e94E542cEA13655e2f394" as `0x${string}`;
-      const scoreContract =
-        "0xd6ad76bed934ea5e5b25d635fba7889e782e691a" as `0x${string}`;
-      const delegation = buildMintDelegation(
-        env,
-        wallet.address as `0x${string}`,
-        oracleAddr,
-        scoreContract,
-      );
-      const typedData = getDelegationTypedData(delegation, env);
-
-      const userSignature = await signWithMetaMask(
-        wallet.address as `0x${string}`,
-        typedData as any,
-      );
-      if (userSignature) {
-        const signedDelegation = { ...delegation, signature: userSignature };
-        const result = await submitDelegation({
-          delegation: signedDelegation as any,
-        });
-        if (result) {
-          setDelegationHash(result.txHash);
-          showToast("🔑 ERC-7710 delegation granted on-chain", "success");
-        }
-      }
-    } catch (e) {
-      console.error("Delegation flow failed:", e);
-    }
-    setIsDelegating(false);
-  }, [
-    isSmartAccountUpgraded,
-    wallet.smartAccount,
-    wallet.address,
-    delegationManagerAddress,
-    submitDelegation,
-    showToast,
-  ]);
-
-  // Main solve-onchain orchestrator from index.tsx lines 486-578
   const handleSolveOnchain = useCallback(
     async (args: SolveOnchainArgs) => {
       if (!wallet.address || !episode || hasMintedRef.current) {
@@ -190,7 +132,7 @@ export function useOnchainMinting(
       if (
         isSmartAccountUpgraded &&
         wallet.smartAccount &&
-        delegationManagerAddress
+        hasDelegationManager
       ) {
         await delegate();
       }
@@ -214,7 +156,7 @@ export function useOnchainMinting(
                 prepared.data as `0x${string}`,
               );
               if (uoHash) {
-                setUserOpHash(uoHash);
+                setUserOpHash?.(uoHash);
                 showToast("🧠 Mint submitted via smart account", "success");
               }
               setMintTxHash(uoHash);
@@ -260,12 +202,13 @@ export function useOnchainMinting(
       episode,
       isSmartAccountUpgraded,
       wallet.smartAccount,
-      delegationManagerAddress,
+      hasDelegationManager,
       streak,
       prepareMint,
       mintScoreOnChain,
       updateStreakOnChain,
       delegate,
+      setUserOpHash,
       showToast,
     ],
   );
@@ -276,14 +219,8 @@ export function useOnchainMinting(
       streakTxHash,
       isMinting,
       isStreakUpdating,
-      showUpgradeOverlay,
-      delegationHash,
-      userOpHash,
-      isDelegating,
     },
     reset,
     handleSolveOnchain,
-    delegate,
-    setShowUpgradeOverlay,
   };
 }

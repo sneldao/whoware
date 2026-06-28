@@ -15,6 +15,8 @@ import { MemoryScene } from "@/components/who-ware/memory-scene";
 import { ArchivePaywall } from "@/components/who-ware/archive-paywall";
 import { useStreak } from "@/hooks/use-streak";
 import { useWallet } from "@/hooks/use-wallet";
+import { usePaymentGate } from "@/hooks/use-payment-gate";
+import { useWalletMint } from "@/hooks/use-wallet-mint";
 
 export default function ArchiveDetailScreen() {
   const { episodeId } = useLocalSearchParams<{ episodeId: string }>();
@@ -22,6 +24,18 @@ export default function ArchiveDetailScreen() {
   const { identityId } = useIdentity();
   const { streak } = useStreak();
   const wallet = useWallet();
+
+  // On-chain paywall gate (foundation hook). Wires useWalletMint's readiness
+  // check into a single `unlock()` callback so future paywall code can replace
+  // the legacy `sendArchivePayment` flow in ArchivePaywall. Today the hook is
+  // owned here to keep the import surface visible; ArchivePaywall still drives
+  // its own PaywallState machine.
+  const walletMint = useWalletMint({ wallet });
+  const paymentGate = usePaymentGate({
+    wallet,
+    walletMint,
+    showToast: () => {},
+  });
 
   // ALWAYS fetch the summary — no paywall check
   const summary = useQuery(

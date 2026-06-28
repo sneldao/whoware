@@ -26,7 +26,8 @@ import { ClueLedger } from "@/components/who-ware/clue-ledger";
 import { useGameSession } from "@/hooks/use-game-session";
 import { useSceneProgression } from "@/hooks/use-scene-progression";
 import { useGuessing, UseGuessingReturn } from "@/hooks/use-guessing";
-import { useOnchainMinting } from "@/hooks/use-onchain-minting";
+import { useSmartAccountDelegate } from "@/hooks/use-smart-account-delegate";
+import { useSolveMinter } from "@/hooks/use-solve-minter";
 import styles from "./index.styles";
 
 function formatScore(score: number) { return Math.round(score).toLocaleString(); }
@@ -50,9 +51,17 @@ function IndexInner() {
   const sceneIndexRef = useRef({ sceneIndex: 0, setSceneIndex: (_: number) => {} });
   const guessingRef = useRef<UseGuessingReturn | null>(null);
 
-  const onchain = useOnchainMinting({
+  const delegate = useSmartAccountDelegate({
+    wallet: session.wallet,
+    showToast: (msg, type) => { guessingRef.current?.showToast(msg, type); },
+  });
+
+  const minter = useSolveMinter({
     wallet: session.wallet, episode: session.episode, streak: session.streak,
     showToast: (msg, type) => { guessingRef.current?.showToast(msg, type); },
+    delegate: delegate.delegate,
+    hasDelegationManager: delegate.hasDelegationManager,
+    setUserOpHash: delegate.setUserOpHash,
   });
 
   const guessing = useGuessing({
@@ -65,7 +74,7 @@ function IndexInner() {
     submitGuessMutation: session.submitGuessMutation,
     ensureRun: session.ensureRun,
     commitGuessOnChain,
-    onSolveOnchain: onchain.handleSolveOnchain,
+    onSolveOnchain: minter.handleSolveOnchain,
     formatScore,
   });
   guessingRef.current = guessing;
@@ -134,7 +143,7 @@ function IndexInner() {
               <View style={styles.brandTextCol}><Text style={styles.brand}>WhoWare</Text><Text style={styles.drop}>Daily embodied history ritual</Text></View>
               {session.archiveCount > 0 && <Pressable style={styles.archiveBadge} href="/archive"><Ionicons name="archive-outline" size={11} color="#FFF7ED" /><Text style={styles.archiveBadgeText}>{session.archiveCount}</Text></Pressable>}
             </View>
-            <IdentitySection walletAddress={session.wallet.address} isWalletConnected={session.wallet.isConnected} isCorrectChain={session.wallet.isCorrectChain} isSmartAccountUpgraded={session.wallet.smartAccount.isUpgraded} isSmartAccountUpgrading={session.wallet.smartAccount.isUpgrading} isMinting={onchain.state.isMinting} isMinted={!!onchain.state.mintTxHash} isStreakUpdating={onchain.state.isStreakUpdating} hasStreakTx={!!onchain.state.streakTxHash} type={hasEnteredMemory ? "during" : "start"} onConnect={session.wallet.connect} onUpgrade={session.wallet.smartAccount.upgrade} onSwitchChain={session.wallet.switchChain} />
+            <IdentitySection walletAddress={session.wallet.address} isWalletConnected={session.wallet.isConnected} isCorrectChain={session.wallet.isCorrectChain} isSmartAccountUpgraded={session.wallet.smartAccount.isUpgraded} isSmartAccountUpgrading={session.wallet.smartAccount.isUpgrading} isMinting={minter.state.isMinting} isMinted={!!minter.state.mintTxHash} isStreakUpdating={minter.state.isStreakUpdating} hasStreakTx={!!minter.state.streakTxHash} type={hasEnteredMemory ? "during" : "start"} onConnect={session.wallet.connect} onUpgrade={session.wallet.smartAccount.upgrade} onSwitchChain={session.wallet.switchChain} />
             <Text style={styles.headline}>Someone changed history{"\n"}from this room.</Text>
             <Text style={styles.subhead}>{guessing.status}</Text>
             <IdentityCountdown isSolved={isSolved} dropsAt={countdownTarget} statusLabel={countdownLabel} />
@@ -159,7 +168,7 @@ function IndexInner() {
         </View>
         {isSolved && guessing.solvedRun && <>
           <ResultShareCard episodeNumber={episodeNumber} memoriesViewed={memoriesViewed} cluesOpened={hotspotsOpened} elapsedMs={guessing.solvedRun.elapsedMs} score={guessing.solvedRun.score} rank={session.leaderboardSnapshot?.playerRank?.rank ?? null} rankedCount={session.leaderboardSnapshot?.rankedCount ?? 0} streak={session.streak.current} guessesUsed={guessing.solvedRun.guessesUsed} hotspotsOpened={guessing.solvedRun.hotspotsOpened} difficulty={session.episode.difficulty} figureEra={guessing.solvedFigure ? session.figures.find((f) => f._id === guessing.solvedFigure?.figureId)?.era : undefined} figureRegion={guessing.solvedFigure ? session.figures.find((f) => f._id === guessing.solvedFigure?.figureId)?.region : undefined} />
-          <View style={styles.onChainRow}>{session.wallet.smartAccount.isUpgraded && <OnChainBadge txHash={onchain.state.delegationHash} isMinting={onchain.state.isDelegating} mintingLabel="Granting ERC-7710 delegation…" verifiedLabel="ERC-7710 delegation live" onTooltipPress={() => session.tooltip.show("delegation")} />}<OnChainBadge txHash={onchain.state.mintTxHash} isMinting={onchain.state.isMinting} mintingLabel="Minting score…" verifiedLabel="Score on Mantle" onTooltipPress={() => session.tooltip.show("mint")} /><OnChainBadge txHash={onchain.state.streakTxHash} isMinting={onchain.state.isStreakUpdating} mintingLabel="Updating streak…" verifiedLabel="Streak on Mantle" onTooltipPress={() => session.tooltip.show("streak")} /></View>
+          <View style={styles.onChainRow}>{session.wallet.smartAccount.isUpgraded && <OnChainBadge txHash={delegate.state.delegationHash} isMinting={delegate.state.isDelegating} mintingLabel="Granting ERC-7710 delegation…" verifiedLabel="ERC-7710 delegation live" onTooltipPress={() => session.tooltip.show("delegation")} />}<OnChainBadge txHash={minter.state.mintTxHash} isMinting={minter.state.isMinting} mintingLabel="Minting score…" verifiedLabel="Score on Mantle" onTooltipPress={() => session.tooltip.show("mint")} /><OnChainBadge txHash={minter.state.streakTxHash} isMinting={minter.state.isStreakUpdating} mintingLabel="Updating streak…" verifiedLabel="Streak on Mantle" onTooltipPress={() => session.tooltip.show("streak")} /></View>
           {session.wallet.smartAccount.isUpgraded && <SmartAccountBadge isUpgraded={true} isUpgrading={false} onUpgrade={async () => true} />}
         </>}
         {isSolved && <View style={styles.nextActionsRow}><Pressable style={styles.nextActionButton} href="/archive"><Ionicons name="archive-outline" size={14} color="#FFF7ED" /><Text style={styles.nextActionText}>Archive</Text></Pressable><Pressable style={styles.nextActionButton} onPress={handleShareResult}><Ionicons name="share-outline" size={14} color="#FFF7ED" /><Text style={styles.nextActionText}>Share</Text></Pressable><Pressable style={styles.nextActionButton} onPress={() => setHistoryOpen(true)}><Ionicons name="list-outline" size={14} color="#FFF7ED" /><Text style={styles.nextActionText}>History</Text></Pressable><Pressable style={styles.nextActionButton}><Ionicons name="calendar-outline" size={14} color="#FFF7ED" /><Text style={styles.nextActionText}>Tomorrow</Text></Pressable></View>}
@@ -192,7 +201,7 @@ function IndexInner() {
         <ActionToast visible={guessing.toastVisible && !toastDismissed} message={guessing.toastMessage} type={guessing.toastType} onDismiss={() => setToastDismissed(true)} />
       </ScrollView>
       {(isSolved || isExhausted) && !guessing.revealDismissed && guessing.revealFigure && (() => { const figure = session.figures.find((f) => f._id === guessing.revealFigure?.figureId); return (<EnhancedIdentityReveal figureName={guessing.solvedFigure?.name ?? ""} era={figure?.era ?? ""} region={figure?.region ?? ""} tags={figure?.tags ?? []} imageUrl={solvedSceneImageUrl} onContinue={() => guessing.setRevealDismissed(true)} />); })()}
-      <SmartAccountUpgradeOverlay isVisible={onchain.state.showUpgradeOverlay} isUpgrading={session.wallet.smartAccount.isUpgrading} isUpgraded={session.wallet.smartAccount.isUpgraded} error={session.wallet.smartAccount.error} onDismiss={() => onchain.setShowUpgradeOverlay(false)} />
+      <SmartAccountUpgradeOverlay isVisible={delegate.state.showUpgradeOverlay} isUpgrading={session.wallet.smartAccount.isUpgrading} isUpgraded={session.wallet.smartAccount.isUpgraded} error={session.wallet.smartAccount.error} onDismiss={() => delegate.setShowUpgradeOverlay(false)} />
     </View>
   );
 }

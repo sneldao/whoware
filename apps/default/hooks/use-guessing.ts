@@ -285,7 +285,7 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         showToast(`✅ Solved! ${formatScore(finalScore)} pts`, "success");
         setStatus(`Identity anchored — you were ${identityLabel}. Final score: ${formatScore(finalScore)}.`);
 
-        // Mint/delegation/streak orchestration (delegated to useOnchainMinting)
+        // Mint/delegation/streak orchestration (delegated to useSolveMinter in apps/default/app/index.tsx)
         await onSolveOnchain({
           runId: activeRun._id,
           finalScore,
