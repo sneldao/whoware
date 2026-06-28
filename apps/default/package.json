@@ -11,6 +11,7 @@
     "web": "expo start --web",
     "dev": "expo start",
     "lint": "expo lint",
+    "test": "vitest run --config vitest.config.ts",
     "build:web": "expo export --platform web"
   },
   "dependencies": {
