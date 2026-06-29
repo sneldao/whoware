@@ -21,17 +21,29 @@ WhoWare is a daily history guessing game where you step into a 3D memory scene, 
 
 ```
 whoware/
-├── apps/default/                      # Expo app (iOS, Android, Web)
-│   ├── app/                           # Routes (Expo Router)
-│   ├── components/who-ware/           # Game UI (panorama, archive paywall, etc.)
-│   ├── components/who-ware/scene-3d/  # Three.js renderer (skybox, props, lighting, controls)
-│   ├── lib/                           # Cross-cutting helpers (paywall, scene-quality, etc.)
-│   └── assets/                        # Static images
-├── packages/backend/                  # Convex backend
-│   ├── convex/                        # Functions, schema, agent pipeline
-│   └── scripts/                       # Smoke tests, helpers
-├── packages/contracts/                # Solidity contracts (Mantle Sepolia)
-└── 3D-PLAN.md                         # Phase roadmap for the 3D pivot
+├── apps/default/                                # Expo app (iOS, Android, Web)
+│   ├── app/                                     # Routes (Expo Router)
+│   ├── components/
+│   │   ├── who-ware/                           # Game-screen UI
+│   │   │   ├── views/                          # Composable views (PlayingView, SolvedView, IntroView, ExhaustedView, HeroPanel, HistoryCard, LastSolveCard)
+│   │   │   │   └── props.ts                    # Composite prop shapes shared across views
+│   │   │   └── scene-3d/                       # Three.js renderer (skybox, props, lighting, controls)
+│   │   ├── shared/                             # Cross-section primitives (error-boundary, tappable-metric)
+│   │   └── curator/                            # Curator Studio + weekly leaderboards
+│   ├── hooks/                                  # Session, guessing, scene progression, smart-account delegate, mint, boot-error, streak
+│   ├── lib/                                    # Cross-cutting helpers
+│   │   ├── theme.ts                            # Single source of truth for design tokens
+│   │   ├── logger.ts                           # Structured logger (console in dev, no-op debug/info in prod)
+│   │   ├── contracts.ts                        # On-chain addresses (Mantle Sepolia, Polygon Amoy)
+│   │   ├── scoring.ts (re-export from backend)
+│   │   ├── scene-quality.ts                    # 3D capability detection / adaptive fallback
+│   │   ├── paywall.ts, wallet.ts, smart-account.ts, 1shot.ts, onboarding.ts
+│   └── assets/                                 # Static images
+├── packages/backend/                            # Convex backend
+│   ├── convex/                                 # Functions, schema, agent pipeline, AI fallback
+│   └── scripts/                                # Smoke tests, helpers
+├── packages/contracts/                          # Solidity contracts (Hardhat + viem)
+└── 3D-PLAN.md                                   # Phase roadmap for the 3D pivot
 ```
 
 - **Frontend:** Expo + React Native + StyleSheet; Three.js for the 3D scene renderer (web-only at first)
@@ -58,6 +70,14 @@ The 3D scene is rendered by `apps/default/components/who-ware/scene-3d/SceneCanv
 | WhoWareScore | `0xd6ad76bed934ea5e5b25d635fba7889e782e691a` |
 | WhoWareStreak | `0x6c82cc64c3c5c5f25766c77a41b78aa1f622cbbb` |
 | WhoWareGuess | `0x8185762f72a6290eb4959adbd8286281131a531d` |
+| WhoWareOracle | `0xfb8a7B42070334CB196e94E542cEA13655e2f394` |
+
+> **DRY note:** these addresses are the single source of truth in
+> `apps/default/lib/contracts.ts`. The table above mirrors that file —
+> if a deployment address changes, update `contracts.ts` first (so the
+> hook layer, the Convex backend, and any future caller all see the new
+> value), then regenerate this table. `contracts.test.ts` pins the
+> addresses as a regression guard.
 
 - **WhoWareScore** — Soul-bound score NFT, oracle-signed via EIP-712, non-transferable
 - **WhoWareStreak** — Soul-bound streak token with tier badges (spark/flame/inferno/eternal)
@@ -100,13 +120,27 @@ cd apps/default && bun run start
 
 ### 4. Test
 
-```bash
-# Backend (Convex functions, AI pipeline, AI fallback)
-cd packages/backend && npm test
+Run tests from the repo root or per-package.
 
-# Contracts
+```bash
+# Backend — Convex functions, AI pipeline, AI fallback
+cd packages/backend && npm test
+# (88 tests across 12 suites: catalog, runs, daily, archive, paywall, props,
+#  analytics, scene-3d-skybox, venice, notifications, mercy, example)
+
+# Frontend — theme tokens, contract addresses, scoring-tooltip, logger
+cd apps/default && npm test
+# (23 tests across 4 suites: theme, contracts, scoring-tooltip, logger)
+# Run from app dir so vitest resolves Expo's tsconfig.base.
+
+# Contracts — Hardhat
 cd packages/contracts && bun install && bun run test
 ```
+
+Both Vitest suites use the project's `vitest.config.ts` per package and
+fail loudly on missing test fixtures or stale test output. The frontend
+config lives at `apps/default/vitest.config.ts`; the backend suite runs
+on the repo default.
 
 ## API Endpoints
 

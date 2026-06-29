@@ -54,7 +54,22 @@ The current state of the 3D pivot, in chronological order:
   `SceneCanvas` now composes skybox + lighting + props; click
   detection raycasts the scene and routes to the bound prop.
 
-## What's next (Phases 3-6)
+### Phase 2.1 — Adaptive 2D/3D + resilience (shipped after the plan was written)
+
+- **Adaptive loader.** `scene-quality.ts` reads `localStorage` for a
+  user override and the GPU renderer string for low-power patterns
+  (`SwiftShader`, `llvmpipe`). Falls through to the 2D
+  `PanoramaScene` silently — no new infra.
+- **Lazy 3D bundle.** `MemoryScene` lazy-imports `SceneCanvas` via
+  `Suspense`, so 2D-mode users never download Three.js.
+- **Crash containment.** `components/shared/error-boundary.tsx`
+  wraps the 3D scene + leaderboard + on-chain overlay. A
+  render-phase crash shows a "Reload scene" button instead of
+  white-screening the entire game (and the player's streak).
+- **Timeout hygiene.** The transition-layer `setTimeout` chain
+  stores IDs in a ref and clears them on unmount — no more
+  state-update-on-unmounted-component warnings during fast scene
+  cycling.
 
 ### Phase 3 — AI-driven prop generation (1-2 weeks)
 
@@ -198,3 +213,5 @@ packages/backend/convex/
 - `TREASURY.md` — Polygon Amoy treasury wallet
 - `packages/backend/convex/scene-3d-skybox.test.ts` — skybox position math
 - `packages/backend/convex/props.test.ts` — prop registry tests
+- `apps/default/components/shared/error-boundary.tsx` — crash-boundary for 3D + on-chain + leaderboard render paths (Phase 2.1)
+- `apps/default/lib/scene-quality.ts` — adaptive 3D/2D capability detection (Phase 2.1)

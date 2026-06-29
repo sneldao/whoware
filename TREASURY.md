@@ -42,9 +42,20 @@ migration, key rotation):
 
 1. Generate a new wallet.
 2. Update Convex: `npx convex env set PAYWALL_TREASURY_ADDRESS <new-address>`.
-3. Update the fallback in `apps/default/lib/paywall.ts`.
-4. Update the public address in this file.
-5. Commit + push. Vercel autodeploys.
+3. Update the DRY source of truth in **`apps/default/lib/contracts.ts`**
+   (`POLYGON_AMOY_PAYWALL_TREASURY` and the `CONTRACTS.polygonAmoy`
+   grouping). Hooks (`use-smart-account-delegate`), the paywall page
+   (`archive-paywall.tsx`), and the contracts test all read from here.
+4. Update the fallback in **`apps/default/lib/paywall.ts`**
+   (`TREASURY_ADDRESS`) — only used for offline dev when the 402
+   server response is unavailable.
+5. Update the public address in this file and in the README's
+   `Smart Contracts` table.
+6. Commit + push. Vercel autodeploys.
+
+If you skip step 3 the hook layer drifts from the backend; if you skip
+step 4 local dev (no server round-trip) silently sends to the old wallet.
+Both must move together.
 
 The old wallet's funds can be swept by whoever holds the corresponding
 private key — this is the maintainer's responsibility, not the repo's.
