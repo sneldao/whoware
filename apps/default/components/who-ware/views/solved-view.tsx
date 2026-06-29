@@ -4,69 +4,39 @@ import { OnChainBadge } from "@/components/who-ware/on-chain-badge";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
 import { SmartAccountBadge } from "@/components/who-ware/smart-account-badge";
 import { theme } from "@/lib/theme";
+import type { SolvedViewProps } from "./props";
 import styles from "@/app/index.styles";
 
-export interface SolvedViewProps {
-  // Result share card
-  episodeNumber: number;
-  memoriesViewed: number;
-  cluesOpened: number;
-  elapsedMs: number;
-  score: number;
-  rank: number | null;
-  rankedCount: number;
-  streak: number;
-  guessesUsed: number;
-  hotspotsOpened: number;
-  difficulty: string;
-  figureEra?: string;
-  figureRegion?: string;
-  // On-chain row
-  isSmartAccountUpgraded: boolean;
-  delegationTxHash: string | null;
-  isDelegating: boolean;
-  mintTxHash: string | null;
-  isMinting: boolean;
-  streakTxHash: string | null;
-  isStreakUpdating: boolean;
-  onShowDelegationTooltip: () => void;
-  onShowMintTooltip: () => void;
-  onShowStreakTooltip: () => void;
-  // Next actions
-  onShowHistory: () => void;
-  onShare: () => void;
-}
+export type { SolvedViewProps } from "./props";
 
 /**
  * The post-solve view: result share card, on-chain badge row, smart-account
  * badge, and the next-actions row. Shown after the player solves the episode.
  */
 export function SolvedView(props: SolvedViewProps) {
+  const { result, onchain, nextActions } = props;
   const {
-    episodeNumber, memoriesViewed, cluesOpened, elapsedMs, score, rank, rankedCount,
-    streak, guessesUsed, hotspotsOpened, difficulty, figureEra, figureRegion,
     isSmartAccountUpgraded, delegationTxHash, isDelegating,
     mintTxHash, isMinting, streakTxHash, isStreakUpdating,
     onShowDelegationTooltip, onShowMintTooltip, onShowStreakTooltip,
-    onShowHistory, onShare,
-  } = props;
+  } = onchain;
 
   return (
     <>
       <ResultShareCard
-        episodeNumber={episodeNumber}
-        memoriesViewed={memoriesViewed}
-        cluesOpened={cluesOpened}
-        elapsedMs={elapsedMs}
-        score={score}
-        rank={rank}
-        rankedCount={rankedCount}
-        streak={streak}
-        guessesUsed={guessesUsed}
-        hotspotsOpened={hotspotsOpened}
-        difficulty={difficulty}
-        figureEra={figureEra}
-        figureRegion={figureRegion}
+        episodeNumber={result.episodeNumber}
+        memoriesViewed={result.memoriesViewed}
+        cluesOpened={result.cluesOpened}
+        elapsedMs={result.elapsedMs}
+        score={result.score}
+        rank={result.rank}
+        rankedCount={result.rankedCount}
+        streak={result.streak}
+        guessesUsed={result.guessesUsed}
+        hotspotsOpened={result.hotspotsOpened}
+        difficulty={result.difficulty}
+        figureEra={result.figureEra}
+        figureRegion={result.figureRegion}
       />
       <View style={styles.onChainRow}>
         {isSmartAccountUpgraded && (
@@ -99,11 +69,11 @@ export function SolvedView(props: SolvedViewProps) {
           <Ionicons name="archive-outline" size={14} color={theme.ink} />
           <Text style={styles.nextActionText}>Archive</Text>
         </Pressable>
-        <Pressable style={styles.nextActionButton} onPress={onShare}>
+        <Pressable style={styles.nextActionButton} onPress={nextActions.onShare}>
           <Ionicons name="share-outline" size={14} color={theme.ink} />
           <Text style={styles.nextActionText}>Share</Text>
         </Pressable>
-        <Pressable style={styles.nextActionButton} onPress={onShowHistory}>
+        <Pressable style={styles.nextActionButton} onPress={nextActions.onShowHistory}>
           <Ionicons name="list-outline" size={14} color={theme.ink} />
           <Text style={styles.nextActionText}>History</Text>
         </Pressable>

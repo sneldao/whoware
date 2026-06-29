@@ -8,69 +8,8 @@ import { IdentityHintButton } from "@/components/who-ware/identity-hint-button";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { MemoryScene } from "@/components/who-ware/memory-scene";
 import { theme } from "@/lib/theme";
-import type { FigureOption } from "@/components/who-ware/guess-panel";
-import type { Id } from "@/convex/_generated/dataModel";
+import type { PlayingViewProps } from "./props";
 import styles from "@/app/index.styles";
-
-/**
- * Minimal scene contract consumed by the playing view — defined here
- * (not imported from Convex generated types) so the view stays
- * decoupled from the full EpisodeScene document shape.
- */
-export interface PlayingViewScene {
-  title: string;
-  location: string;
-  era: string;
-  palette: string[];
-  imageKey?: string;
-  imageUrl?: string;
-  ambientText: string;
-  clues: Array<{ label: string; detail: string; x: number; y: number }>;
-}
-
-export interface PlayingViewProps {
-  // Scene (typed as PlayingViewScene to decouple from generated EpisodeScene)
-  scene: PlayingViewScene;
-  sceneIndex: number;
-  totalAccessibleScenes: number;
-  // Scene rail
-  visibleSceneIndices: number[];
-  currentSceneIndex: number;
-  onSelectScene: (episodeIndex: number) => void;
-  // Action bar
-  onToggleGuessPanel: () => void;
-  isGuessPanelOpen: boolean;
-  isSolved: boolean;
-  isExhausted: boolean;
-  moreMemoriesAvailable: boolean;
-  isBusy: boolean;
-  onUnlockNextMemory: () => void;
-  // Clue ledger
-  discoveredClues: Array<{ sceneIndex: number; sceneTitle: string; label: string; detail: string }>;
-  // Memory scene handlers
-  onHotspotOpen: (label: string) => Promise<void>;
-  onGenerateHint: (clueLabel: string) => Promise<void>;
-  activeHint: string | null;
-  isHintGenerating: boolean;
-  // Identity hint
-  episodeId: Id<"episodes"> | null;
-  memoriesViewed: number;
-  currentStreak: number;
-  // Guess panel
-  figureOptions: FigureOption[];
-  guessesLeft: number;
-  playerName: string;
-  onPlayerNameChange: (name: string) => void;
-  onSubmitGuess: (text: string, figureId: string, playerName: string) => Promise<void>;
-  // Leaderboard
-  leaderboardEntries: Array<Record<string, unknown>>;
-  playerRank: { rank: number; score: number; entriesUsed: number; hotspotsOpened: number; elapsedMs: number; guessedAt: number } | null;
-  rankedCount: number;
-  archiveCount: number;
-  isPushOptedIn: boolean;
-  isPushBusy: boolean;
-  onTogglePush: () => void;
-}
 
 function StepBadge({ icon, label, color }: { icon: keyof typeof Ionicons.glyphMap; label: string; color: string }) {
   return (
@@ -88,18 +27,20 @@ function StepBadge({ icon, label, color }: { icon: keyof typeof Ionicons.glyphMa
  * solved nor exhausted.
  */
 export function PlayingView(props: PlayingViewProps) {
+  const { scene, actions, guess, extras } = props;
   const {
-    scene, sceneIndex, totalAccessibleScenes,
-    visibleSceneIndices, currentSceneIndex, onSelectScene,
-    onToggleGuessPanel, isGuessPanelOpen, isSolved, isExhausted,
-    moreMemoriesAvailable, isBusy, onUnlockNextMemory,
-    discoveredClues,
-    onHotspotOpen, onGenerateHint, activeHint, isHintGenerating,
-    episodeId, memoriesViewed, currentStreak,
+    isGuessPanelOpen, isSolved, isExhausted,
+    moreMemoriesAvailable, isBusy,
+    onToggleGuessPanel, onUnlockNextMemory,
+  } = actions;
+  const {
     figureOptions, guessesLeft, playerName, onPlayerNameChange, onSubmitGuess,
+  } = guess;
+  const {
+    episodeId, memoriesViewed, currentStreak,
     leaderboardEntries, playerRank, rankedCount,
     archiveCount, isPushOptedIn, isPushBusy, onTogglePush,
-  } = props;
+  } = extras;
 
   return (
     <>
@@ -112,20 +53,20 @@ export function PlayingView(props: PlayingViewProps) {
         </View>
       )}>
         <EnhancedSceneTransition
-          sceneIndex={sceneIndex}
-          title={scene.title}
-          location={scene.location}
-          era={scene.era}
-          palette={scene.palette}
+          sceneIndex={scene.sceneIndex}
+          title={scene.scene.title}
+          location={scene.scene.location}
+          era={scene.scene.era}
+          palette={scene.scene.palette}
         >
           <MemoryScene
-            scene={scene}
-            sceneIndex={sceneIndex}
-            totalScenes={totalAccessibleScenes}
-            onHotspotOpen={onHotspotOpen}
-            onGenerateHint={onGenerateHint}
-            activeHint={activeHint}
-            isHintGenerating={isHintGenerating}
+            scene={scene.scene as unknown as Parameters<typeof MemoryScene>[0]["scene"]}
+            sceneIndex={scene.sceneIndex}
+            totalScenes={scene.totalAccessibleScenes}
+            onHotspotOpen={scene.onHotspotOpen}
+            onGenerateHint={scene.onGenerateHint}
+            activeHint={scene.activeHint}
+            isHintGenerating={scene.isHintGenerating}
           />
         </EnhancedSceneTransition>
       </ErrorBoundary>
@@ -157,20 +98,20 @@ export function PlayingView(props: PlayingViewProps) {
         </Pressable>
       </View>
       <View style={styles.sceneRail}>
-        {visibleSceneIndices.map((epiIdx, railIndex) => (
+        {scene.visibleSceneIndices.map((epiIdx, railIndex) => (
           <Pressable
             key={epiIdx}
             accessibilityRole="button"
-            onPress={() => onSelectScene(epiIdx)}
-            style={[styles.scenePill, currentSceneIndex === epiIdx && styles.scenePillActive]}
+            onPress={() => scene.onSelectScene(epiIdx)}
+            style={[styles.scenePill, scene.currentSceneIndex === epiIdx && styles.scenePillActive]}
           >
-            <Text style={[styles.scenePillText, currentSceneIndex === epiIdx && styles.scenePillTextActive]}>
+            <Text style={[styles.scenePillText, scene.currentSceneIndex === epiIdx && styles.scenePillTextActive]}>
               {railIndex + 1}
             </Text>
           </Pressable>
         ))}
       </View>
-      <ClueLedger clues={discoveredClues} totalCluesAvailable={totalAccessibleScenes * 3} />
+      <ClueLedger clues={scene.discoveredClues} totalCluesAvailable={scene.totalAccessibleScenes * 3} />
       {episodeId && !isSolved && !isExhausted && (
         <IdentityHintButton
           episodeId={episodeId}

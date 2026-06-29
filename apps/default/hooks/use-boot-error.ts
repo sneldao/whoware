@@ -8,9 +8,7 @@ import { useEffect, useRef, useState } from "react";
  * the threshold, treat it as a stalled request and offer retry.
  *
  * Returns `{ timedOut, retry }` where `retry` increments an internal
- * counter the caller can thread into a `useQuery` arg to force refetch
- * (most Convex hooks accept a key argument that includes arbitrary
- * dependencies).
+ * counter the caller can thread into a `useQuery` arg to force refetch.
  */
 export function useBootError(
   isLoading: boolean,
@@ -19,17 +17,24 @@ export function useBootError(
   const [timedOut, setTimedOut] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadingRef = useRef(isLoading);
+  loadingRef.current = isLoading;
 
   useEffect(() => {
     if (!isLoading) {
       if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = null;
       setTimedOut(false);
       return;
     }
 
-    timerRef.current = setTimeout(() => setTimedOut(true), timeoutMs);
+    timerRef.current = setTimeout(() => {
+      // Re-check at fire time in case loading already flipped.
+      if (loadingRef.current) setTimedOut(true);
+    }, timeoutMs);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = null;
     };
   }, [isLoading, retryCount, timeoutMs]);
 

@@ -220,39 +220,47 @@ function GameDashboard() {
   } else {
     body = (
       <PlayingView
-        scene={currentScene}
-        sceneIndex={progression.accessiblePosition}
-        totalAccessibleScenes={progression.accessibleScenes.length}
-        visibleSceneIndices={progression.visibleScenes.map((s) => s.episodeIndex)}
-        currentSceneIndex={progression.sceneIndex}
-        onSelectScene={progression.setSceneIndex}
-        onToggleGuessPanel={() => guessing.setIsGuessPanelOpen((c) => !c)}
-        isGuessPanelOpen={guessing.isGuessPanelOpen}
-        isSolved={isSolved}
-        isExhausted={isExhausted}
-        moreMemoriesAvailable={moreMemoriesAvailable}
-        isBusy={guessing.isBusy}
-        onUnlockNextMemory={progression.handleUnlockNextMemory}
-        discoveredClues={guessing.discoveredClues}
-        onHotspotOpen={guessing.handleOpenHotspot}
-        onGenerateHint={guessing.handleGenerateHint}
-        activeHint={guessing.activeHint}
-        isHintGenerating={guessing.isHintGenerating}
-        episodeId={session.episode._id}
-        memoriesViewed={memoriesViewed}
-        currentStreak={session.streak.current}
-        figureOptions={guessing.figureOptions}
-        guessesLeft={guessesLeft}
-        playerName={session.playerName}
-        onPlayerNameChange={session.setPlayerName}
-        onSubmitGuess={guessing.handleGuess}
-        leaderboardEntries={session.leaderboardSnapshot?.entries ?? []}
-        playerRank={session.leaderboardSnapshot?.playerRank ?? null}
-        rankedCount={session.leaderboardSnapshot?.rankedCount ?? 0}
-        archiveCount={session.archiveCount}
-        isPushOptedIn={session.pushNotifications.isOptedIn}
-        isPushBusy={session.pushNotifications.isBusy}
-        onTogglePush={session.pushNotifications.toggleNotifications}
+        scene={{
+          scene: currentScene,
+          sceneIndex: progression.accessiblePosition,
+          totalAccessibleScenes: progression.accessibleScenes.length,
+          visibleSceneIndices: progression.visibleScenes.map((s) => s.episodeIndex),
+          currentSceneIndex: progression.sceneIndex,
+          discoveredClues: guessing.discoveredClues,
+          activeHint: guessing.activeHint,
+          isHintGenerating: guessing.isHintGenerating,
+          onSelectScene: progression.setSceneIndex,
+          onHotspotOpen: guessing.handleOpenHotspot,
+          onGenerateHint: guessing.handleGenerateHint,
+        }}
+        actions={{
+          isGuessPanelOpen: guessing.isGuessPanelOpen,
+          isSolved,
+          isExhausted,
+          moreMemoriesAvailable,
+          isBusy: guessing.isBusy,
+          onToggleGuessPanel: () => guessing.setIsGuessPanelOpen((c) => !c),
+          onUnlockNextMemory: progression.handleUnlockNextMemory,
+        }}
+        guess={{
+          figureOptions: guessing.figureOptions,
+          guessesLeft,
+          playerName: session.playerName,
+          onPlayerNameChange: session.setPlayerName,
+          onSubmitGuess: guessing.handleGuess,
+        }}
+        extras={{
+          episodeId: session.episode._id,
+          memoriesViewed,
+          currentStreak: session.streak.current,
+          leaderboardEntries: session.leaderboardSnapshot?.entries ?? [],
+          playerRank: session.leaderboardSnapshot?.playerRank ?? null,
+          rankedCount: session.leaderboardSnapshot?.rankedCount ?? 0,
+          archiveCount: session.archiveCount,
+          isPushOptedIn: session.pushNotifications.isOptedIn,
+          isPushBusy: session.pushNotifications.isBusy,
+          onTogglePush: session.pushNotifications.toggleNotifications,
+        }}
       />
     );
   }
@@ -275,32 +283,38 @@ function GameDashboard() {
         {isSolved && guessing.solvedRun && (
           <ErrorBoundary label="SolvedView">
             <SolvedView
-            episodeNumber={episodeNumber}
-            memoriesViewed={memoriesViewed}
-            cluesOpened={hotspotsOpened}
-            elapsedMs={guessing.solvedRun.elapsedMs}
-            score={guessing.solvedRun.score}
-            rank={session.leaderboardSnapshot?.playerRank?.rank ?? null}
-            rankedCount={session.leaderboardSnapshot?.rankedCount ?? 0}
-            streak={session.streak.current}
-            guessesUsed={guessing.solvedRun.guessesUsed}
-            hotspotsOpened={guessing.solvedRun.hotspotsOpened}
-            difficulty={session.episode.difficulty}
-            figureEra={revealFigureRecord?.era}
-            figureRegion={revealFigureRecord?.region}
-            isSmartAccountUpgraded={session.wallet.smartAccount.isUpgraded}
-            delegationTxHash={delegate.state.delegationHash}
-            isDelegating={delegate.state.isDelegating}
-            mintTxHash={minter.state.mintTxHash}
-            isMinting={minter.state.isMinting}
-            streakTxHash={minter.state.streakTxHash}
-            isStreakUpdating={minter.state.isStreakUpdating}
-            onShowDelegationTooltip={() => session.tooltip.show("delegation")}
-            onShowMintTooltip={() => session.tooltip.show("mint")}
-            onShowStreakTooltip={() => session.tooltip.show("streak")}
-            onShowHistory={() => setHistoryOpen(true)}
-            onShare={handleShareResult}
-          />
+              result={{
+                episodeNumber,
+                memoriesViewed,
+                cluesOpened: hotspotsOpened,
+                elapsedMs: guessing.solvedRun.elapsedMs,
+                score: guessing.solvedRun.score,
+                rank: session.leaderboardSnapshot?.playerRank?.rank ?? null,
+                rankedCount: session.leaderboardSnapshot?.rankedCount ?? 0,
+                streak: session.streak.current,
+                guessesUsed: guessing.solvedRun.guessesUsed,
+                hotspotsOpened: guessing.solvedRun.hotspotsOpened,
+                difficulty: session.episode.difficulty,
+                figureEra: revealFigureRecord?.era,
+                figureRegion: revealFigureRecord?.region,
+              }}
+              onchain={{
+                isSmartAccountUpgraded: session.wallet.smartAccount.isUpgraded,
+                delegationTxHash: delegate.state.delegationHash,
+                isDelegating: delegate.state.isDelegating,
+                mintTxHash: minter.state.mintTxHash,
+                isMinting: minter.state.isMinting,
+                streakTxHash: minter.state.streakTxHash,
+                isStreakUpdating: minter.state.isStreakUpdating,
+                onShowDelegationTooltip: () => session.tooltip.show("delegation"),
+                onShowMintTooltip: () => session.tooltip.show("mint"),
+                onShowStreakTooltip: () => session.tooltip.show("streak"),
+              }}
+              nextActions={{
+                onShowHistory: () => setHistoryOpen(true),
+                onShare: handleShareResult,
+              }}
+            />
           </ErrorBoundary>
         )}
         {isExhausted && <ExhaustedView onLearnMoreArchive={() => {}} />}
