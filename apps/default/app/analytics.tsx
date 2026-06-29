@@ -235,10 +235,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 247, 237, 0.05)",
+    borderTopColor: theme.inkAlpha05,
   },
   tableCell: {
-    color: "rgba(255, 247, 237, 0.45)",
+    color: theme.inkAlpha45,
     fontSize: 11,
     fontWeight: "800",
     textTransform: "uppercase",
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   feedMeta: {
-    color: "rgba(255, 247, 237, 0.45)",
+    color: theme.inkAlpha45,
     fontSize: 12,
     fontWeight: "700",
   },

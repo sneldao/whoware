@@ -109,13 +109,13 @@ const styles = StyleSheet.create({
     color: theme.success,
   },
   separator: {
-    color: "rgba(255, 247, 237, 0.25)",
+    color: theme.inkAlpha25,
     fontSize: 13,
     fontWeight: "900",
     marginHorizontal: 1,
   },
   max: {
-    color: "rgba(255, 247, 237, 0.45)",
+    color: theme.inkAlpha45,
     fontSize: 13,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],

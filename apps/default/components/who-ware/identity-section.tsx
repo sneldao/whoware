@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   rowValue: {
-    color: "rgba(255, 247, 237, 0.8)",
+    color: theme.inkAlpha80,
     fontSize: 12,
     fontWeight: "700",
   },

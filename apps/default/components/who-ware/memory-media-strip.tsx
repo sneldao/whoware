@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 8,
   },
   motionCopy: {
-    color: "rgba(255, 247, 237, 0.62)",
+    color: theme.inkAlpha62,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: "700",

@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     gap: 12,
     borderRadius: 28,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.07)",
+    backgroundColor: theme.inkAlpha07,
     borderWidth: 1,
     borderColor: "rgba(248, 231, 201, 0.12)",
   },
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   empty: {
-    color: "rgba(255, 247, 237, 0.62)",
+    color: theme.inkAlpha62,
     fontSize: 14,
     lineHeight: 21,
   },
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   meta: {
-    color: "rgba(255, 247, 237, 0.54)",
+    color: theme.inkAlpha54,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: "700",
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   footer: {
-    color: "rgba(255, 247, 237, 0.44)",
+    color: theme.inkAlpha44,
     fontSize: 12,
     fontWeight: "800",
   },

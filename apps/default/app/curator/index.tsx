@@ -269,7 +269,7 @@ export default function CuratorScreen() {
             {queue && queue.length === 0 ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyIcon}>
-                  <Ionicons name="cube-outline" size={32} color="rgba(255, 247, 237, 0.15)" />
+                  <Ionicons name="cube-outline" size={32} color={theme.inkAlpha15} />
                 </View>
                 <Text style={styles.emptyTitle}>Queue is empty</Text>
                 <Text style={styles.emptyText}>
@@ -311,7 +311,7 @@ export default function CuratorScreen() {
                         <Ionicons
                           name={isExpanded ? "chevron-down" : "chevron-forward"}
                           size={14}
-                          color="rgba(255, 247, 237, 0.3)"
+                          color={theme.inkAlpha30}
                         />
                         <View style={styles.queueItemInfo}>
                           <Text style={styles.queueSlug}>{item.slug}</Text>
@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
     gap: 8,
     borderRadius: 20,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.02)",
+    backgroundColor: theme.inkAlpha02,
     borderWidth: 1,
     borderColor: theme.inkAlpha4,
   },
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   queueFigure: {
-    color: "rgba(255, 247, 237, 0.45)",
+    color: theme.inkAlpha45,
     fontSize: 11,
     fontWeight: "700",
   },
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   footerText: {
-    color: "rgba(255, 247, 237, 0.3)",
+    color: theme.inkAlpha30,
     fontSize: 11,
     fontWeight: "600",
     textAlign: "center",

@@ -153,7 +153,7 @@ function StepDemo({ demo, interacted, onInteract }: { demo: string | null; inter
       <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.demoBox}>
         <Pressable accessibilityRole="button" onPress={onInteract} style={styles.demoClueCard}>
           <View style={styles.demoClueHeader}>
-            <Ionicons name="search" size={16} color="#F8E7C9" />
+            <Ionicons name="search" size={16} color={theme.parchment} />
             <Text style={styles.demoClueTitle}>Signed Treaty</Text>
           </View>
           <Text style={styles.demoClueDetail}>
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   demoClueTitle: {
-    color: "#F8E7C9",
+    color: theme.parchment,
     fontSize: 15,
     fontWeight: "900",
   },
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   demoStreakLabel: {
-    color: "rgba(255, 247, 237, 0.45)",
+    color: theme.inkAlpha45,
     fontSize: 11,
     fontWeight: "800",
   },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255, 247, 237, 0.15)",
+    backgroundColor: theme.inkAlpha15,
   },
   dotActive: {
     width: 24,

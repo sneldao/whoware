@@ -17,7 +17,7 @@ const TABS: {
   { key: "hints", label: "Most Hints", icon: "search", accent: theme.violet },
   { key: "speed", label: "Fastest Solves", icon: "flash", accent: theme.success },
   { key: "solvers", label: "Top Solvers", icon: "trophy", accent: theme.accent },
-  { key: "episodes", label: "Episodes", icon: "film", accent: "#F472B6" },
+  { key: "episodes", label: "Episodes", icon: "film", accent: theme.pink },
 ];
 
 function formatValue(key: LeaderTab, value: number): string {
@@ -42,10 +42,10 @@ function RankIcon({ rank }: { rank: number }) {
     return <Ionicons name="trophy" size={16} color={theme.accent} />;
   }
   if (rank === 2) {
-    return <Ionicons name="medal" size={14} color="#94A3B8" />;
+    return <Ionicons name="medal" size={14} color={theme.silver} />;
   }
   if (rank === 3) {
-    return <Ionicons name="medal" size={14} color="#CD7F32" />;
+    return <Ionicons name="medal" size={14} color={theme.bronze} />;
   }
   return <Text style={styles.rankNum}>{rank}</Text>;
 }
@@ -82,7 +82,7 @@ export function CuratorLeaderboard() {
 
   const tooltipAccent =
     activeTab === "episodes"
-      ? "#F472B6"
+      ? theme.pink
       : activeTab === "hints"
         ? theme.violet
         : activeTab === "speed"
@@ -144,14 +144,14 @@ export function CuratorLeaderboard() {
                 style={({ pressed }) => [
                   styles.sortChip,
                   isActive && {
-                    backgroundColor: "#F472B615",
-                    borderColor: "#F472B630",
+                    backgroundColor: theme.pinkAlpha15,
+                    borderColor: theme.pinkAlpha30,
                   },
                   pressed && styles.pressed,
                 ]}
                 onPress={() => setEpisodeSort(opt.key)}
               >
-                <Text style={[styles.sortChipText, isActive && { color: "#F472B6", fontWeight: "900" }]}>
+                <Text style={[styles.sortChipText, isActive && { color: theme.pink, fontWeight: "900" }]}>
                   {opt.label}
                 </Text>
               </Pressable>
@@ -164,7 +164,7 @@ export function CuratorLeaderboard() {
       <View style={styles.list}>
         {loading ? (
           <View style={styles.loadingRow}>
-            <ActivityIndicator size="small" color="rgba(167, 139, 250, 0.6)" />
+            <ActivityIndicator size="small" color={theme.violetAlpha60} />
           </View>
         ) : showPlayerTab ? (
           playerData.length === 0 ? (
@@ -236,22 +236,22 @@ export function CuratorLeaderboard() {
                         styles.episodeBadge,
                         episodeSort === "hints"
                           ? {
-                              backgroundColor: "#A78BFA30",
-                              borderColor: "#A78BFA60",
+                              backgroundColor: theme.violetAlpha30,
+                              borderColor: theme.violetAlpha60,
                               elevation: 3,
                               shadowColor: theme.violet,
                               shadowOffset: { width: 0, height: 1 },
                               shadowOpacity: 0.4,
                               shadowRadius: 4,
                             }
-                          : { backgroundColor: "#A78BFA15", borderColor: "#A78BFA20" },
+                          : { backgroundColor: theme.violetAlpha15, borderColor: theme.violetAlpha20 },
                       ]}
                     >
-                      <Ionicons name="search" size={9} color={episodeSort === "hints" ? "#C4B5FD" : theme.violet} />
+                      <Ionicons name="search" size={9} color={episodeSort === "hints" ? theme.lightViolet : theme.violet} />
                       <Text
                         style={[
                           styles.episodeBadgeText,
-                          { color: episodeSort === "hints" ? "#C4B5FD" : theme.violet },
+                          { color: episodeSort === "hints" ? theme.lightViolet : theme.violet },
                         ]}
                       >
                         {entry.mostHintsUsed}
@@ -268,15 +268,15 @@ export function CuratorLeaderboard() {
                         styles.episodeBadge,
                         entry.averageScore >= maxAvgScore && maxAvgScore > 0
                           ? {
-                              backgroundColor: "#FBBF2430",
-                              borderColor: "#FBBF2460",
+                              backgroundColor: theme.accentAlpha30,
+                              borderColor: theme.accentAlpha60,
                               elevation: 3,
                               shadowColor: theme.accent,
                               shadowOffset: { width: 0, height: 1 },
                               shadowOpacity: 0.4,
                               shadowRadius: 4,
                             }
-                          : { backgroundColor: "#FBBF2410", borderColor: "#FBBF2415" },
+                          : { backgroundColor: theme.accentAlpha10, borderColor: theme.accentAlpha15 },
                       ]}
                     >
                       <Ionicons name="star" size={9} color={entry.averageScore >= maxAvgScore && maxAvgScore > 0 ? theme.goldSoft : theme.accent} />
@@ -290,7 +290,7 @@ export function CuratorLeaderboard() {
                       </Text>
                       <Text
                         style={{
-                          color: "rgba(255, 247, 237, 0.3)",
+                          color: theme.inkAlpha30,
                           fontSize: 7,
                           fontWeight: "700",
                           textTransform: "uppercase",
@@ -310,22 +310,22 @@ export function CuratorLeaderboard() {
                         styles.episodeBadge,
                         episodeSort === "speed"
                           ? {
-                              backgroundColor: "#22C55E30",
-                              borderColor: "#22C55E60",
+                              backgroundColor: theme.successAlpha30,
+                              borderColor: theme.successAlpha60,
                               elevation: 3,
                               shadowColor: theme.success,
                               shadowOffset: { width: 0, height: 1 },
                               shadowOpacity: 0.4,
                               shadowRadius: 4,
                             }
-                          : { backgroundColor: "#22C55E15", borderColor: "#22C55E20" },
+                          : { backgroundColor: theme.successAlpha15, borderColor: theme.successAlpha20 },
                       ]}
                     >
-                      <Ionicons name="flash" size={9} color={episodeSort === "speed" ? "#86EFAC" : theme.success} />
+                      <Ionicons name="flash" size={9} color={episodeSort === "speed" ? theme.lightGreen : theme.success} />
                       <Text
                         style={[
                           styles.episodeBadgeText,
-                          { color: episodeSort === "speed" ? "#86EFAC" : theme.success },
+                          { color: episodeSort === "speed" ? theme.lightGreen : theme.success },
                         ]}
                       >
                         {formatElapsedSeconds(entry.fastestSolveMs)}
@@ -365,7 +365,7 @@ export function CuratorLeaderboard() {
       />
 
       <View style={styles.footer}>
-        <Ionicons name="time" size={10} color="rgba(167, 139, 250, 0.3)" />
+        <Ionicons name="time" size={10} color={theme.violetAlpha30} />
         <Text style={styles.footerText}>
           {showPlayerTab
             ? "Rolling 7-day window · correct solves only"
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     borderWidth: 1,
     borderColor: theme.violetIconBg,
-    backgroundColor: "rgba(167, 139, 250, 0.04)",
+    backgroundColor: theme.violetAlpha04,
     overflow: "hidden",
   },
   header: {
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(167, 139, 250, 0.08)",
+    borderBottomColor: theme.violetAlpha08,
   },
   headerLeft: {
     flexDirection: "row",
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 12,
     borderCurve: "continuous",
-    backgroundColor: "rgba(0, 0, 0, 0.15)",
+    backgroundColor: theme.blackAlpha15,
   },
   episodeRow: {
     flexDirection: "row",
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 12,
     borderCurve: "continuous",
-    backgroundColor: "rgba(0, 0, 0, 0.15)",
+    backgroundColor: theme.blackAlpha15,
   },
   rankCol: {
     width: 28,
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   valueLabel: {
-    color: "rgba(255, 247, 237, 0.3)",
+    color: theme.inkAlpha30,
     fontSize: 8,
     fontWeight: "700",
     textTransform: "uppercase",
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   emptyText: {
-    color: "rgba(255, 247, 237, 0.25)",
+    color: theme.inkAlpha25,
     fontSize: 11,
     fontWeight: "600",
     textAlign: "center",
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.violetMuted,
   },
   footerText: {
-    color: "rgba(167, 139, 250, 0.3)",
+    color: theme.violetAlpha30,
     fontSize: 9,
     fontWeight: "600",
   },

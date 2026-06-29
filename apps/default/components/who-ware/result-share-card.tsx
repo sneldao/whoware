@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     gap: 2,
     borderRadius: 14,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.07)",
+    backgroundColor: theme.inkAlpha07,
     borderWidth: 1,
     borderColor: theme.inkAlpha8,
   },
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   shareStatLabel: {
-    color: "rgba(255, 247, 237, 0.45)",
+    color: theme.inkAlpha45,
     fontSize: 9,
     fontWeight: "900",
     letterSpacing: 0.6,

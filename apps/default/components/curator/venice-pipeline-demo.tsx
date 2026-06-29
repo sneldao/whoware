@@ -241,7 +241,7 @@ export function VenicePipelineDemo({
                       </View>
                     ) : null}
                     {isUpcoming && !isRunning ? (
-                      <Ionicons name="chevron-down" size={14} color="rgba(255,247,237,0.2)" />
+                      <Ionicons name="chevron-down" size={14} color={theme.inkAlpha20} />
                     ) : null}
                   </View>
                 </View>
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     color: theme.success,
   },
   stepDescription: {
-    color: "rgba(255, 247, 237, 0.45)",
+    color: theme.inkAlpha45,
     fontSize: 11,
     fontWeight: "600",
     lineHeight: 16,

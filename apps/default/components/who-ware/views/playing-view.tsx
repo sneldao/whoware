@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 import { ClueLedger } from "@/components/who-ware/clue-ledger";
 import { EnhancedSceneTransition } from "@/components/who-ware/enhanced-scene-transition";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { GuessPanel } from "@/components/who-ware/guess-panel";
 import { IdentityHintButton } from "@/components/who-ware/identity-hint-button";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
@@ -11,9 +12,25 @@ import type { FigureOption } from "@/components/who-ware/guess-panel";
 import type { Id } from "@/convex/_generated/dataModel";
 import styles from "@/app/index.styles";
 
+/**
+ * Minimal scene contract consumed by the playing view — defined here
+ * (not imported from Convex generated types) so the view stays
+ * decoupled from the full EpisodeScene document shape.
+ */
+export interface PlayingViewScene {
+  title: string;
+  location: string;
+  era: string;
+  palette: string[];
+  imageKey?: string;
+  imageUrl?: string;
+  ambientText: string;
+  clues: Array<{ label: string; detail: string; x: number; y: number }>;
+}
+
 export interface PlayingViewProps {
-  // Scene (loose typing keeps this view decoupled from Convex's generated EpisodeScene)
-  scene: Record<string, unknown>;
+  // Scene (typed as PlayingViewScene to decouple from generated EpisodeScene)
+  scene: PlayingViewScene;
   sceneIndex: number;
   totalAccessibleScenes: number;
   // Scene rail
@@ -49,7 +66,6 @@ export interface PlayingViewProps {
   leaderboardEntries: Array<Record<string, unknown>>;
   playerRank: { rank: number; score: number; entriesUsed: number; hotspotsOpened: number; elapsedMs: number; guessedAt: number } | null;
   rankedCount: number;
-  // Footer
   archiveCount: number;
   isPushOptedIn: boolean;
   isPushBusy: boolean;
@@ -87,23 +103,32 @@ export function PlayingView(props: PlayingViewProps) {
 
   return (
     <>
-      <EnhancedSceneTransition
-        sceneIndex={sceneIndex}
-        title={scene.title}
-        location={scene.location}
-        era={scene.era}
-        palette={scene.palette}
-      >
-        <MemoryScene
-          scene={scene}
+      <ErrorBoundary label="Scene3D" fallback={(reset) => (
+        <View style={styles.actionBar}>
+          <Pressable onPress={reset} style={({ pressed }) => [styles.actionButton, styles.guessButton, pressed && styles.pressed]}>
+            <Ionicons name="refresh" size={18} color={theme.inkOnAccent} />
+            <Text style={styles.guessButtonText}>Reload scene</Text>
+          </Pressable>
+        </View>
+      )}>
+        <EnhancedSceneTransition
           sceneIndex={sceneIndex}
-          totalScenes={totalAccessibleScenes}
-          onHotspotOpen={onHotspotOpen}
-          onGenerateHint={onGenerateHint}
-          activeHint={activeHint}
-          isHintGenerating={isHintGenerating}
-        />
-      </EnhancedSceneTransition>
+          title={scene.title}
+          location={scene.location}
+          era={scene.era}
+          palette={scene.palette}
+        >
+          <MemoryScene
+            scene={scene}
+            sceneIndex={sceneIndex}
+            totalScenes={totalAccessibleScenes}
+            onHotspotOpen={onHotspotOpen}
+            onGenerateHint={onGenerateHint}
+            activeHint={activeHint}
+            isHintGenerating={isHintGenerating}
+          />
+        </EnhancedSceneTransition>
+      </ErrorBoundary>
       <View style={styles.actionBar}>
         <Pressable
           accessibilityRole="button"
@@ -164,11 +189,13 @@ export function PlayingView(props: PlayingViewProps) {
           onSubmit={onSubmitGuess}
         />
       )}
-      <Leaderboard
-        entries={leaderboardEntries}
-        playerRank={playerRank}
-        rankedCount={rankedCount}
-      />
+      <ErrorBoundary label="Leaderboard">
+        <Leaderboard
+          entries={leaderboardEntries}
+          playerRank={playerRank}
+          rankedCount={rankedCount}
+        />
+      </ErrorBoundary>
       {archiveCount > 0 && (
         <Pressable style={styles.curatorLink} href="/archive">
           <Ionicons name="archive-outline" size={14} color={theme.neutralDark} />
@@ -189,13 +216,13 @@ export function PlayingView(props: PlayingViewProps) {
         </View>
         <View style={styles.venicePipelineSteps}>
           <StepBadge icon="search" label="Select" color={theme.violet} />
-          <Ionicons name="arrow-forward" size={10} color="rgba(255,247,237,0.2)" />
+          <Ionicons name="arrow-forward" size={10} color={theme.inkAlpha20} />
           <StepBadge icon="sparkles" label="Write" color={theme.violet} />
-          <Ionicons name="arrow-forward" size={10} color="rgba(255,247,237,0.2)" />
+          <Ionicons name="arrow-forward" size={10} color={theme.inkAlpha20} />
           <StepBadge icon="shield-checkmark" label="Verify" color={theme.success} />
-          <Ionicons name="arrow-forward" size={10} color="rgba(255,247,237,0.2)" />
+          <Ionicons name="arrow-forward" size={10} color={theme.inkAlpha20} />
           <StepBadge icon="trending-up" label="Calibrate" color={theme.accent} />
-          <Ionicons name="arrow-forward" size={10} color="rgba(255,247,237,0.2)" />
+          <Ionicons name="arrow-forward" size={10} color={theme.inkAlpha20} />
           <StepBadge icon="image" label="Render" color={theme.violet} />
         </View>
         <Pressable href="/curator" style={({ pressed }) => [styles.venicePipelineAction, pressed && styles.pressed]}>

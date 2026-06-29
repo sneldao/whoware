@@ -1,7 +1,7 @@
 import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
@@ -50,9 +50,11 @@ export function EnhancedSceneTransition({
 
   const colors = [
     palette[0] ?? theme.inkOnAccent,
-    palette[1] ?? "#92400E",
-    palette[2] ?? "#F8E7C9",
+    palette[1] ?? theme.warmBrown,
+    palette[2] ?? theme.parchment,
   ];
+
+  const timeoutIdsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     if (sceneIndex === currentIndex) return;
@@ -89,19 +91,26 @@ export function EnhancedSceneTransition({
         runOnJS(setCurrentIndex)(sceneIndex);
 
         // After transmission delay, show title card
-        setTimeout(() => {
+        const t1 = setTimeout(() => {
           runOnJS(setPhase)("title-card");
 
           // Then fade in scene
-          setTimeout(() => {
+          const t2 = setTimeout(() => {
             runOnJS(setPhase)("fading-in");
             opacity.value = withTiming(1, { duration: 500 }, (f) => {
               if (f) runOnJS(setPhase)("visible");
             });
           }, 1800);
+          timeoutIdsRef.current.push(t2);
         }, 1200);
+        timeoutIdsRef.current.push(t1);
       }
     });
+
+    return () => {
+      timeoutIdsRef.current.forEach(clearTimeout);
+      timeoutIdsRef.current = [];
+    };
   }, [sceneIndex, currentIndex, opacity, scanlineOffset, staticGlitch]);
 
   const sceneStyle = useAnimatedStyle(() => ({
@@ -139,7 +148,7 @@ export function EnhancedSceneTransition({
                     key={i}
                     style={[
                       styles.scanline,
-                      { backgroundColor: i % 2 === 0 ? "rgba(255,247,237,0.04)" : "transparent" },
+                      { backgroundColor: i % 2 === 0 ? theme.inkAlpha04 : "transparent" },
                     ]}
                   />
                 ))}
@@ -173,9 +182,9 @@ export function EnhancedSceneTransition({
           {phase === "transmitting" && (
             <View style={styles.transmissionContainer}>
               <View style={styles.signalIcon}>
-                <Ionicons name="radio" size={24} color={colors[2] ?? "#F8E7C9"} />
+                <Ionicons name="radio" size={24} color={colors[2] ?? theme.parchment} />
               </View>
-              <Text style={[styles.transmissionText, { color: colors[2] ?? "#F8E7C9" }]}>
+              <Text style={[styles.transmissionText, { color: colors[2] ?? theme.parchment }]}>
                 {transmissionText}
               </Text>
               <View style={styles.loadingDots}>
@@ -184,7 +193,7 @@ export function EnhancedSceneTransition({
                     key={i}
                     style={[
                       styles.dot,
-                      { backgroundColor: colors[2] ?? "#F8E7C9" },
+                      { backgroundColor: colors[2] ?? theme.parchment },
                     ]}
                   />
                 ))}
@@ -195,13 +204,13 @@ export function EnhancedSceneTransition({
           {/* Title card */}
           {phase === "title-card" && (
             <View style={styles.titleCardContainer}>
-              <Text style={[styles.memoryLabel, { color: colors[2] ?? "#F8E7C9" }]}>
+              <Text style={[styles.memoryLabel, { color: colors[2] ?? theme.parchment }]}>
                 Memory {currentIndex + 1}
               </Text>
               <Text style={[styles.titleText, { color: theme.ink }]}>{title}</Text>
               <Text style={styles.locationText}>{location}</Text>
               <View style={[styles.eraBadge, { backgroundColor: `${colors[1]}44`, borderColor: `${colors[1]}66` }]}>
-                <Text style={[styles.eraText, { color: colors[2] ?? "#F8E7C9" }]}>{era}</Text>
+                <Text style={[styles.eraText, { color: colors[2] ?? theme.parchment }]}>{era}</Text>
               </View>
             </View>
           )}
@@ -214,7 +223,7 @@ export function EnhancedSceneTransition({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000",
+    backgroundColor: theme.pureBlack,
   },
   sceneWrap: {
     flex: 1,
@@ -271,7 +280,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: theme.inkAlpha8,
     borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.15)",
+    borderColor: theme.inkAlpha15,
   },
   transmissionText: {
     fontSize: 16,

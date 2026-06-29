@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   hintText: {
-    color: "rgba(255, 247, 237, 0.84)",
+    color: theme.inkAlpha84,
     fontSize: 15,
     lineHeight: 22,
     fontStyle: "italic",

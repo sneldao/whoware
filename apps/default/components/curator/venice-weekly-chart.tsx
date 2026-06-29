@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
   },
   dayLabelText: {
-    color: "rgba(255, 247, 237, 0.3)",
+    color: theme.inkAlpha30,
     fontSize: 8,
     fontWeight: "700",
     width: 30,

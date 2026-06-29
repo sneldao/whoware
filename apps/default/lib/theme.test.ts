@@ -15,9 +15,21 @@ describe("theme tokens", () => {
     expect(theme.inkOnAccent).toBe("#111827");
   });
 
+  it("exposes the scene-palette fallback tokens (warmBrown, parchment, pureBlack)", () => {
+    expect(theme.warmBrown).toBe("#92400E");
+    expect(theme.parchment).toBe("#F8E7C9");
+    expect(theme.pureBlack).toBe("#000");
+  });
+
+  it("exposes the curator-leaderboard accents (pink, silver, bronze, lightViolet, lightGreen)", () => {
+    expect(theme.pink).toMatch(/^#F[A-F0-9]{5}$/i);
+    expect(theme.silver).toMatch(/^#/);
+    expect(theme.bronze).toMatch(/^#/);
+    expect(theme.lightViolet).toMatch(/^#/);
+    expect(theme.lightGreen).toMatch(/^#/);
+  });
+
   it("is fully readonly — values cannot be mutated at runtime", () => {
-    // @ts-expect-error - the const assertion prevents this at compile time,
-    // but we double-check at runtime.
     expect(() => { theme.accent = "#000000"; }).toThrow();
   });
 });

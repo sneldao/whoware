@@ -163,7 +163,7 @@ export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, o
       {activeClue ? (
         <View style={styles.cluePanel}>
           <View style={styles.clueHeader}>
-            <Ionicons name="search" size={18} color="#F8E7C9" />
+            <Ionicons name="search" size={18} color={theme.parchment} />
             <Text style={styles.clueTitle}>{activeClue.label}</Text>
           </View>
           <Text style={styles.clueText}>{activeClue.detail}</Text>
@@ -202,7 +202,7 @@ export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, o
 }
 
 function normalizePalette(palette: string[]): [string, string, string] {
-  return [palette[0] ?? theme.inkOnAccent, palette[1] ?? "#92400E", palette[2] ?? "#F8E7C9"];
+  return [palette[0] ?? theme.inkOnAccent, palette[1] ?? theme.warmBrown, palette[2] ?? theme.parchment];
 }
 
 const styles = StyleSheet.create({
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.7,
   },
   sceneLocation: {
-    color: "rgba(255, 247, 237, 0.78)",
+    color: theme.inkAlpha78,
     fontSize: 14,
     fontWeight: "700",
   },
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.accent,
   },
   ambient: {
-    color: "rgba(255, 247, 237, 0.84)",
+    color: theme.inkAlpha84,
     fontSize: 16,
     lineHeight: 24,
   },
@@ -340,12 +340,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   clueTitle: {
-    color: "#F8E7C9",
+    color: theme.parchment,
     fontSize: 16,
     fontWeight: "900",
   },
   clueText: {
-    color: "rgba(255, 247, 237, 0.78)",
+    color: theme.inkAlpha78,
     fontSize: 15,
     lineHeight: 22,
   },

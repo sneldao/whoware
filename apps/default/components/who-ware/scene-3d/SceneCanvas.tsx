@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { useEffect, useRef } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { theme } from "@/lib/theme";
+import { logger } from "@/lib/logger";
 
 import type { Scene } from "@/components/who-ware/panorama-scene";
 import {
@@ -162,7 +163,7 @@ function CanvasMount({
           }
         })
         .catch((err) => {
-          console.warn("[scene-3d] panorama texture failed:", err);
+          logger.warn("scene3d.panoramaTextureFailed", err);
           scene3d.background = new THREE.Color(0x111827);
         });
     }
@@ -349,7 +350,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.7,
   },
   location: {
-    color: "rgba(255, 247, 237, 0.78)",
+    color: theme.inkAlpha78,
     fontSize: 14,
     fontWeight: "700",
   },

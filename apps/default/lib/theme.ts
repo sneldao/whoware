@@ -95,9 +95,56 @@ export const theme = {
   goldGradientEnd: "#F59E0B",
   goldSoft: "#FDE68A",
 
+  // Scene palette fallbacks (used by EnhancedSceneTransition + PanoramaScene)
+  warmBrown: "#92400E",
+  parchment: "#F8E7C9",
+  inkAlpha80: "rgba(255, 247, 237, 0.8)",
+  inkAlpha84: "rgba(255, 247, 237, 0.84)",
+  inkAlpha78: "rgba(255, 247, 237, 0.78)",
+  inkAlpha62: "rgba(255, 247, 237, 0.62)",
+  inkAlpha45: "rgba(255, 247, 237, 0.45)",
+  inkAlpha54: "rgba(255, 247, 237, 0.54)",
+  inkAlpha44: "rgba(255, 247, 237, 0.44)",
+  inkAlpha25: "rgba(255, 247, 237, 0.25)",
+  inkAlpha20: "rgba(255, 247, 237, 0.2)",
+  inkAlpha15: "rgba(255, 247, 237, 0.15)",
+  inkAlpha07: "rgba(255, 247, 237, 0.07)",
+  inkAlpha05: "rgba(255, 247, 237, 0.05)",
+  inkAlpha04: "rgba(255, 247, 237, 0.04)",
+  inkAlpha02: "rgba(255, 247, 237, 0.02)",
+  inkAlpha48: "rgba(255, 247, 237, 0.48)",
+  inkAlpha30: "rgba(255, 247, 237, 0.3)",
+
   scrim: "rgba(0, 0, 0, 0.7)",
   slateDeep: "rgba(15, 23, 42, 0.85)",
   parchmentLight: "rgba(248, 231, 201, 0.13)",
+  pureBlack: "#000",
+
+  // Curator leaderboard accents
+  pink: "#F472B6",
+  pinkAlpha15: "rgba(244, 114, 182, 0.08)",
+  pinkAlpha30: "rgba(244, 114, 182, 0.19)",
+  silver: "#94A3B8",
+  bronze: "#CD7F32",
+  lightViolet: "#C4B5FD",
+  lightGreen: "#86EFAC",
+
+  violetAlpha04: "rgba(167, 139, 250, 0.04)",
+  violetAlpha08: "rgba(167, 139, 250, 0.08)",
+  violetAlpha15: "rgba(167, 139, 250, 0.09)",
+  violetAlpha20: "rgba(167, 139, 250, 0.13)",
+  violetAlpha30: "rgba(167, 139, 250, 0.19)",
+  violetAlpha60: "rgba(167, 139, 250, 0.38)",
+
+  successAlpha15: "rgba(34, 197, 94, 0.09)",
+  successAlpha20: "rgba(34, 197, 94, 0.13)",
+  successAlpha30: "rgba(34, 197, 94, 0.19)",
+  successAlpha60: "rgba(34, 197, 94, 0.38)",
+
+  blackAlpha15: "rgba(0, 0, 0, 0.15)",
+  blackAlpha25: "rgba(0, 0, 0, 0.25)",
 } as const;
+
+Object.freeze(theme);
 
 export type Theme = typeof theme;

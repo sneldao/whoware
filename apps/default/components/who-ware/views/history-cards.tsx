@@ -26,7 +26,7 @@ export function LastSolveCard({
         <Ionicons name="time-outline" size={14} color={theme.accent} />
         <Text style={styles.lastSolveTitle}>Last solve</Text>
         <Pressable onPress={onDismiss} style={styles.lastSolveDismiss}>
-          <Ionicons name="close" size={12} color="rgba(255,247,237,0.3)" />
+          <Ionicons name="close" size={12} color={theme.inkAlpha30} />
         </Pressable>
       </View>
       <Text style={styles.lastSolveFigure}>{figureName}</Text>
@@ -75,7 +75,7 @@ export function HistoryCard({ history, open, onToggle, formatScore }: HistoryCar
       <Pressable style={styles.historyToggle} onPress={onToggle}>
         <Ionicons name="list-outline" size={14} color={theme.accent} />
         <Text style={styles.historyTitle}>My history ({history.length})</Text>
-        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={14} color="rgba(255,247,237,0.3)" />
+        <Ionicons name={open ? "chevron-up" : "chevron-down"} size={14} color={theme.inkAlpha30} />
       </Pressable>
       {open && (
         <View style={styles.historyList}>

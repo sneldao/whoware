@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   cardLabel: {
-    color: "rgba(255, 247, 237, 0.45)",
+    color: theme.inkAlpha45,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.4,
@@ -125,12 +125,12 @@ const styles = StyleSheet.create({
     gap: 3,
     borderRadius: 18,
     borderCurve: "continuous",
-    backgroundColor: "rgba(255, 247, 237, 0.07)",
+    backgroundColor: theme.inkAlpha07,
     borderWidth: 1,
     borderColor: theme.inkAlpha10,
   },
   pillLabel: {
-    color: "rgba(255, 247, 237, 0.48)",
+    color: theme.inkAlpha48,
     fontSize: 10,
     fontWeight: "900",
     letterSpacing: 0.8,
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     borderWidth: 1,
     borderColor: theme.inkAlpha6,
-    backgroundColor: "rgba(0, 0, 0, 0.25)",
+    backgroundColor: theme.blackAlpha25,
   },
   badgeIcon: {
     width: 30,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     lineHeight: 12,
   },
   badgeSublabel: {
-    color: "rgba(255, 247, 237, 0.3)",
+    color: theme.inkAlpha30,
     fontSize: 8,
     fontWeight: "600",
   },
