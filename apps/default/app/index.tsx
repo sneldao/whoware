@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Platform, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
 import { commitGuessOnChain } from "@/lib/wallet";
 import { theme } from "@/lib/theme";
+import { logger } from "@/lib/logger";
 import { OnboardingFlow } from "@/components/who-ware/onboarding-flow";
 import { useGameSession } from "@/hooks/use-game-session";
 import { useGuessing, UseGuessingReturn } from "@/hooks/use-guessing";
 import { useSceneProgression } from "@/hooks/use-scene-progression";
 import { useSmartAccountDelegate } from "@/hooks/use-smart-account-delegate";
 import { useSolveMinter } from "@/hooks/use-solve-minter";
+import { useBootError } from "@/hooks/use-boot-error";
 import { ExhaustedView } from "@/components/who-ware/views/exhausted-view";
 import { HeroPanel } from "@/components/who-ware/views/hero-panel";
 import { HistoryCard, LastSolveCard } from "@/components/who-ware/views/history-cards";
@@ -19,6 +22,7 @@ import {
 import { PlayingView } from "@/components/who-ware/views/playing-view";
 import { SolvedView } from "@/components/who-ware/views/solved-view";
 import { MAX_GUESSES_PER_RUN } from "@/convex/scoring";
+import { ErrorBoundary } from "@/components/shared/error-boundary";
 import styles from "./index.styles";
 
 function formatScore(score: number) { return Math.round(score).toLocaleString(); }
@@ -85,6 +89,22 @@ function GameDashboard() {
 
   // ── Loading states ──────────────────────────────────────────────
   const waitingForBoot = !session.identity.isLoaded || session.episode === undefined || session.run === undefined;
+  const bootError = useBootError(waitingForBoot);
+  if (bootError.timedOut && waitingForBoot) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Couldn't open today's archive.</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={bootError.retry}
+          style={({ pressed }) => [styles.actionButton, styles.guessButton, pressed && styles.pressed]}
+        >
+          <Ionicons name="refresh" size={18} color={theme.inkOnAccent} />
+          <Text style={styles.guessButtonText}>Retry</Text>
+        </Pressable>
+      </View>
+    );
+  }
   if (waitingForBoot) return <LoadingScreen message="Opening today's archive…" />;
   if (session.episode === null) return <LoadingScreen message="Preparing the first episode…" />;
 
@@ -253,7 +273,8 @@ function GameDashboard() {
       >
         {hero}
         {isSolved && guessing.solvedRun && (
-          <SolvedView
+          <ErrorBoundary label="SolvedView">
+            <SolvedView
             episodeNumber={episodeNumber}
             memoriesViewed={memoriesViewed}
             cluesOpened={hotspotsOpened}
@@ -280,6 +301,7 @@ function GameDashboard() {
             onShowHistory={() => setHistoryOpen(true)}
             onShare={handleShareResult}
           />
+          </ErrorBoundary>
         )}
         {isExhausted && <ExhaustedView onLearnMoreArchive={() => {}} />}
         {body}
@@ -318,13 +340,15 @@ function GameDashboard() {
         imageUrl={solvedSceneImageUrl}
         onContinue={() => guessing.setRevealDismissed(true)}
       />
-      <UpgradeOverlayLayer
-        isVisible={delegate.state.showUpgradeOverlay}
-        isUpgrading={session.wallet.smartAccount.isUpgrading}
-        isUpgraded={session.wallet.smartAccount.isUpgraded}
-        error={session.wallet.smartAccount.error}
-        onDismiss={() => delegate.setShowUpgradeOverlay(false)}
-      />
+      <ErrorBoundary label="UpgradeOverlay">
+        <UpgradeOverlayLayer
+          isVisible={delegate.state.showUpgradeOverlay}
+          isUpgrading={session.wallet.smartAccount.isUpgrading}
+          isUpgraded={session.wallet.smartAccount.isUpgraded}
+          error={session.wallet.smartAccount.error}
+          onDismiss={() => delegate.setShowUpgradeOverlay(false)}
+        />
+      </ErrorBoundary>
     </View>
   );
 }
