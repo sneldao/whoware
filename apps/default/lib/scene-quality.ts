@@ -14,6 +14,8 @@
  * - Per-scene quality hint (Phase 2)
  */
 
+import { logger } from "./logger";
+
 export type SceneMode = "three-d" | "panorama";
 
 export type SceneQualityReason =

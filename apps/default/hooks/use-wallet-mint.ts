@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { TARGET_CHAIN } from "@/lib/wallet";
+import { logger } from "@/lib/logger";
 
 /**
  * Foundation hook for wallet / paywall on-chain operations.
@@ -44,13 +45,11 @@ export function useWalletMint(
 
   const ensureReady = useCallback(() => {
     if (!wallet.address) {
-      console.warn("useWalletMint: no wallet address");
+      logger.warn("useWalletMint.noAddress");
       return false;
     }
     if (!isOnTargetChain) {
-      console.warn(
-        `useWalletMint: wallet on chain ${chainId}, expected ${TARGET_CHAIN.id}`,
-      );
+      logger.warn(`useWalletMint.wrongChain:got=${chainId}:want=${TARGET_CHAIN.id}`);
       return false;
     }
     return true;

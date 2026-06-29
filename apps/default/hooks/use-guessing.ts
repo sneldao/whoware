@@ -13,6 +13,7 @@ import { useRevealState, RevealFigure, SolvedRun } from "@/hooks/use-reveal-stat
 import { useOnchainCommit } from "@/hooks/use-onchain-commit";
 import { useLocalDiscovery } from "@/hooks/use-local-discovery";
 import { generateGuessSalt } from "@/lib/wallet";
+import { logger } from "@/lib/logger";
 import type { UseGameSessionReturn } from "./use-game-session";
 
 export interface UseGuessingParams {
@@ -150,8 +151,8 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
       await ensureRun();
       setIsGuessPanelOpen((current) => !current);
       setStatus("You can name the identity before opening a memory. Unassisted solves keep the highest score ceiling.");
-    } catch {
-      // ignore
+    } catch (e) {
+      logger.warn("useGuessing.handleGuessNow", e);
     } finally {
       setIsBusy(false);
     }
@@ -175,8 +176,8 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
       try {
         const activeRun = await ensureRun();
         await openHotspotMutation({ runId: activeRun._id, sceneIndex, hotspotLabel: label });
-      } catch {
-        // ignore
+      } catch (e) {
+        logger.warn("useGuessing.handleOpenHotspot", e);
       }
     },
     [episode, sceneIndex, openHotspotMutation, identity.identityId, discovery, gameSounds, toast],
@@ -301,8 +302,8 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         if (nextIdx >= 0) {
           try {
             await enterSceneMutation({ runId: activeRun._id, sceneIndex: nextIdx });
-          } catch {
-            // ignore
+          } catch (e) {
+            logger.warn("useGuessing.handleGuess.advance", e);
           }
           setStatus("The body rejects that name. A deeper memory surfaces.");
           return;

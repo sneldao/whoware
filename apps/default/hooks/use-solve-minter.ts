@@ -4,6 +4,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { revealGuessOnChain } from "@/lib/wallet";
 import { sendViaSmartAccount } from "@/lib/smart-account";
+import { logger } from "@/lib/logger";
 
 /**
  * Arguments required to commit a solve on-chain. The guesser supplies these
@@ -164,7 +165,7 @@ export function useSolveMinter(
               setMintTxHash(null);
             }
           })
-          .catch(() => {})
+          .catch((e) => logger.error("useSolveMinter.mintScore.smartAccount", e))
           .finally(() => setIsMinting(false));
       } else {
         mintScoreOnChain({
@@ -178,7 +179,10 @@ export function useSolveMinter(
           .then((txHash) => {
             setMintTxHash(txHash);
           })
-          .catch(() => {})
+          .catch((e) => {
+            logger.error("useSolveMinter.mintScore.eoa", e);
+            showToast("Mint failed. Score not recorded on-chain.", "error");
+          })
           .finally(() => setIsMinting(false));
       }
 
@@ -193,10 +197,12 @@ export function useSolveMinter(
         .then((txHash) => {
           setStreakTxHash(txHash);
         })
-        .catch(() => {})
+        .catch((e) => {
+          logger.error("useSolveMinter.updateStreak", e);
+          showToast("Streak update failed.", "error");
+        })
         .finally(() => setIsStreakUpdating(false));
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       wallet.address,
       episode,
@@ -210,6 +216,8 @@ export function useSolveMinter(
       delegate,
       setUserOpHash,
       showToast,
+      // revealGuessOnChain and sendViaSmartAccount are stable module-level
+      // imports — deliberately omitted from the dep array.
     ],
   );
 

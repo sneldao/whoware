@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 
 const LAST_SOLVE_KEY = "whoware.lastSolve";
 
@@ -25,7 +26,9 @@ export function useLastSolve() {
       if (stored) {
         try {
           setLastSolve(JSON.parse(stored));
-        } catch {}
+        } catch (e) {
+          logger.warn("useLastSolve.parseStored", e);
+        }
       }
       setLoaded(true);
     });

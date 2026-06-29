@@ -8,6 +8,7 @@ import {
   signWithMetaMask,
 } from "@/lib/smart-account";
 import { MANTLE_SEPOLIA_ORACLE, MANTLE_SEPOLIA_SCORE_CONTRACT } from "@/lib/contracts";
+import { logger } from "@/lib/logger";
 
 export interface UseSmartAccountDelegateParams {
   wallet: ReturnType<typeof import("./use-wallet").useWallet>;
@@ -122,7 +123,8 @@ export function useSmartAccountDelegate(
         }
       }
     } catch (e) {
-      console.error("Delegation flow failed:", e);
+      logger.error("useSmartAccountDelegate.delegate", e);
+      showToast("Delegation failed. Check your wallet and try again.", "error");
     }
     setIsDelegating(false);
   }, [

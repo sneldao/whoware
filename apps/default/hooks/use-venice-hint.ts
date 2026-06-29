@@ -1,6 +1,7 @@
 import { useAction } from "convex/react";
 import { useCallback, useState } from "react";
 import { api } from "@/convex/_generated/api";
+import { logger } from "@/lib/logger";
 
 interface HintRequest {
   sceneAmbientText: string;
@@ -27,7 +28,8 @@ export function useVeniceHint() {
         const hint = await generateHint(request);
         hintCache.set(cacheKey, hint);
         return hint;
-      } catch {
+      } catch (e) {
+        logger.warn("useVeniceHint.getHint", e);
         return "The memory resists probing.";
       } finally {
         setIsGenerating(false);

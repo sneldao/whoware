@@ -11,10 +11,12 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useStreak } from "@/hooks/use-streak";
 import { useLastSolve } from "@/hooks/use-last-solve";
 import { hasCompletedOnboarding, markOnboardingComplete } from "@/lib/onboarding";
+import { logger } from "@/lib/logger";
 import { useTooltip } from "@/components/curator/tooltip";
 
 const PLAYER_NAME_KEY = "whoware.player.name";
 const DEFAULT_PLAYER_NAME = "Player";
+const SEED_ATTEMPTED_KEY = "whoware.seed.attempted";
 
 export interface UseGameSessionReturn {
   onboardingDone: boolean;
@@ -127,7 +129,8 @@ export function useGameSession(): UseGameSessionReturn {
         if (stored) setPlayerName(stored);
         setPlayerNameLoaded(true);
       })
-      .catch(() => {
+      .catch((e) => {
+        logger.warn("useGameSession.loadPlayerName", e);
         if (cancelled) return;
         setPlayerNameLoaded(true);
       });
@@ -139,17 +142,27 @@ export function useGameSession(): UseGameSessionReturn {
   // Player name persist
   useEffect(() => {
     if (!playerNameLoaded) return;
-    AsyncStorage.setItem(PLAYER_NAME_KEY, playerName).catch(() => {});
+    AsyncStorage.setItem(PLAYER_NAME_KEY, playerName).catch((e) => {
+      logger.warn("useGameSession.persistPlayerName", e);
+    });
   }, [playerName, playerNameLoaded]);
 
-  // Seed catalog once on mount
+  // Seed catalog once on mount (gated so we don't burn a network round-trip
+  // on every app open — server-side mutation is idempotent, but the client
+  // round-trip is still wasteful).
   useEffect(() => {
     let cancelled = false;
     async function seed() {
+      if (cancelled) return;
       try {
+        const attempted = await AsyncStorage.getItem(SEED_ATTEMPTED_KEY);
+        if (cancelled || attempted === "true") return;
         await seedCatalog();
-      } catch {
-        // Idempotent — ignore duplicate seed attempts.
+        await AsyncStorage.setItem(SEED_ATTEMPTED_KEY, "true");
+      } catch (e) {
+        logger.warn("useGameSession.seedCatalog", e);
+        // Server mutation is idempotent — leave the flag unset so we retry
+        // on the next mount if the failure was network-related.
       }
     }
     void seed();

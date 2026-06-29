@@ -4,6 +4,7 @@ import * as Haptics from "expo-haptics";
 
 import type { Scene } from "@/components/who-ware/panorama-scene";
 import { MEMORY_PENALTY } from "@/convex/scoring";
+import { logger } from "@/lib/logger";
 import type { UseGameSessionReturn } from "./use-game-session";
 
 export interface UseSceneProgressionParams {
@@ -117,8 +118,8 @@ export function useSceneProgression(params: UseSceneProgressionParams): UseScene
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
       setStatus("You surrender certainty for another memory. The answer is closer, but the score ceiling falls.");
-    } catch {
-      // ignore
+    } catch (e) {
+      logger.warn("useSceneProgression.unlockNextMemory", e);
     } finally {
       setIsBusy(false);
     }

@@ -7,6 +7,7 @@
  */
 
 import type { Address, Hex } from "viem";
+import { logger } from "./logger";
 
 const RELAYER_TESTNET_URL = "https://relayer.1shotapi.dev/relayers";
 const RELAYER_MAINNET_URL = "https://relayer.1shotapi.com/relayers";
@@ -81,7 +82,7 @@ export async function sendVia1ShotRelayer(
     });
 
     if (!response.ok) {
-      console.error("1Shot relayer error:", response.status, await response.text());
+      logger.error("1shot.relayerError", { status: response.status, body: await response.text() });
       return null;
     }
 
@@ -91,13 +92,13 @@ export async function sendVia1ShotRelayer(
     };
 
     if (json.error) {
-      console.error("1Shot relayer RPC error:", json.error);
+      logger.error("1shot.relayerRpcError", json.error);
       return null;
     }
 
     return json.result ?? null;
   } catch (error) {
-    console.error("Failed to send via 1Shot relayer:", error);
+    logger.error("1shot.sendViaRelayer", error);
     return null;
   }
 }
@@ -157,7 +158,7 @@ export async function getRelayerStatus(
       blockNumber: json.result.receipt?.blockNumber,
     };
   } catch (error) {
-    console.error("Failed to get relayer status:", error);
+    logger.error("1shot.getRelayerStatus", error);
     return null;
   }
 }

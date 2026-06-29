@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type { UseWalletMintReturn } from "./use-wallet-mint";
+import { logger } from "@/lib/logger";
 
 export interface UsePaymentGateParams {
   /** The connected wallet state (for chain checks and address). */
@@ -78,7 +79,7 @@ export function usePaymentGate(
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unlock failed";
       setError(msg);
-      console.error("usePaymentGate.unlock failed:", e);
+      logger.error("usePaymentGate.unlock", e);
       return false;
     } finally {
       setIsUnlocking(false);

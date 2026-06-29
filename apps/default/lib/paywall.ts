@@ -1,6 +1,7 @@
 import { createWalletClient, custom, encodeFunctionData, parseAbi, type Address, type Chain } from "viem";
 import { polygonAmoy } from "viem/chains";
 import { sendVia1ShotRelayer, USDC_AMOY_ADDRESS } from "./1shot";
+import { logger } from "./logger";
 
 export const POLYGON_AMOY_CHAIN: Chain = polygonAmoy;
 
@@ -53,7 +54,8 @@ export async function switchToPolygonAmoy(): Promise<boolean> {
           ],
         });
         return true;
-      } catch {
+      } catch (e) {
+        logger.warn("paywall.addPolygonAmoyNetwork", e);
         return false;
       }
     }
@@ -74,7 +76,8 @@ export async function getCurrentChainId(): Promise<number | null> {
       method: "eth_chainId",
     });
     return parseInt(hex, 16);
-  } catch {
+  } catch (e) {
+    logger.warn("paywall.getCurrentChainId", e);
     return null;
   }
 }
@@ -130,7 +133,7 @@ export async function sendArchivePayment(
     });
     return hash;
   } catch (error) {
-    console.error("Failed to send archive payment:", error);
+    logger.error("paywall.sendArchivePayment", error);
     return null;
   }
 }

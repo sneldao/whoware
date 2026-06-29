@@ -6,6 +6,7 @@ import {
   sendViaSmartAccount,
   type MetaMaskSmartAccount,
 } from "@/lib/smart-account";
+import { logger } from "@/lib/logger";
 
 interface SmartAccountState {
   smartAccount: MetaMaskSmartAccount | null;
@@ -87,7 +88,7 @@ export function useSmartAccount() {
       value: bigint = 0n,
     ): Promise<`0x${string}` | null> => {
       if (!state.smartAccount) {
-        console.error("Smart account not initialized");
+        logger.warn("useSmartAccount.sendTransaction.noAccount");
         return null;
       }
 

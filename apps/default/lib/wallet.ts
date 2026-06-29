@@ -1,5 +1,6 @@
 import { createWalletClient, custom, http, type Address, type Chain } from "viem";
 import { mantleSepoliaTestnet } from "viem/chains";
+import { logger } from "./logger";
 
 export const TARGET_CHAIN: Chain = mantleSepoliaTestnet;
 
@@ -163,7 +164,7 @@ export async function commitGuessOnChain(
     });
     return hash;
   } catch (error) {
-    console.error("Failed to commit guess on-chain:", error);
+    logger.error("wallet.commitGuessOnChain", error);
     return null;
   }
 }
@@ -191,7 +192,7 @@ export async function revealGuessOnChain(
     });
     return hash;
   } catch (error) {
-    console.error("Failed to reveal guess on-chain:", error);
+    logger.error("wallet.revealGuessOnChain", error);
     return null;
   }
 }

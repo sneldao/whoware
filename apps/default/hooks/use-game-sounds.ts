@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
+import { logger } from "@/lib/logger";
 
 type ToneFn = () => void;
 
@@ -19,7 +20,8 @@ function createTone(frequency: number, duration: number, type: OscillatorType = 
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + duration);
         setTimeout(() => ctx.close(), (duration + 0.1) * 1000);
-      } catch {
+      } catch (e) {
+        logger.warn("useGameSounds.tone", e);
         // AudioContext unavailable or blocked
       }
     }
@@ -57,7 +59,8 @@ export function useGameSounds(): GameSounds {
             osc.stop(ctx.currentTime + 0.15 * (i + 1) + 0.2);
           });
           setTimeout(() => ctx.close(), 1000);
-        } catch {
+        } catch (e) {
+          logger.warn("useGameSounds.playCorrectGuess", e);
           // ignored
         }
       },

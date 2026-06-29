@@ -1,7 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
+import { logger } from "@/lib/logger";
 
-const STREAK_STORAGE_KEY = "whoware.streak.v1";
+const STREAK_STORAGE_KEY = "*****************";
 const DAY_MS = 86_400_000;
 // streak persistence (no auth required)
 
@@ -57,7 +58,8 @@ export function useStreak() {
           const parsed: unknown = JSON.parse(raw);
           if (isStreakState(parsed)) setStreak(parsed);
         }
-      } catch {
+      } catch (e) {
+        logger.warn("useStreak loadStorage", e);
         // Corrupt or unavailable storage — start fresh.
       } finally {
         if (!cancelled) setIsLoaded(true);
@@ -89,7 +91,8 @@ export function useStreak() {
     });
     try {
       await AsyncStorage.setItem(STREAK_STORAGE_KEY, JSON.stringify(next));
-    } catch {
+    } catch (e) {
+      logger.warn("useStreak persist", e);
       // Best-effort persistence.
     }
     return next;

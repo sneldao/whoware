@@ -7,6 +7,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { sendArchivePayment } from "@/lib/paywall";
 import type { Address } from "viem";
 import { theme } from "@/lib/theme";
+import { logger } from "@/lib/logger";
 
 const CONVEX_API_BASE = process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? "https://colorless-seal-981.convex.site";
 
@@ -71,7 +72,8 @@ export function ArchivePaywall({
         } else {
           setState("idle");
         }
-      } catch {
+      } catch (e) {
+        logger.warn("archive-paywall.checkAccess", e);
         if (!cancelled) setState("idle");
       }
     }
@@ -133,6 +135,7 @@ export function ArchivePaywall({
         setError("Payment verification failed. The transaction may still be pending.");
       }
     } catch (err) {
+      logger.error("archive-paywall.verifyAndUnlock", err);
       setState("error");
       setError("Verification error. Please try again.");
     }

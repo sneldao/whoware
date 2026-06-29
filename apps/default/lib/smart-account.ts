@@ -62,7 +62,7 @@ export async function upgradeToSmartAccount(
 
     return smartAccount;
   } catch (error) {
-    console.error("Failed to upgrade to smart account:", error);
+    logger.error("smartAccount.upgrade", error);
     return null;
   }
 }
@@ -83,7 +83,7 @@ export async function sendViaSmartAccount(
 
     return userOperationHash;
   } catch (error) {
-    console.error("Failed to send user operation:", error);
+    logger.error("smartAccount.sendUserOperation", error);
     return null;
   }
 }
@@ -98,7 +98,7 @@ export async function waitForUserOperationReceipt(
     });
     return receipt.receipt.transactionHash;
   } catch (error) {
-    console.error("Failed to wait for user operation:", error);
+    logger.error("smartAccount.waitForUserOperationReceipt", error);
     return null;
   }
 }
@@ -176,6 +176,7 @@ export function buildMintDelegation(
 }
 
 import { MANTLE_SEPOLIA_ORACLE as ORACLE_ADDRESS } from "./contracts";
+import { logger } from "./logger";
 export { ORACLE_ADDRESS };
 
 const DELEGATION_TYPES = {
@@ -229,7 +230,7 @@ export async function signWithMetaMask(
   typedData: Record<string, unknown>,
 ): Promise<`0x${string}` | null> {
   if (typeof window === "undefined" || !(window as any).ethereum) {
-    console.error("MetaMask not available");
+    logger.warn("smartAccount.metaMaskUnavailable");
     return null;
   }
   try {
@@ -240,7 +241,7 @@ export async function signWithMetaMask(
     });
     return signature as `0x${string}`;
   } catch (error) {
-    console.error("Failed to sign typed data:", error);
+    logger.error("smartAccount.signTypedData", error);
     return null;
   }
 }
