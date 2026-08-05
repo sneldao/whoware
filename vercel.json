@@ -4,6 +4,6 @@
   "installCommand": "npm install --legacy-peer-deps",
   "framework": null,
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://colorless-seal-981.convex.site/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://cheery-elk-110.convex.site/api/:path*" }
   ]
 }

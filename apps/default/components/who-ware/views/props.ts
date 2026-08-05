@@ -149,5 +149,6 @@ export interface SolvedViewProps {
   nextActions: {
     onShowHistory: () => void;
     onShare: () => void;
+    onTomorrow: () => void;
   };
 }

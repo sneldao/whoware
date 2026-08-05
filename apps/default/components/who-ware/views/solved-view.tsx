@@ -77,7 +77,7 @@ export function SolvedView(props: SolvedViewProps) {
           <Ionicons name="list-outline" size={14} color={theme.ink} />
           <Text style={styles.nextActionText}>History</Text>
         </Pressable>
-        <Pressable style={styles.nextActionButton}>
+        <Pressable style={styles.nextActionButton} onPress={nextActions.onTomorrow}>
           <Ionicons name="calendar-outline" size={14} color={theme.ink} />
           <Text style={styles.nextActionText}>Tomorrow</Text>
         </Pressable>

@@ -1,10 +1,12 @@
 import * as THREE from "three";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { theme } from "@/lib/theme";
 import { logger } from "@/lib/logger";
+import { Ionicons } from "@expo/vector-icons";
 
-import type { Scene } from "@/components/who-ware/panorama-scene";
+import type { Clue, Scene } from "@/components/who-ware/panorama-scene";
+import { ClueDetailPanel } from "@/components/who-ware/clue-detail-panel";
 import {
   attachLookControls,
   applyLook,
@@ -28,16 +30,16 @@ interface SceneCanvasProps {
   totalScenes: number;
   height: number;
   onHotspotOpen?: (label: string) => void;
+  onGenerateHint?: (clueLabel: string) => void;
+  activeHint?: string | null;
+  isHintGenerating?: boolean;
+  /** Edge-to-edge immersion — no card chrome or below-fold hint. */
+  fill?: boolean;
 }
 
 /**
- * Three.js scene canvas — renders the panorama image as a skybox
- * sphere the player can look around inside, plus procedural 3D
- * props anchored to the scene brief's prop placements.
- *
- * On web: a real <canvas> driven by a Three.js WebGLRenderer.
- * On native (iOS / Android): the placeholder notice; Phase 4 brings
- * expo-gl + expo-three for native GL.
+ * Three.js scene canvas — skybox + procedural props on web.
+ * Native keeps a placeholder until expo-gl lands.
  */
 export function SceneCanvas({
   scene,
@@ -45,8 +47,19 @@ export function SceneCanvas({
   totalScenes,
   height,
   onHotspotOpen,
+  onGenerateHint,
+  activeHint,
+  isHintGenerating,
+  fill = false,
 }: SceneCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [activeClue, setActiveClue] = useState<Clue | null>(null);
+  const onHotspotOpenRef = useRef(onHotspotOpen);
+  onHotspotOpenRef.current = onHotspotOpen;
+
+  useEffect(() => {
+    setActiveClue(null);
+  }, [scene.title, sceneIndex]);
 
   if (Platform.OS !== "web") {
     return (
@@ -57,41 +70,117 @@ export function SceneCanvas({
     );
   }
 
+  function handleHotspot(label: string) {
+    const clue = scene.clues.find((c) => c.label === label) ?? null;
+    if (clue) setActiveClue(clue);
+    onHotspotOpenRef.current?.(label);
+  }
+
+  const imageUrl = resolveSceneImageUrl(scene, sceneIndex);
+
   return (
-    <View style={[styles.frame, { height }]}>
-      <View style={styles.headerOverlay}>
-        <Text style={styles.counter}>
-          Memory {sceneIndex + 1} / {totalScenes}
-        </Text>
-        <Text style={styles.title}>{scene.title}</Text>
-        <Text style={styles.location}>
-          {scene.location} · {scene.era}
-        </Text>
+    <View style={fill ? styles.fillRoot : styles.card}>
+      <View style={[styles.frame, { height }, fill && styles.frameFill]}>
+        {!fill ? (
+          <View style={styles.headerOverlay}>
+            <Text style={styles.counter}>
+              Memory {sceneIndex + 1} / {totalScenes}
+            </Text>
+            <Text style={styles.title}>{scene.title}</Text>
+            <Text style={styles.location}>
+              {scene.location} · {scene.era}
+            </Text>
+          </View>
+        ) : null}
+        <CanvasMount
+          hostRef={containerRef}
+          imageUrl={imageUrl}
+          clues={scene.clues}
+          props={scene.props}
+          lighting={scene.lighting}
+          onHotspotOpen={handleHotspot}
+        />
+        {!fill ? (
+          <View style={styles.helpOverlay}>
+            <Text style={styles.help}>Drag to look · tap glowing objects</Text>
+          </View>
+        ) : null}
+        {fill && activeClue ? (
+          <View style={styles.fillClue}>
+            <ClueDetailPanel
+              clue={activeClue}
+              onGenerateHint={onGenerateHint}
+              activeHint={activeHint}
+              isHintGenerating={isHintGenerating}
+            />
+          </View>
+        ) : null}
       </View>
-      <CanvasMount
-        ref={containerRef}
-        scene={scene}
-        onHotspotOpen={onHotspotOpen}
-      />
-      <View style={styles.helpOverlay}>
-        <Text style={styles.help}>Drag to look · tap glowing objects</Text>
-      </View>
+
+      {!fill ? (
+        activeClue ? (
+          <ClueDetailPanel
+            clue={activeClue}
+            onGenerateHint={onGenerateHint}
+            activeHint={activeHint}
+            isHintGenerating={isHintGenerating}
+          />
+        ) : (
+          <View style={styles.hintRow}>
+            <Ionicons name="radio-button-on" size={16} color="#D97706" />
+            <Text style={styles.hint}>
+              Drag to look, then tap a glow for a clue — each one costs score.
+            </Text>
+          </View>
+        )
+      ) : null}
     </View>
   );
 }
 
+function resolveSceneImageUrl(scene: Scene, sceneIndex: number): string | null {
+  const imageSource = getSceneImageSource(scene.imageKey, sceneIndex, scene.imageUrl);
+  if (typeof imageSource === "object" && imageSource && "uri" in imageSource) {
+    return imageSource.uri as string;
+  }
+  return null;
+}
+
 function CanvasMount({
-  ref,
-  scene,
+  hostRef,
+  imageUrl,
+  clues,
+  props: sceneProps,
+  lighting: sceneLighting,
   onHotspotOpen,
 }: {
-  ref: React.MutableRefObject<HTMLDivElement | null>;
-  scene: Scene;
-  onHotspotOpen?: (label: string) => void;
+  hostRef: React.MutableRefObject<HTMLDivElement | null>;
+  imageUrl: string | null;
+  clues: Clue[];
+  props?: Scene["props"];
+  lighting?: Scene["lighting"];
+  onHotspotOpen: (label: string) => void;
 }) {
+  const onHotspotOpenRef = useRef(onHotspotOpen);
+  onHotspotOpenRef.current = onHotspotOpen;
+
+  // Stabilize rebuilds: identity keys, not parent callback identity.
+  const clueKey = clues.map((c) => `${c.label}:${c.x}:${c.y}`).join("|");
+  const propKey = (sceneProps ?? [])
+    .map((p) => `${p.id}:${p.kind}:${p.clueLabel ?? ""}:${p.position.join(",")}`)
+    .join("|");
+  const lightingKey = sceneLighting
+    ? `${sceneLighting.ambient}:${sceneLighting.keyColor}:${sceneLighting.keyIntensity}`
+    : "default";
+
   useEffect(() => {
-    const host = ref.current;
+    const host = hostRef.current;
     if (!host) return;
+
+    // Snapshot scene content for this mount — keyed by clueKey/propKey/lightingKey.
+    const cluesSnapshot = clues;
+    const propsSnapshot = sceneProps;
+    const lightingSnapshot = sceneLighting;
 
     const canvas = document.createElement("canvas");
     canvas.style.display = "block";
@@ -106,7 +195,8 @@ function CanvasMount({
       alpha: false,
       powerPreference: "high-performance",
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const dprCap = window.matchMedia("(max-width: 768px)").matches ? 1 : 2;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
     const rect = host.getBoundingClientRect();
     renderer.setSize(rect.width, rect.height, false);
 
@@ -119,30 +209,55 @@ function CanvasMount({
     );
 
     const lookState: LookState = { yaw: 0, pitch: 0 };
+    let dirty = true;
+    let looping = false;
+    let raf = 0;
+    let dragging = false;
+
+    const kick = () => {
+      dirty = true;
+      if (looping) return;
+      looping = true;
+      const tick = () => {
+        if (document.visibilityState === "hidden") {
+          looping = false;
+          return;
+        }
+        applyLook(camera, lookState);
+        renderer.render(scene3d, camera);
+        if (dragging || dirty) {
+          dirty = false;
+          raf = requestAnimationFrame(tick);
+        } else {
+          looping = false;
+        }
+      };
+      raf = requestAnimationFrame(tick);
+    };
+
     const controls = attachLookControls({
       canvas,
       onChange: (next) => {
         lookState.yaw = next.yaw;
         lookState.pitch = next.pitch;
+        kick();
+      },
+      onActiveChange: (active) => {
+        dragging = active;
+        kick();
       },
     });
 
-    const lighting = buildLightingRig(scene.lighting);
+    const lighting = buildLightingRig(lightingSnapshot);
     scene3d.add(lighting.group);
 
     let skybox: THREE.Mesh | null = null;
     let cancelled = false;
-
-    const imageSource = getSceneImageSource(scene.imageKey, sceneIndex, scene.imageUrl);
-    const imageUrl = typeof imageSource === "object" && "uri" in imageSource
-      ? (imageSource.uri as string)
-      : null;
-
     const propGroups: THREE.Group[] = [];
-    const propByLabel: Map<string, THREE.Group> = new Map();
 
     if (!imageUrl) {
       scene3d.background = new THREE.Color(0x111827);
+      kick();
     } else {
       loadPanoramaTexture(imageUrl)
         .then((texture) => {
@@ -153,26 +268,24 @@ function CanvasMount({
           });
           scene3d.add(skybox);
 
-          for (const clue of scene.clues) {
-            if (!skybox) continue;
+          for (const clue of cluesSnapshot) {
             const world = hotspotWorldPosition(clue.x, clue.y, SKYBOX_RADIUS);
             const sphere = makeClueMarker(clue.label);
             sphere.position.copy(world);
             sphere.userData.clueLabel = clue.label;
             scene3d.add(sphere);
           }
+          kick();
         })
         .catch((err) => {
           logger.warn("scene3d.panoramaTextureFailed", err);
           scene3d.background = new THREE.Color(0x111827);
+          kick();
         });
     }
 
-    // Build 3D props from the scene brief. Per ENHANCEMENT FIRST, scenes
-    // without props simply render the skybox; the fallback clue markers
-    // on the skybox handle inspection in that case.
-    for (const prop of scene.props ?? []) {
-      const { group, halfExtents } = buildPropShape({
+    for (const prop of propsSnapshot ?? []) {
+      const { group } = buildPropShape({
         kind: prop.kind,
         scale: prop.scale ?? 1,
       });
@@ -187,37 +300,25 @@ function CanvasMount({
       group.userData.clueLabel = prop.clueLabel;
       scene3d.add(group);
       propGroups.push(group);
-      if (prop.clueLabel) propByLabel.set(prop.clueLabel, group);
-
-      // The first prop in a scene that carries a clueLabel is also
-      // flagged as the clickable target. Other clues without a
-      // dedicated prop fall back to the skybox-anchored marker.
-      if (prop.clueLabel && !scene.clues.some((c) => c.label === prop.clueLabel)) {
-        // No matching clue — drop silently. Per PREVENT BLOAT we
-        // don't fail the scene build over a dangling prop label.
-      }
     }
 
-    let raf = 0;
-    const render = () => {
-      applyLook(camera, lookState);
-      renderer.render(scene3d, camera);
-      raf = requestAnimationFrame(render);
-    };
-    render();
+    kick();
 
     const handleResize = () => {
       const next = host.getBoundingClientRect();
       renderer.setSize(next.width, next.height, false);
       camera.aspect = next.width / next.height;
       camera.updateProjectionMatrix();
+      kick();
     };
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(host);
 
-    // Click detection: pointer-down + pointer-up within 5 pixels and
-    // 600ms is a tap. Raycast against prop groups first (more
-    // specific), then skybox-anchored clue markers as fallback.
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") kick();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     let downX = 0;
     let downY = 0;
     let downAt = 0;
@@ -240,10 +341,15 @@ function CanvasMount({
       ray.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
       const hits = ray.intersectObjects(scene3d.children, true);
       for (const hit of hits) {
-        const label = hit.object.userData?.clueLabel;
-        if (typeof label === "string") {
-          onHotspotOpen?.(label);
-          return;
+        let obj: THREE.Object3D | null = hit.object;
+        while (obj) {
+          const label = obj.userData?.clueLabel;
+          if (typeof label === "string") {
+            onHotspotOpenRef.current(label);
+            kick();
+            return;
+          }
+          obj = obj.parent;
         }
       }
     };
@@ -253,7 +359,9 @@ function CanvasMount({
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
+      looping = false;
       resizeObserver.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointerup", onUp);
       controls.dispose();
@@ -273,9 +381,11 @@ function CanvasMount({
       tex?.dispose();
       if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
     };
-  }, [ref, scene, sceneIndex, onHotspotOpen]);
+    // clueKey / propKey / lightingKey capture content identity for rebuilds.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional key-based deps
+  }, [hostRef, imageUrl, clueKey, propKey, lightingKey]);
 
-  return <div ref={ref} style={styles.canvasHost} />;
+  return <div ref={hostRef} style={styles.canvasHost} />;
 }
 
 function makeClueMarker(label: string): THREE.Mesh {
@@ -312,6 +422,12 @@ function Placeholder({ height, message }: { height: number; message: string }) {
 }
 
 const styles = StyleSheet.create({
+  card: {
+    gap: 14,
+  },
+  fillRoot: {
+    flex: 1,
+  },
   frame: {
     position: "relative",
     overflow: "hidden",
@@ -320,6 +436,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(248, 231, 201, 0.18)",
     backgroundColor: "#0B1020",
+  },
+  frameFill: {
+    borderRadius: 0,
+    borderWidth: 0,
+  },
+  fillClue: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 120,
+    zIndex: 3,
   },
   canvasHost: {
     position: "absolute",
@@ -373,6 +500,18 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
     backgroundColor: "rgba(0, 0, 0, 0.32)",
+  },
+  hintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  hint: {
+    flex: 1,
+    color: theme.inkAlpha58,
+    fontSize: 14,
+    fontWeight: "700",
   },
   placeholder: {
     borderRadius: 32,

@@ -308,7 +308,7 @@ export const getPlayerHistory = query({
       .query("playerRuns")
       .withIndex("by_identityId_and_startedAt", (q) => q.eq("identityId", identityId))
       .order("desc")
-      .collect();
+      .take(20);
 
     return await Promise.all(
       runs.map(async (run) => {

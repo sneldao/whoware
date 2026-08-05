@@ -1,31 +1,50 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 import { commitGuessOnChain } from "@/lib/wallet";
+import { SITE_URL } from "@/lib/site";
 import { theme } from "@/lib/theme";
-import { logger } from "@/lib/logger";
-import { OnboardingFlow } from "@/components/who-ware/onboarding-flow";
-import { useGameSession } from "@/hooks/use-game-session";
+import { detectSceneQuality } from "@/lib/scene-quality";
+import { getSoundEnabled, markOnboardingComplete, setSoundEnabled } from "@/lib/onboarding";
+import { useImmersionShell } from "@/lib/immersion-shell";
+import { useGameSession, type UseGameSessionReturn } from "@/hooks/use-game-session";
 import { useGuessing, UseGuessingReturn } from "@/hooks/use-guessing";
 import { useSceneProgression } from "@/hooks/use-scene-progression";
 import { useSmartAccountDelegate } from "@/hooks/use-smart-account-delegate";
 import { useSolveMinter } from "@/hooks/use-solve-minter";
 import { useBootError } from "@/hooks/use-boot-error";
+import {
+  setGameSoundsMuted,
+  startAmbientBed,
+  stopAmbientBed,
+  unlockGameAudio,
+} from "@/hooks/use-game-sounds";
 import { ExhaustedView } from "@/components/who-ware/views/exhausted-view";
 import { HeroPanel } from "@/components/who-ware/views/hero-panel";
 import { HistoryCard, LastSolveCard } from "@/components/who-ware/views/history-cards";
-import { IntroView } from "@/components/who-ware/views/intro-view";
 import {
   RevealLayer, ToastLayer, TooltipLayer, UpgradeOverlayLayer,
 } from "@/components/who-ware/views/overlays";
-import { PlayingView } from "@/components/who-ware/views/playing-view";
 import { SolvedView } from "@/components/who-ware/views/solved-view";
+import { ImmersionThreshold } from "@/components/who-ware/immersion-threshold";
+import { ImmersionSession } from "@/components/who-ware/immersion-session";
 import { MAX_GUESSES_PER_RUN } from "@/convex/scoring";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import styles from "./index.styles";
 
+const CHROME_UNLOCK_MS = 12_000;
+
 function formatScore(score: number) { return Math.round(score).toLocaleString(); }
+
+function playingNextStep(guessesLeft: number): string {
+  const quality = Platform.OS === "web" ? detectSceneQuality() : { mode: "panorama" as const };
+  const lookHint = quality.mode === "three-d"
+    ? "Drag to look, tap a glow for a clue"
+    : "Tap a glowing fragment for a clue";
+  return `${lookHint}, unlock another memory, or Name identity (${guessesLeft} left).`;
+}
 
 function LoadingScreen({ message }: { message: string }) {
   return (
@@ -37,17 +56,31 @@ function LoadingScreen({ message }: { message: string }) {
 }
 
 /**
- * Game dashboard — orchestrates the session, delegate, minter, guessing,
- * and progression hooks, then delegates rendering to the view components
- * under `components/who-ware/views/`.
+ * Single session owner. Cold path: threshold → ImmersionSession (room + HUD).
+ * Returning mid-run players land in HUD-over-room. Column shell only after solve.
  */
-function GameDashboard() {
-  const session = useGameSession();
+export default function Index() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [toastDismissed, setToastDismissed] = useState(false);
+  const [isEntering, setIsEntering] = useState(false);
+  const [chromeUnlocked, setChromeUnlocked] = useState(false);
+  const [loadFigures, setLoadFigures] = useState(false);
+  const [loadLeaderboard, setLoadLeaderboard] = useState(false);
+  const [loadHistory, setLoadHistory] = useState(false);
+
   const hasMoreMemoriesRef = useRef<() => boolean>(() => false);
-  const sceneIndexRef = useRef({ sceneIndex: 0, setSceneIndex: () => undefined });
+  const sceneIndexRef = useRef({ sceneIndex: 0, setSceneIndex: (_i: number) => undefined as void });
   const guessingRef = useRef<UseGuessingReturn | null>(null);
+  const chromeUnlockedRef = useRef(false);
+  const wakeAtRef = useRef<number | null>(null);
+
+  const { setFullBleed } = useImmersionShell();
+
+  const session: UseGameSessionReturn = useGameSession({
+    loadFigures,
+    loadLeaderboard,
+    loadHistory: loadHistory || historyOpen,
+  });
 
   const delegate = useSmartAccountDelegate({
     wallet: session.wallet,
@@ -85,11 +118,168 @@ function GameDashboard() {
   hasMoreMemoriesRef.current = progression.hasMoreMemories;
   sceneIndexRef.current = { sceneIndex: progression.sceneIndex, setSceneIndex: progression.setSceneIndex };
 
+  const unlockChrome = useCallback(() => {
+    if (chromeUnlockedRef.current) return;
+    chromeUnlockedRef.current = true;
+    setChromeUnlocked(true);
+  }, []);
+
   useEffect(() => { if (guessing.toastVisible) setToastDismissed(false); }, [guessing.toastVisible]);
 
-  // ── Loading states ──────────────────────────────────────────────
-  const waitingForBoot = !session.identity.isLoaded || session.episode === undefined || session.run === undefined;
+  useEffect(() => {
+    if (guessing.isGuessPanelOpen || (session.run?.memoriesViewed ?? 0) === 0) {
+      setLoadFigures(true);
+    }
+  }, [guessing.isGuessPanelOpen, session.run?.memoriesViewed]);
+
+  useEffect(() => {
+    if (guessing.isGuessPanelOpen || guessing.discoveredClues.length > 0 || session.run?.status === "solved") {
+      setLoadLeaderboard(true);
+    }
+  }, [guessing.isGuessPanelOpen, guessing.discoveredClues.length, session.run?.status]);
+
+  const hasEnteredMemoryEarly = (session.run?.memoriesViewed ?? 0) > 0;
+  const runFinishedEarly =
+    session.run?.status === "solved" || session.run?.status === "exhausted";
+  const guessesLeftEarly = Math.max(
+    0,
+    MAX_GUESSES_PER_RUN - (session.run?.guessesUsed ?? 0),
+  );
+
+  // Returning players already in a run (or finished) start with chrome on.
+  useEffect(() => {
+    if (hasEnteredMemoryEarly || runFinishedEarly) {
+      chromeUnlockedRef.current = true;
+      setChromeUnlocked(true);
+    }
+  }, [hasEnteredMemoryEarly, runFinishedEarly]);
+
+  // Full-bleed on web for threshold + entire active run; column returns when finished.
+  useEffect(() => {
+    const waitingForBoot =
+      !session.identity.isLoaded || session.episode === undefined || session.run === undefined;
+    if (waitingForBoot || session.episode === null) {
+      setFullBleed(false);
+      return;
+    }
+    const inThreshold = !hasEnteredMemoryEarly && !runFinishedEarly;
+    const inActivePlay = hasEnteredMemoryEarly && !runFinishedEarly;
+    setFullBleed(Platform.OS === "web" && (inThreshold || inActivePlay));
+    return () => setFullBleed(false);
+  }, [
+    session.identity.isLoaded,
+    session.episode,
+    session.run,
+    hasEnteredMemoryEarly,
+    runFinishedEarly,
+    setFullBleed,
+  ]);
+
+  // Chrome escape hatch after wake.
+  useEffect(() => {
+    if (!hasEnteredMemoryEarly || runFinishedEarly || chromeUnlocked) return;
+    if (wakeAtRef.current == null) wakeAtRef.current = Date.now();
+    const remaining = Math.max(0, CHROME_UNLOCK_MS - (Date.now() - wakeAtRef.current));
+    const t = setTimeout(() => unlockChrome(), remaining);
+    return () => clearTimeout(t);
+  }, [hasEnteredMemoryEarly, runFinishedEarly, chromeUnlocked, unlockChrome]);
+
+  // First clue unlocks chrome.
+  useEffect(() => {
+    if (guessing.discoveredClues.length > 0) unlockChrome();
+  }, [guessing.discoveredClues.length, unlockChrome]);
+
+  // Opening guess panel unlocks chrome.
+  useEffect(() => {
+    if (guessing.isGuessPanelOpen) unlockChrome();
+  }, [guessing.isGuessPanelOpen, unlockChrome]);
+
+  useEffect(() => {
+    if (!hasEnteredMemoryEarly || runFinishedEarly || !chromeUnlocked) return;
+    guessing.setStatus(playingNextStep(guessesLeftEarly));
+  }, [hasEnteredMemoryEarly, runFinishedEarly, chromeUnlocked, guessesLeftEarly, guessing.setStatus]);
+
+  useEffect(() => {
+    if (runFinishedEarly) setLoadFigures(true);
+  }, [runFinishedEarly]);
+
+  useEffect(() => {
+    if (historyOpen || hasEnteredMemoryEarly || runFinishedEarly) {
+      setLoadHistory(true);
+    }
+  }, [historyOpen, hasEnteredMemoryEarly, runFinishedEarly]);
+
+  // Resume ambient for mid-run returns when sound pref is on; stop when finished.
+  useEffect(() => {
+    if (!hasEnteredMemoryEarly || runFinishedEarly) {
+      stopAmbientBed();
+      return;
+    }
+    let cancelled = false;
+    void getSoundEnabled().then((enabled) => {
+      if (cancelled || !enabled) return;
+      setGameSoundsMuted(false);
+      startAmbientBed();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasEnteredMemoryEarly, runFinishedEarly]);
+
+  const handleThresholdEnter = useCallback(async (withSound: boolean) => {
+    if (!session.episode || isEntering) return;
+    setIsEntering(true);
+    try {
+      await setSoundEnabled(withSound);
+      setGameSoundsMuted(!withSound);
+      if (withSound) {
+        unlockGameAudio();
+        session.gameSounds.playSceneEnter();
+        session.gameSounds.startAmbient();
+      } else {
+        session.gameSounds.stopAmbient();
+      }
+      const activeRun = await session.ensureRun();
+      await session.enterSceneMutation({ runId: activeRun._id, sceneIndex: 0 });
+      void markOnboardingComplete();
+      wakeAtRef.current = Date.now();
+      chromeUnlockedRef.current = false;
+      setChromeUnlocked(false);
+      const left = Math.max(0, MAX_GUESSES_PER_RUN - (activeRun.guessesUsed ?? 0));
+      guessing.setStatus(playingNextStep(left));
+    } catch {
+      // keep threshold; user can retry
+    } finally {
+      setIsEntering(false);
+    }
+  }, [
+    session.episode,
+    isEntering,
+    session.ensureRun,
+    session.enterSceneMutation,
+    session.gameSounds,
+    guessing.setStatus,
+  ]);
+
+  const handleShareResult = useCallback(async () => {
+    try {
+      await navigator.share({
+        title: "WhoWare",
+        text: "I solved today's WhoWare!",
+        url: Platform.OS === "web" ? window.location.href : SITE_URL,
+      });
+    } catch { }
+  }, []);
+
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollToCountdown = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
+
+  const waitingForBoot =
+    !session.identity.isLoaded || session.episode === undefined || session.run === undefined;
   const bootError = useBootError(waitingForBoot);
+
   if (bootError.timedOut && waitingForBoot) {
     return (
       <View style={styles.loadingContainer}>
@@ -108,7 +298,6 @@ function GameDashboard() {
   if (waitingForBoot) return <LoadingScreen message="Opening today's archive…" />;
   if (session.episode === null) return <LoadingScreen message="Preparing the first episode…" />;
 
-  // ── Derived state ───────────────────────────────────────────────
   const guessCap = MAX_GUESSES_PER_RUN;
   const hasEnteredMemory = (session.run?.memoriesViewed ?? 0) > 0;
   const isSolved = session.run?.status === "solved";
@@ -122,6 +311,8 @@ function GameDashboard() {
   const episodeNumber = parseInt(session.episode.slug.replace(/\D/g, ""), 10) || 1;
   const currentScene = session.episode.scenes[progression.sceneIndex] ?? session.episode.scenes[0];
   if (!currentScene) return <LoadingScreen message="Generating today's memories…" />;
+
+  const firstScene = session.episode.scenes[0] ?? currentScene;
   const solvedSceneImageKey = session.episode.scenes[session.episode.scenes.length - 1]?.imageKey ?? currentScene.imageKey;
   const solvedSceneImageUrl = session.episode.scenes[session.episode.scenes.length - 1]?.imageUrl ?? currentScene.imageUrl;
   const solvedToday = isSolved && session.streak.current > 0;
@@ -136,142 +327,118 @@ function GameDashboard() {
       ? "Next body opens in"
       : "Next drop opens in";
 
-  // ── Handlers ────────────────────────────────────────────────────
-  const handleEnterMemory = useCallback(async () => {
-    if (!session.episode || guessing.isBusy) return;
-    guessing.setIsBusy(true);
-    try {
-      const activeRun = await session.ensureRun();
-      await session.enterSceneMutation({ runId: activeRun._id, sceneIndex: 0 });
-      guessing.setStatus("The first memory resolves around you. Look carefully before asking the room for help.");
-    } catch { } finally { guessing.setIsBusy(false); }
-  }, [session.episode, guessing.isBusy, guessing.setIsBusy, session.ensureRun, session.enterSceneMutation, guessing.setStatus]);
-
-  const handleShareResult = useCallback(async () => {
-    try {
-      await navigator.share({
-        title: "WhoWare",
-        text: "I solved today's WhoWare!",
-        url: Platform.OS === "web" ? window.location.href : "https://whoware.vercel.app",
-      });
-    } catch { }
-  }, []);
-
-  // ── Hero ────────────────────────────────────────────────────────
-  const hero = (
-    <HeroPanel
-      walletAddress={session.wallet.address}
-      isWalletConnected={session.wallet.isConnected}
-      isCorrectChain={session.wallet.isCorrectChain}
-      isSmartAccountUpgraded={session.wallet.smartAccount.isUpgraded}
-      isSmartAccountUpgrading={session.wallet.smartAccount.isUpgrading}
-      isMinting={minter.state.isMinting}
-      isMinted={!!minter.state.mintTxHash}
-      isStreakUpdating={minter.state.isStreakUpdating}
-      hasStreakTx={!!minter.state.streakTxHash}
-      archiveCount={session.archiveCount}
-      imageKey={currentScene.imageKey}
-      imageUrl={currentScene.imageUrl}
-      solvedImageKey={solvedSceneImageKey}
-      solvedImageUrl={solvedSceneImageUrl}
-      revealProgress={revealProgress}
-      isSolved={isSolved}
-      statusText={guessing.status}
-      countdownTarget={countdownTarget}
-      countdownLabel={countdownLabel}
-      runFinished={runFinished}
-      currentStreak={session.streak.current}
-      bestStreak={session.streak.best}
-      solvedToday={solvedToday}
-      hasEnteredMemory={hasEnteredMemory}
-      isBusy={guessing.isBusy}
-      scoreDisplay={session.run?.score != null ? formatScore(session.run.score) : "—"}
-      rawScore={session.run?.score ?? null}
-      maxPotential={10_000}
-      hotspotsOpened={hotspotsOpened}
-      guessesLeft={guessesLeft}
-      guessCap={guessCap}
-      onConnect={session.wallet.connect}
-      onUpgrade={session.wallet.smartAccount.upgrade}
-      onSwitchChain={session.wallet.switchChain}
-      onGuessNow={guessing.handleGuessNow}
-      onEnterMemory={handleEnterMemory}
-      isGuessPanelOpen={guessing.isGuessPanelOpen}
-      onShowScoreTooltip={() => session.tooltip.show("score")}
-      onShowCluesTooltip={() => session.tooltip.show("clues")}
-      onShowGuessesTooltip={() => session.tooltip.show("guesses")}
-    />
-  );
-
-  // ── View routing ────────────────────────────────────────────────
-  let body: React.ReactNode;
-  if (!hasEnteredMemory) {
-    body = (
-      <IntroView
-        isGuessPanelOpen={guessing.isGuessPanelOpen}
-        figureOptions={guessing.figureOptions}
-        guessesLeft={guessesLeft}
-        isSolved={isSolved}
-        playerName={session.playerName}
-        onPlayerNameChange={session.setPlayerName}
-        onSubmitGuess={guessing.handleGuess}
-      />
-    );
-  } else {
-    body = (
-      <PlayingView
-        scene={{
-          scene: currentScene,
-          sceneIndex: progression.accessiblePosition,
-          totalAccessibleScenes: progression.accessibleScenes.length,
-          visibleSceneIndices: progression.visibleScenes.map((s) => s.episodeIndex),
-          currentSceneIndex: progression.sceneIndex,
-          discoveredClues: guessing.discoveredClues,
-          activeHint: guessing.activeHint,
-          isHintGenerating: guessing.isHintGenerating,
-          onSelectScene: progression.setSceneIndex,
-          onHotspotOpen: guessing.handleOpenHotspot,
-          onGenerateHint: guessing.handleGenerateHint,
-        }}
-        actions={{
-          isGuessPanelOpen: guessing.isGuessPanelOpen,
-          isSolved,
-          isExhausted,
-          moreMemoriesAvailable,
-          isBusy: guessing.isBusy,
-          onToggleGuessPanel: () => guessing.setIsGuessPanelOpen((c) => !c),
-          onUnlockNextMemory: progression.handleUnlockNextMemory,
-        }}
-        guess={{
-          figureOptions: guessing.figureOptions,
-          guessesLeft,
-          playerName: session.playerName,
-          onPlayerNameChange: session.setPlayerName,
-          onSubmitGuess: guessing.handleGuess,
-        }}
-        extras={{
-          episodeId: session.episode._id,
-          memoriesViewed,
-          currentStreak: session.streak.current,
-          leaderboardEntries: session.leaderboardSnapshot?.entries ?? [],
-          playerRank: session.leaderboardSnapshot?.playerRank ?? null,
-          rankedCount: session.leaderboardSnapshot?.rankedCount ?? 0,
-          archiveCount: session.archiveCount,
-          isPushOptedIn: session.pushNotifications.isOptedIn,
-          isPushBusy: session.pushNotifications.isBusy,
-          onTogglePush: session.pushNotifications.toggleNotifications,
-        }}
-      />
+  // ── Threshold (cold start) ──────────────────────────────────────
+  if (!hasEnteredMemory && !runFinished) {
+    return (
+      <View style={{ flex: 1 }}>
+        <ImmersionThreshold
+          scene={firstScene as unknown as Parameters<typeof ImmersionThreshold>[0]["scene"]}
+          imageKey={firstScene.imageKey}
+          imageUrl={firstScene.imageUrl}
+          isEntering={isEntering}
+          onEnterWithSound={() => void handleThresholdEnter(true)}
+          onEnterWithoutSound={() => void handleThresholdEnter(false)}
+        />
+      </View>
     );
   }
 
-  // ── Result share / solved-only layers ──────────────────────────
+  const sceneState = {
+    scene: currentScene,
+    sceneIndex: progression.accessiblePosition,
+    totalAccessibleScenes: progression.accessibleScenes.length,
+    visibleSceneIndices: progression.visibleScenes.map((s) => s.episodeIndex),
+    currentSceneIndex: progression.sceneIndex,
+    discoveredClues: guessing.discoveredClues,
+    activeHint: guessing.activeHint,
+    isHintGenerating: guessing.isHintGenerating,
+    onSelectScene: progression.setSceneIndex,
+    onHotspotOpen: guessing.handleOpenHotspot,
+    onGenerateHint: guessing.handleGenerateHint,
+  };
+  const actionState = {
+    isGuessPanelOpen: guessing.isGuessPanelOpen,
+    isSolved,
+    isExhausted,
+    moreMemoriesAvailable,
+    isBusy: guessing.isBusy,
+    onToggleGuessPanel: () => guessing.setIsGuessPanelOpen((c) => !c),
+    onUnlockNextMemory: progression.handleUnlockNextMemory,
+  };
+  const guessState = {
+    figureOptions: guessing.figureOptions,
+    guessesLeft,
+    playerName: session.playerName,
+    onPlayerNameChange: session.setPlayerName,
+    onSubmitGuess: guessing.handleGuess,
+  };
+  const extrasState = {
+    episodeId: session.episode._id,
+    memoriesViewed,
+    currentStreak: session.streak.current,
+    leaderboardEntries: session.leaderboardSnapshot?.entries ?? [],
+    playerRank: session.leaderboardSnapshot?.playerRank ?? null,
+    rankedCount: session.leaderboardSnapshot?.rankedCount ?? 0,
+    archiveCount: session.archiveCount,
+    isPushOptedIn: session.pushNotifications.isOptedIn,
+    isPushBusy: session.pushNotifications.isBusy,
+    onTogglePush: session.pushNotifications.toggleNotifications,
+  };
+  const metricsState = {
+    scoreDisplay: session.run?.score != null ? formatScore(session.run.score) : "—",
+    hotspotsOpened,
+    guessesLeft,
+    guessCap,
+    onShowScoreTooltip: () => session.tooltip.show("score"),
+    onShowCluesTooltip: () => session.tooltip.show("clues"),
+    onShowGuessesTooltip: () => session.tooltip.show("guesses"),
+  };
+
+  // ── Active run: continuous room + HUD (no phone-column jump) ────
+  if (hasEnteredMemory && !runFinished) {
+    return (
+      <View style={{ flex: 1 }}>
+        <ImmersionSession
+          chromeUnlocked={chromeUnlocked}
+          scene={sceneState}
+          actions={actionState}
+          guess={guessState}
+          extras={extrasState}
+          metrics={metricsState}
+          onNameIdentity={() => {
+            unlockChrome();
+            guessing.setIsGuessPanelOpen(true);
+            setLoadFigures(true);
+          }}
+        />
+        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} />
+        <ToastLayer
+          visible={guessing.toastVisible && !toastDismissed}
+          message={guessing.toastMessage}
+          type={guessing.toastType}
+          onDismiss={() => setToastDismissed(true)}
+        />
+        <ErrorBoundary label="UpgradeOverlay">
+          <UpgradeOverlayLayer
+            isVisible={delegate.state.showUpgradeOverlay}
+            isUpgrading={session.wallet.smartAccount.isUpgrading}
+            isUpgraded={session.wallet.smartAccount.isUpgraded}
+            error={session.wallet.smartAccount.error}
+            onDismiss={() => delegate.setShowUpgradeOverlay(false)}
+          />
+        </ErrorBoundary>
+      </View>
+    );
+  }
+
+  // ── Solved / exhausted — restore column shell ───────────────────
   const solvedFigure = guessing.revealFigure;
   const revealFigureRecord = solvedFigure ? session.figures.find((f) => f._id === solvedFigure.figureId) : null;
 
   return (
     <View style={styles.root}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
@@ -279,7 +446,51 @@ function GameDashboard() {
         ]}
         contentInsetAdjustmentBehavior="automatic"
       >
-        {hero}
+        <HeroPanel
+          walletAddress={session.wallet.address}
+          isWalletConnected={session.wallet.isConnected}
+          isCorrectChain={session.wallet.isCorrectChain}
+          isSmartAccountUpgraded={session.wallet.smartAccount.isUpgraded}
+          isSmartAccountUpgrading={session.wallet.smartAccount.isUpgrading}
+          isMinting={minter.state.isMinting}
+          isMinted={!!minter.state.mintTxHash}
+          isStreakUpdating={minter.state.isStreakUpdating}
+          hasStreakTx={!!minter.state.streakTxHash}
+          archiveCount={session.archiveCount}
+          imageKey={currentScene.imageKey}
+          imageUrl={currentScene.imageUrl}
+          solvedImageKey={solvedSceneImageKey}
+          solvedImageUrl={solvedSceneImageUrl}
+          revealProgress={revealProgress}
+          isSolved={isSolved}
+          statusText={guessing.status}
+          countdownTarget={countdownTarget}
+          countdownLabel={countdownLabel}
+          runFinished={runFinished}
+          currentStreak={session.streak.current}
+          bestStreak={session.streak.best}
+          solvedToday={solvedToday}
+          hasEnteredMemory={hasEnteredMemory}
+          isBusy={guessing.isBusy}
+          scoreDisplay={session.run?.score != null ? formatScore(session.run.score) : "—"}
+          rawScore={session.run?.score ?? null}
+          maxPotential={10_000}
+          hotspotsOpened={hotspotsOpened}
+          guessesLeft={guessesLeft}
+          guessCap={guessCap}
+          onConnect={session.wallet.connect}
+          onUpgrade={session.wallet.smartAccount.upgrade}
+          onSwitchChain={session.wallet.switchChain}
+          onGuessNow={() => {
+            setLoadFigures(true);
+            void guessing.handleGuessNow();
+          }}
+          onEnterMemory={async () => undefined}
+          isGuessPanelOpen={guessing.isGuessPanelOpen}
+          onShowScoreTooltip={() => session.tooltip.show("score")}
+          onShowCluesTooltip={() => session.tooltip.show("clues")}
+          onShowGuessesTooltip={() => session.tooltip.show("guesses")}
+        />
         {isSolved && guessing.solvedRun && (
           <ErrorBoundary label="SolvedView">
             <SolvedView
@@ -311,14 +522,22 @@ function GameDashboard() {
                 onShowStreakTooltip: () => session.tooltip.show("streak"),
               }}
               nextActions={{
-                onShowHistory: () => setHistoryOpen(true),
+                onShowHistory: () => {
+                  setLoadHistory(true);
+                  setHistoryOpen(true);
+                },
                 onShare: handleShareResult,
+                onTomorrow: scrollToCountdown,
               }}
             />
           </ErrorBoundary>
         )}
-        {isExhausted && <ExhaustedView onLearnMoreArchive={() => {}} />}
-        {body}
+        {isExhausted && (
+          <ExhaustedView
+            onLearnMoreArchive={() => router.push("/archive")}
+            onTomorrow={scrollToCountdown}
+          />
+        )}
         {session.lastSolveLoaded && session.lastSolve && !isSolved && (
           <LastSolveCard
             figureName={session.lastSolve.figureName}
@@ -329,7 +548,9 @@ function GameDashboard() {
             formatScore={formatScore}
           />
         )}
-        {session.playerHistory && session.playerHistory.length > 0 && (
+        {(historyOpen || (session.playerHistory && session.playerHistory.length > 0)) &&
+          session.playerHistory &&
+          session.playerHistory.length > 0 && (
           <HistoryCard
             history={session.playerHistory}
             open={historyOpen}
@@ -365,12 +586,4 @@ function GameDashboard() {
       </ErrorBoundary>
     </View>
   );
-}
-
-export default function Index() {
-  const session = useGameSession();
-  if (!session.onboardingDone) {
-    return <OnboardingFlow onComplete={() => session.markOnboardingDone()} />;
-  }
-  return <GameDashboard />;
 }

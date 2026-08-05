@@ -5,14 +5,14 @@ import styles from "@/app/index.styles";
 
 export interface ExhaustedViewProps {
   onLearnMoreArchive: () => void;
+  onTomorrow: () => void;
 }
 
 /**
  * The exhausted-guesses view: a single card with two next actions
- * (open the archive, or try again tomorrow). Shown when the player
- * has used all 5 guesses without solving.
+ * (open the archive, or wait for tomorrow's drop).
  */
-export function ExhaustedView({ onLearnMoreArchive }: ExhaustedViewProps) {
+export function ExhaustedView({ onLearnMoreArchive, onTomorrow }: ExhaustedViewProps) {
   return (
     <View style={styles.exhaustedCard}>
       <Text style={styles.exhaustedTitle}>Case exhausted</Text>
@@ -24,7 +24,7 @@ export function ExhaustedView({ onLearnMoreArchive }: ExhaustedViewProps) {
           <Ionicons name="archive-outline" size={14} color={theme.ink} />
           <Text style={styles.nextActionText}>Learn more in archive</Text>
         </Pressable>
-        <Pressable style={styles.nextActionButton}>
+        <Pressable style={styles.nextActionButton} onPress={onTomorrow}>
           <Ionicons name="calendar-outline" size={14} color={theme.ink} />
           <Text style={styles.nextActionText}>Try again tomorrow</Text>
         </Pressable>

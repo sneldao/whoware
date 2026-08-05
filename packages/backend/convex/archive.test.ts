@@ -82,6 +82,19 @@ describe("archive.listClosed", () => {
   });
 });
 
+describe("archive.countClosed", () => {
+  test("counts closed episodes without returning rows", async () => {
+    const t = setup();
+    const figureId = await seedFigure(t);
+    await insertEpisode(t, { slug: "live", figureId, status: "live" });
+    await insertEpisode(t, { slug: "closed-1", figureId, status: "closed" });
+    await insertEpisode(t, { slug: "closed-2", figureId, status: "closed" });
+
+    const count = await t.query(api.archive.countClosed, {});
+    expect(count).toBe(2);
+  });
+});
+
 describe("archive.getEpisode", () => {
   test("returns episode with figure profile when closed", async () => {
     const t = setup();

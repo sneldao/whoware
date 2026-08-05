@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -12,9 +12,8 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 
-import { HintOverlay } from "@/components/who-ware/hint-overlay";
+import { ClueDetailPanel } from "@/components/who-ware/clue-detail-panel";
 import { MemoryMediaStrip } from "@/components/who-ware/memory-media-strip";
-import { VeniceAiBadge } from "@/components/who-ware/venice-ai-badge";
 import { getSceneImageSource } from "@/components/who-ware/scene-media";
 
 export interface Clue {
@@ -67,9 +66,23 @@ interface PanoramaSceneProps {
   onGenerateHint?: (clueLabel: string) => void;
   activeHint?: string | null;
   isHintGenerating?: boolean;
+  /** Panorama frame height. Defaults to 430. */
+  height?: number;
+  /** Edge-to-edge room — no card chrome or below-fold media. */
+  fill?: boolean;
 }
 
-export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, onGenerateHint, activeHint, isHintGenerating }: PanoramaSceneProps) {
+export function PanoramaScene({
+  scene,
+  sceneIndex,
+  totalScenes,
+  onHotspotOpen,
+  onGenerateHint,
+  activeHint,
+  isHintGenerating,
+  height = 430,
+  fill = false,
+}: PanoramaSceneProps) {
   const [activeClue, setActiveClue] = useState<Clue | null>(null);
   const [imageLoaded, setImageLoaded] = useState(false);
   const colors = useMemo(() => normalizePalette(scene.palette), [scene.palette]);
@@ -102,8 +115,14 @@ export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, o
   }
 
   return (
-    <View style={styles.card}>
-      <View style={[styles.panorama, { backgroundColor: colors[0] }]}>
+    <View style={fill ? styles.fillRoot : styles.card}>
+      <View
+        style={[
+          styles.panorama,
+          { height, backgroundColor: colors[0] },
+          fill && styles.panoramaFill,
+        ]}
+      >
         {imageSource ? (
           <Image
             source={imageSource}
@@ -136,67 +155,60 @@ export function PanoramaScene({ scene, sceneIndex, totalScenes, onHotspotOpen, o
           </Pressable>
         ))}
 
-        <View style={styles.sceneMeta}>
-          <Text style={styles.sceneCounter}>
-            Memory {sceneIndex + 1} / {totalScenes}
-          </Text>
-          <Text style={styles.sceneTitle}>{scene.title}</Text>
-          <Text style={styles.sceneLocation}>
-            {scene.location} · {scene.era}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.transmissionCard}>
-        <Text style={styles.transmissionLabel}>Body memory</Text>
-        <Text style={styles.ambient}>{scene.ambientText}</Text>
-      </View>
-
-      <MemoryMediaStrip
-        imageKey={scene.imageKey}
-        detailImageKeys={scene.detailImageKeys}
-        sceneIndex={sceneIndex}
-        motionPrompt={scene.motionPrompt}
-        imageUrl={scene.imageUrl}
-      />
-
-      {activeClue ? (
-        <View style={styles.cluePanel}>
-          <View style={styles.clueHeader}>
-            <Ionicons name="search" size={18} color={theme.parchment} />
-            <Text style={styles.clueTitle}>{activeClue.label}</Text>
+        {!fill ? (
+          <View style={styles.sceneMeta}>
+            <Text style={styles.sceneCounter}>
+              Memory {sceneIndex + 1} / {totalScenes}
+            </Text>
+            <Text style={styles.sceneTitle}>{scene.title}</Text>
+            <Text style={styles.sceneLocation}>
+              {scene.location} · {scene.era}
+            </Text>
           </View>
-          <Text style={styles.clueText}>{activeClue.detail}</Text>
-          {onGenerateHint ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => onGenerateHint(activeClue.label)}
-              disabled={isHintGenerating}
-              style={({ pressed }) => [styles.hintButton, pressed && styles.pressed, isHintGenerating && styles.disabledButton]}
-            >
-              {isHintGenerating ? (
-                <ActivityIndicator size="small" color={theme.violet} />
-              ) : (
-                <Ionicons name="sparkles" size={16} color={theme.violet} />
-              )}
-              <Text style={styles.hintButtonText}>
-                {isHintGenerating ? "Probing memory…" : "Ask the memory (AI hint)"}
-              </Text>
-            </Pressable>
-          ) : null}
-          {activeHint || isHintGenerating ? (
-            <>
-              {activeHint ? <VeniceAiBadge type="hint" compact /> : null}
-              <HintOverlay hint={activeHint ?? null} isGenerating={isHintGenerating ?? false} clueLabel={activeClue.label} />
-            </>
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.hintRow}>
-          <Ionicons name="radio-button-on" size={16} color="#D97706" />
-          <Text style={styles.hint}>Touch luminous fragments only when you need help — each one lowers your final score.</Text>
-        </View>
-      )}
+        ) : null}
+
+        {fill && activeClue ? (
+          <View style={styles.fillClue}>
+            <ClueDetailPanel
+              clue={activeClue}
+              onGenerateHint={onGenerateHint}
+              activeHint={activeHint}
+              isHintGenerating={isHintGenerating}
+            />
+          </View>
+        ) : null}
+      </View>
+
+      {!fill ? (
+        <>
+          <View style={styles.transmissionCard}>
+            <Text style={styles.transmissionLabel}>Body memory</Text>
+            <Text style={styles.ambient}>{scene.ambientText}</Text>
+          </View>
+
+          <MemoryMediaStrip
+            imageKey={scene.imageKey}
+            detailImageKeys={scene.detailImageKeys}
+            sceneIndex={sceneIndex}
+            motionPrompt={scene.motionPrompt}
+            imageUrl={scene.imageUrl}
+          />
+
+          {activeClue ? (
+            <ClueDetailPanel
+              clue={activeClue}
+              onGenerateHint={onGenerateHint}
+              activeHint={activeHint}
+              isHintGenerating={isHintGenerating}
+            />
+          ) : (
+            <View style={styles.hintRow}>
+              <Ionicons name="radio-button-on" size={16} color="#D97706" />
+              <Text style={styles.hint}>Tap a glowing fragment for a clue — each one costs score.</Text>
+            </View>
+          )}
+        </>
+      ) : null}
     </View>
   );
 }
@@ -209,6 +221,9 @@ const styles = StyleSheet.create({
   card: {
     gap: 14,
   },
+  fillRoot: {
+    flex: 1,
+  },
   panorama: {
     height: 430,
     overflow: "hidden",
@@ -216,6 +231,17 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     borderWidth: 1,
     borderColor: "rgba(248, 231, 201, 0.18)",
+  },
+  panoramaFill: {
+    borderRadius: 0,
+    borderWidth: 0,
+    flex: 1,
+  },
+  fillClue: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 120,
   },
   memoryImage: {
     ...StyleSheet.absoluteFillObject,
@@ -325,30 +351,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
-  cluePanel: {
-    padding: 16,
-    gap: 9,
-    borderRadius: 22,
-    borderCurve: "continuous",
-    backgroundColor: "rgba(120, 53, 15, 0.44)",
-    borderWidth: 1,
-    borderColor: "rgba(248, 231, 201, 0.16)",
-  },
-  clueHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  clueTitle: {
-    color: theme.parchment,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  clueText: {
-    color: theme.inkAlpha78,
-    fontSize: 15,
-    lineHeight: 22,
-  },
   hintRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -360,25 +362,5 @@ const styles = StyleSheet.create({
     color: theme.inkAlpha58,
     fontSize: 14,
     fontWeight: "700",
-  },
-  hintButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderCurve: "continuous",
-    backgroundColor: "rgba(139, 92, 246, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.25)",
-  },
-  hintButtonText: {
-    color: theme.violet,
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  disabledButton: {
-    opacity: 0.5,
   },
 });

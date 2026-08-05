@@ -18,6 +18,15 @@ const PLAYER_NAME_KEY = "whoware.player.name";
 const DEFAULT_PLAYER_NAME = "Player";
 const SEED_ATTEMPTED_KEY = "whoware.seed.attempted";
 
+export interface GameSessionOptions {
+  /** Load figure search options (guess panel). Default false until needed. */
+  loadFigures?: boolean;
+  /** Load episode leaderboard. Default false until clues/guess panel. */
+  loadLeaderboard?: boolean;
+  /** Load player history list. Default false until History opens. */
+  loadHistory?: boolean;
+}
+
 export interface UseGameSessionReturn {
   onboardingDone: boolean;
   markOnboardingDone: () => void;
@@ -52,7 +61,13 @@ export interface UseGameSessionReturn {
   wallet: ReturnType<typeof useWallet>;
 }
 
-export function useGameSession(): UseGameSessionReturn {
+export function useGameSession(options: GameSessionOptions = {}): UseGameSessionReturn {
+  const {
+    loadFigures = false,
+    loadLeaderboard = false,
+    loadHistory = false,
+  } = options;
+
   const [onboardingDone, setOnboardingDone] = useState(false);
   const identity = useIdentity();
   const pushNotifications = usePushNotifications(identity.identityId ?? null);
@@ -71,20 +86,22 @@ export function useGameSession(): UseGameSessionReturn {
       ? { episodeId: episode._id, identityId: identity.identityId }
       : "skip",
   );
-  const figures = useQuery(api.figures.search, { query: "", limit: 10 }) ?? [];
-  const archiveCount = useQuery(api.archive.listClosed, {})?.length ?? 0;
+  const figures = useQuery(
+    api.figures.search,
+    loadFigures ? { query: "", limit: 10 } : "skip",
+  ) ?? [];
+  const archiveCount = useQuery(api.archive.countClosed) ?? 0;
 
-  // Player name must be declared before the leaderboard query that depends on it
   const [playerName, setPlayerName] = useState(DEFAULT_PLAYER_NAME);
   const [playerNameLoaded, setPlayerNameLoaded] = useState(false);
 
   const playerHistory = useQuery(
     api.runs.getPlayerHistory,
-    identity.identityId ? { identityId: identity.identityId } : "skip",
+    loadHistory && identity.identityId ? { identityId: identity.identityId } : "skip",
   );
   const leaderboardSnapshot = useQuery(
     api.episodes.leaderboard,
-    episode && identity.identityId
+    loadLeaderboard && episode && identity.identityId
       ? {
           episodeId: episode._id,
           playerName: playerName.trim() || DEFAULT_PLAYER_NAME,
@@ -104,7 +121,6 @@ export function useGameSession(): UseGameSessionReturn {
     runRef.current = run;
   }, [run]);
 
-  // Onboarding load
   useEffect(() => {
     let cancelled = false;
     hasCompletedOnboarding().then((done) => {
@@ -120,7 +136,6 @@ export function useGameSession(): UseGameSessionReturn {
     setOnboardingDone(true);
   }, []);
 
-  // Player name load
   useEffect(() => {
     let cancelled = false;
     AsyncStorage.getItem(PLAYER_NAME_KEY)
@@ -139,7 +154,6 @@ export function useGameSession(): UseGameSessionReturn {
     };
   }, []);
 
-  // Player name persist
   useEffect(() => {
     if (!playerNameLoaded) return;
     AsyncStorage.setItem(PLAYER_NAME_KEY, playerName).catch((e) => {
@@ -147,9 +161,6 @@ export function useGameSession(): UseGameSessionReturn {
     });
   }, [playerName, playerNameLoaded]);
 
-  // Seed catalog once on mount (gated so we don't burn a network round-trip
-  // on every app open — server-side mutation is idempotent, but the client
-  // round-trip is still wasteful).
   useEffect(() => {
     let cancelled = false;
     async function seed() {
@@ -161,8 +172,6 @@ export function useGameSession(): UseGameSessionReturn {
         await AsyncStorage.setItem(SEED_ATTEMPTED_KEY, "true");
       } catch (e) {
         logger.warn("useGameSession.seedCatalog", e);
-        // Server mutation is idempotent — leave the flag unset so we retry
-        // on the next mount if the failure was network-related.
       }
     }
     void seed();

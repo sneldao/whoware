@@ -37,10 +37,13 @@ export interface LookInput {
   sensitivity?: number;
   bounds?: LookBounds;
   onChange?: (state: LookState) => void;
+  /** Fires when drag starts/stops — used by the canvas to pause idle RAF. */
+  onActiveChange?: (active: boolean) => void;
 }
 
 export interface LookControlsHandle {
   state: () => LookState;
+  isDragging: () => boolean;
   dispose: () => void;
 }
 
@@ -62,6 +65,7 @@ export function attachLookControls(input: LookInput): LookControlsHandle {
     lastX = ev.clientX;
     lastY = ev.clientY;
     input.canvas.setPointerCapture(ev.pointerId);
+    input.onActiveChange?.(true);
   };
 
   const onMove = (ev: PointerEvent) => {
@@ -77,6 +81,7 @@ export function attachLookControls(input: LookInput): LookControlsHandle {
   };
 
   const onUp = (ev: PointerEvent) => {
+    if (dragging) input.onActiveChange?.(false);
     dragging = false;
     try {
       input.canvas.releasePointerCapture(ev.pointerId);
@@ -93,6 +98,7 @@ export function attachLookControls(input: LookInput): LookControlsHandle {
 
   return {
     state: () => ({ ...state }),
+    isDragging: () => dragging,
     dispose: () => {
       input.canvas.removeEventListener("pointerdown", onDown);
       input.canvas.removeEventListener("pointermove", onMove);

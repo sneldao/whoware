@@ -9,7 +9,7 @@ import type { Address } from "viem";
 import { theme } from "@/lib/theme";
 import { logger } from "@/lib/logger";
 
-const CONVEX_API_BASE = process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? "https://colorless-seal-981.convex.site";
+const CONVEX_API_BASE = process.env.EXPO_PUBLIC_CONVEX_SITE_URL ?? "https://cheery-elk-110.convex.site";
 
 interface PaymentMetadata {
   required: boolean;

@@ -10,8 +10,11 @@ WhoWare is a daily history guessing game where you step into a 3D memory scene, 
 
 ## How it works
 
+- **Immersion-first entry** — cold start lands in today's room (live panorama/3D behind Enter with/without sound), not a tutorial carousel or dashboard
 - **Daily episodes** — one new historical figure per day, across three difficulty tiers (iconic, field, research)
-- **3D memory scenes** — the AI-generated panorama becomes a skybox the player looks around inside; props anchored to the scene brief appear as 3D objects the player walks between
+- **3D memory scenes** — the AI-generated panorama becomes a skybox the player looks around inside; props anchored to the scene brief appear as 3D objects the player inspects
+- **Sparse play HUD** — score/guesses stay as a floating overlay; denser panels open only when naming an identity or reviewing clues. Phone-column chrome returns after solve
+- **Atmosphere** — optional ambient bed on Enter with sound (ducks under clue SFX); hard mute on Enter without
 - **AI-powered hints** — Venice AI generates privacy-preserving hints that guide without spoiling
 - **Scoring by restraint** — highest scores go to players who guess with fewer memories, clues, and time
 - **On-chain verification** — score NFTs and streak tokens minted on Mantle Sepolia for tamper-proof leaderboards
@@ -25,25 +28,26 @@ whoware/
 │   ├── app/                                     # Routes (Expo Router)
 │   ├── components/
 │   │   ├── who-ware/                           # Game-screen UI
-│   │   │   ├── views/                          # Composable views (PlayingView, SolvedView, IntroView, ExhaustedView, HeroPanel, HistoryCard, LastSolveCard)
+│   │   │   ├── immersion-threshold.tsx         # Live-room entry gate (sound choice)
+│   │   │   ├── immersion-session.tsx           # Full-bleed active run (room + HUD)
+│   │   │   ├── play-chrome.tsx                 # Overlay / stacked play chrome
+│   │   │   ├── views/                          # SolvedView, ExhaustedView, HeroPanel, PlayingView, HistoryCard
 │   │   │   │   └── props.ts                    # Composite prop shapes shared across views
 │   │   │   └── scene-3d/                       # Three.js renderer (skybox, props, lighting, controls)
 │   │   ├── shared/                             # Cross-section primitives (error-boundary, tappable-metric)
 │   │   └── curator/                            # Curator Studio + weekly leaderboards
-│   ├── hooks/                                  # Session, guessing, scene progression, smart-account delegate, mint, boot-error, streak
+│   ├── hooks/                                  # Session, guessing, sounds/ambient, scene progression, mint, boot-error
 │   ├── lib/                                    # Cross-cutting helpers
-│   │   ├── theme.ts                            # Single source of truth for design tokens
-│   │   ├── logger.ts                           # Structured logger (console in dev, no-op debug/info in prod)
-│   │   ├── contracts.ts                        # On-chain addresses (Mantle Sepolia, Polygon Amoy)
-│   │   ├── scoring.ts (re-export from backend)
-│   │   ├── scene-quality.ts                    # 3D capability detection / adaptive fallback
-│   │   ├── paywall.ts, wallet.ts, smart-account.ts, 1shot.ts, onboarding.ts
+│   │   ├── immersion-shell.tsx                 # Web full-bleed flag (drops 560px column during play)
+│   │   ├── theme.ts, logger.ts, contracts.ts, site.ts, scene-quality.ts, onboarding.ts
+│   │   └── paywall.ts, wallet.ts, smart-account.ts, 1shot.ts
 │   └── assets/                                 # Static images
 ├── packages/backend/                            # Convex backend
 │   ├── convex/                                 # Functions, schema, agent pipeline, AI fallback
 │   └── scripts/                                # Smoke tests, helpers
 ├── packages/contracts/                          # Solidity contracts (Hardhat + viem)
-└── 3D-PLAN.md                                   # Phase roadmap for the 3D pivot
+├── 3D-PLAN.md                                   # Phase roadmap for the 3D pivot
+└── HACKWITHUS.md                                # Hack with Us / Tiun submission notes
 ```
 
 - **Frontend:** Expo + React Native + StyleSheet; Three.js for the 3D scene renderer (web-only at first)
@@ -62,6 +66,18 @@ The 3D scene is rendered by `apps/default/components/who-ware/scene-3d/SceneCanv
 3. **Props** — 4–8 3D objects per scene from a closed vocabulary of 51 kinds (room, furniture, era, doc, object). Phase 2 uses procedural primitives (boxes/cylinders/spheres composed to evoke the real object); Phase 3 will swap hero props for Tripo GLBs.
 
 `apps/default/lib/scene-quality.ts` decides whether to render the 3D or 2D path per client (WebGL2 capability, low-power GPU detection, user override). The 2D `PanoramaScene` remains the fallback.
+
+## First-run immersion
+
+Cold path (web):
+
+1. **Threshold** — today's scene 0 already running full-bleed behind WhoWare + Enter with/without sound
+2. **Wake** — `ensureRun` + `enterScene(0)`; ambient bed starts only for with-sound; onboarding flag persisted
+3. **ImmersionSession** — same full-bleed room; whisper/coach until first clue, Name identity, or ~12s
+4. **PlayChrome overlay** — metrics + scene rail + actions; clue/guess sheet expands on demand
+5. **Solve / exhaust** — restore the phone-column shell (`HeroPanel` + SolvedView / ExhaustedView)
+
+`lib/immersion-shell.tsx` drops the 560px web column while threshold or an active run is up. Returning mid-run players skip the threshold and land HUD-over-room with chrome unlocked.
 
 ## Smart Contracts (Mantle Sepolia)
 
@@ -101,6 +117,7 @@ cp .env.example .env
 
 Required variables:
 - `CONVEX_DEPLOYMENT` / `EXPO_PUBLIC_CONVEX_URL` — Run `bunx convex dev` in `packages/backend/`
+- `EXPO_PUBLIC_SITE_URL` — Canonical public origin for OG/Twitter tags (e.g. `https://whoware.vercel.app`)
 - `DEPLOYER_PRIVATE_KEY` — Ethereum private key for oracle signing
 - `VENICE_API_KEY` — Sign up at [venice.ai](https://venice.ai)
 - `REPLICATE_API_TOKEN` — Sign up at [replicate.com](https://replicate.com) for the AI fallback chain

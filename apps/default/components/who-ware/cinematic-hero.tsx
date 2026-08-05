@@ -3,7 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -55,13 +55,16 @@ export function CinematicHero({ imageKey, revealProgress, isSolved, solvedImageK
   }));
 
   // Heavy shadow at the start, resolving toward a clear portrait as progress climbs.
-  const blurRadius = isSolved ? 0 : Math.round(34 - clampedProgress * 28);
+  // Web blur is expensive — keep a light backdrop blur and rely on the shroud.
+  const isWeb = Platform.OS === "web";
+  const blurRadius = isSolved ? 0 : isWeb ? Math.round(8 - clampedProgress * 8) : Math.round(34 - clampedProgress * 28);
+  const backdropBlur = isWeb ? 4 : 18;
   const shroudOpacity = isSolved ? 0 : 0.62 - clampedProgress * 0.5;
 
   return (
     <View style={styles.wrap} pointerEvents="none">
       <Animated.View style={[styles.backdropLayer, backdropStyle]}>
-        <Image source={backdrop} style={styles.backdropImage} contentFit="cover" transition={400} blurRadius={18} />
+        <Image source={backdrop} style={styles.backdropImage} contentFit="cover" transition={400} blurRadius={backdropBlur} />
       </Animated.View>
 
       <LinearGradient

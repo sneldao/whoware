@@ -71,6 +71,23 @@ The current state of the 3D pivot, in chronological order:
   state-update-on-unmounted-component warnings during fast scene
   cycling.
 
+### Phase 2.2 — Immersion shell (shipped)
+
+Place-before-product entry so the 3D/panorama room owns the first
+minute, not a dashboard:
+
+- **Live threshold.** `immersion-threshold.tsx` mounts today's scene
+  full-bleed behind Enter with/without sound (hotspots inert until wake).
+- **Persistent session.** `immersion-session.tsx` keeps one
+  `MemoryScene` for the active run; chrome unlock fades in
+  `play-chrome.tsx` overlay instead of remounting into a ScrollView.
+- **Fill mode.** `MemoryScene` / `PanoramaScene` / `SceneCanvas` accept
+  `fill` + viewport `height` — edge-to-edge, no card chrome during play.
+- **Web full-bleed.** `immersion-shell.tsx` drops the 560px column for
+  threshold + active run; column returns on solved/exhausted.
+- **Atmosphere.** Procedural ambient bed in `use-game-sounds.ts` on
+  Enter with sound; ducks under clue/guess SFX; hard mute without.
+
 ### Phase 3 — AI-driven prop generation (1-2 weeks)
 
 The procedural primitives in `prop-shapes.ts` are deliberately crude —

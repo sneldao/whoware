@@ -163,14 +163,25 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
     async (label: string) => {
       if (!episode) return;
       gameSounds.playClueFound();
-      toast.show(`−${HOTSPOT_PENALTY.toLocaleString()} pts from max score`, "warning");
       const hotspotKey = `${sceneIndex}:${label}`;
       discovery.recordHotspot(hotspotKey);
 
       const scene = episode.scenes[sceneIndex];
       const clue = scene?.clues.find((c) => c.label === label);
       if (clue && scene) {
+        const firstClue = discovery.discoveredClues.length === 0;
         discovery.recordClue({ sceneIndex, sceneTitle: scene.title, label: clue.label, detail: clue.detail });
+        toast.show(
+          firstClue
+            ? `Clue: ${clue.label} · −${HOTSPOT_PENALTY.toLocaleString()} pts · restraint scores higher`
+            : `Clue: ${clue.label} · −${HOTSPOT_PENALTY.toLocaleString()} pts`,
+          "success",
+        );
+      } else {
+        toast.show(
+          `Clue found · −${HOTSPOT_PENALTY.toLocaleString()} pts`,
+          "success",
+        );
       }
 
       try {
@@ -180,7 +191,7 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         logger.warn("useGuessing.handleOpenHotspot", e);
       }
     },
-    [episode, sceneIndex, openHotspotMutation, identity.identityId, discovery, gameSounds, toast],
+    [episode, sceneIndex, openHotspotMutation, ensureRun, discovery, gameSounds, toast],
   );
 
   // handleGenerateHint

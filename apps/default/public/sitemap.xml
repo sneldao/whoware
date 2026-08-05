@@ -12,7 +12,7 @@
   </url>
   <url>
     <loc>https://whoware.vercel.app/analytics</loc>
-    <changefreq>daily</changefreq>
-    <priority>0.5</priority>
+    <changefreq>weekly</changefreq>
+    <priority>0.4</priority>
   </url>
 </urlset>

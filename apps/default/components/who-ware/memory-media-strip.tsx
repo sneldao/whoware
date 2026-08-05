@@ -21,7 +21,18 @@ const detailFocus = [
 
 export function MemoryMediaStrip({ imageKey, detailImageKeys, sceneIndex, motionPrompt, imageUrl }: MemoryMediaStripProps) {
   const hasMotionPlan = Boolean(motionPrompt?.trim());
-  const detailKeys = detailImageKeys && detailImageKeys.length > 0 ? detailImageKeys.slice(0, 3) : [imageKey, imageKey, imageKey];
+  const distinctKeys = (detailImageKeys ?? []).filter(Boolean).slice(0, 3);
+  // Only render the strip when we have real alternate plates — avoid
+  // decoding the same panorama URI three times as fake "detail" crops.
+  if (distinctKeys.length === 0 && !hasMotionPlan) return null;
+
+  const plates = distinctKeys.length > 0
+    ? distinctKeys.map((key, index) => ({
+        key,
+        label: detailFocus[index]?.label ?? `Plate ${index + 1}`,
+        position: detailFocus[index]?.position ?? "center",
+      }))
+    : [];
 
   return (
     <View style={styles.card}>
@@ -36,21 +47,23 @@ export function MemoryMediaStrip({ imageKey, detailImageKeys, sceneIndex, motion
         </View>
       </View>
 
-      <View style={styles.strip}>
-        {detailFocus.map((item, index) => (
-          <View key={item.label} style={styles.frame}>
-            <Image
-              source={getSceneImageSource(detailKeys[index], sceneIndex, imageUrl)}
-              style={styles.detailImage}
-              contentFit="cover"
-              contentPosition={item.position}
-              transition={180}
-            />
-            <View style={styles.frameShade} />
-            <Text style={styles.frameLabel}>{item.label}</Text>
-          </View>
-        ))}
-      </View>
+      {plates.length > 0 ? (
+        <View style={styles.strip}>
+          {plates.map((item) => (
+            <View key={`${item.key}-${item.label}`} style={styles.frame}>
+              <Image
+                source={getSceneImageSource(item.key, sceneIndex, imageUrl)}
+                style={styles.detailImage}
+                contentFit="cover"
+                contentPosition={item.position}
+                transition={180}
+              />
+              <View style={styles.frameShade} />
+              <Text style={styles.frameLabel}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {hasMotionPlan ? <Text style={styles.motionCopy}>{motionPrompt}</Text> : null}
     </View>

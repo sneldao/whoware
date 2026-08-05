@@ -36,6 +36,19 @@ export const listClosed = query({
   },
 });
 
+/** Lightweight badge count for the home hero — avoids shipping 50 archive rows. */
+export const countClosed = query({
+  args: {},
+  returns: v.number(),
+  handler: async (ctx) => {
+    const closed = await ctx.db
+      .query("episodes")
+      .withIndex("by_status_and_dropsAt", (q) => q.eq("status", "closed"))
+      .take(200);
+    return closed.length;
+  },
+});
+
 const archiveFigureProfile = v.object({
   canonicalName: v.string(),
   era: v.string(),

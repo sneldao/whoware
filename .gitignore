@@ -48,6 +48,9 @@ plans/
 skills-lock.json
 /tsconfig.json
 
+# throwaway codemod scripts
+scripts/
+
 # Lock files
 *.lockb
 *.lock

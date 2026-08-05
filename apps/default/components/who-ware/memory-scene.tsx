@@ -1,8 +1,15 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
+import { ActivityIndicator, View } from "react-native";
 
 import { PanoramaScene, type Scene } from "@/components/who-ware/panorama-scene";
-import { SceneCanvas } from "@/components/who-ware/scene-3d/SceneCanvas";
 import { detectSceneQuality } from "@/lib/scene-quality";
+import { theme } from "@/lib/theme";
+
+const LazySceneCanvas = lazy(() =>
+  import("@/components/who-ware/scene-3d/SceneCanvas").then((m) => ({
+    default: m.SceneCanvas,
+  })),
+);
 
 interface MemorySceneProps {
   scene: Scene;
@@ -12,19 +19,17 @@ interface MemorySceneProps {
   onGenerateHint?: (clueLabel: string) => void;
   activeHint?: string | null;
   isHintGenerating?: boolean;
+  /** Frame height in px. Immersion uses viewport height; stacked play defaults to 430. */
+  height?: number;
+  /** Edge-to-edge room (no panorama card chrome). */
+  fill?: boolean;
   /** Override the detected renderer mode. Used by tests and future settings. */
   forceMode?: "three-d" | "panorama";
 }
 
 /**
- * MemoryScene is the single entry point for rendering a daily memory.
- *
- * It picks the renderer based on capability detection and delegates to
- * either the 3D canvas (Phase 1+) or the existing panorama renderer.
- *
- * Phase 0 behavior: forces the panorama branch. The 3D branch is wired
- * (the SceneCanvas placeholder exists) but the orchestrator defaults to
- * panorama so existing behaviour is unchanged.
+ * MemoryScene picks the renderer from capability detection and delegates
+ * to the 3D canvas (lazy-loaded) or the panorama fallback.
  */
 export function MemoryScene({
   scene,
@@ -34,6 +39,8 @@ export function MemoryScene({
   onGenerateHint,
   activeHint,
   isHintGenerating,
+  height = 430,
+  fill = false,
   forceMode,
 }: MemorySceneProps) {
   const quality = useMemo(() => detectSceneQuality(), []);
@@ -41,13 +48,25 @@ export function MemoryScene({
 
   if (mode === "three-d") {
     return (
-      <SceneCanvas
-        scene={scene}
-        sceneIndex={sceneIndex}
-        totalScenes={totalScenes}
-        height={430}
-        onHotspotOpen={onHotspotOpen}
-      />
+      <Suspense
+        fallback={
+          <View style={{ height, alignItems: "center", justifyContent: "center" }}>
+            <ActivityIndicator color={theme.accent} />
+          </View>
+        }
+      >
+        <LazySceneCanvas
+          scene={scene}
+          sceneIndex={sceneIndex}
+          totalScenes={totalScenes}
+          height={height}
+          fill={fill}
+          onHotspotOpen={onHotspotOpen}
+          onGenerateHint={onGenerateHint}
+          activeHint={activeHint}
+          isHintGenerating={isHintGenerating}
+        />
+      </Suspense>
     );
   }
 
@@ -56,6 +75,8 @@ export function MemoryScene({
       scene={scene}
       sceneIndex={sceneIndex}
       totalScenes={totalScenes}
+      height={height}
+      fill={fill}
       onHotspotOpen={onHotspotOpen}
       onGenerateHint={onGenerateHint}
       activeHint={activeHint}

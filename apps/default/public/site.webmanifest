@@ -1,0 +1,23 @@
+{
+  "name": "WhoWare",
+  "short_name": "WhoWare",
+  "description": "Daily embodied history ritual — step into panoramic memories and name the figure.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070A12",
+  "theme_color": "#070A12",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
