@@ -41,9 +41,12 @@ export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlaye
   return (
     <View style={styles.panel}>
       <View style={styles.headerRow}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.eyebrow}>Identity search</Text>
           <Text style={styles.title}>{isSolved ? "Identity anchored" : `${guessesLeft} guesses left`}</Text>
+          {!isSolved ? (
+            <Text style={styles.hintLine}>Pick a name when the room feels right. Restraint scores higher.</Text>
+          ) : null}
         </View>
         <Ionicons name={isSolved ? "checkmark-circle" : "finger-print"} size={28} color={theme.accent} />
       </View>
@@ -109,6 +112,14 @@ const styles = StyleSheet.create({
     color: theme.ink,
     fontSize: 22,
     fontWeight: "900",
+  },
+  hintLine: {
+    marginTop: 4,
+    color: theme.inkAlpha55,
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+    paddingRight: 8,
   },
   input: {
     minHeight: 48,

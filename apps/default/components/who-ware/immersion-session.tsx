@@ -24,6 +24,10 @@ export interface ImmersionSessionProps {
   extras: ExtrasState;
   metrics: PlayChromeMetrics;
   onNameIdentity: () => void;
+  onOpenHowTo?: () => void;
+  /** Brief post-solve hold before leaving the room. */
+  solveHold?: boolean;
+  solveHoldLabel?: string;
 }
 
 /**
@@ -38,6 +42,9 @@ export function ImmersionSession({
   extras,
   metrics,
   onNameIdentity,
+  onOpenHowTo,
+  solveHold = false,
+  solveHoldLabel = "Identity anchored…",
 }: ImmersionSessionProps) {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -97,7 +104,13 @@ export function ImmersionSession({
         </EnhancedSceneTransition>
       </ErrorBoundary>
 
-      {!chromeUnlocked ? (
+      {solveHold ? (
+        <Animated.View entering={FadeIn.duration(500)} style={styles.solveHold} pointerEvents="none">
+          <Text style={styles.solveHoldText}>{solveHoldLabel}</Text>
+        </Animated.View>
+      ) : null}
+
+      {!chromeUnlocked && !solveHold ? (
         <>
           {whisperVisible ? (
             <Animated.View
@@ -141,7 +154,7 @@ export function ImmersionSession({
             </Pressable>
           </View>
         </>
-      ) : (
+      ) : !solveHold ? (
         <PlayChrome
           layout="overlay"
           scene={scene}
@@ -149,8 +162,9 @@ export function ImmersionSession({
           guess={guess}
           extras={extras}
           metrics={metrics}
+          onOpenHowTo={onOpenHowTo}
         />
-      )}
+      ) : null}
     </View>
   );
 }
@@ -233,5 +247,20 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.75,
+  },
+  solveHold: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(8, 5, 2, 0.35)",
+  },
+  solveHoldText: {
+    color: theme.ink,
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+    textShadowColor: "rgba(0,0,0,0.55)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 12,
   },
 });

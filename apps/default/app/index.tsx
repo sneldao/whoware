@@ -30,11 +30,16 @@ import {
 import { SolvedView } from "@/components/who-ware/views/solved-view";
 import { ImmersionThreshold } from "@/components/who-ware/immersion-threshold";
 import { ImmersionSession } from "@/components/who-ware/immersion-session";
+import { CoachWhisper } from "@/components/who-ware/coach-whisper";
 import { MAX_GUESSES_PER_RUN } from "@/convex/scoring";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
+import { useProgressiveCoach } from "@/hooks/use-progressive-coach";
+import { useImmersionKeyboard } from "@/hooks/use-immersion-keyboard";
 import styles from "./index.styles";
 
 const CHROME_UNLOCK_MS = 12_000;
+const SOLVE_HOLD_MS = 1_400;
+const PULSE_NEXT_MS = 4_500;
 
 function formatScore(score: number) { return Math.round(score).toLocaleString(); }
 
@@ -67,14 +72,21 @@ export default function Index() {
   const [loadFigures, setLoadFigures] = useState(false);
   const [loadLeaderboard, setLoadLeaderboard] = useState(false);
   const [loadHistory, setLoadHistory] = useState(false);
+  const [pulseNextMemory, setPulseNextMemory] = useState(false);
+  const [roomHold, setRoomHold] = useState(false);
 
   const hasMoreMemoriesRef = useRef<() => boolean>(() => false);
   const sceneIndexRef = useRef({ sceneIndex: 0, setSceneIndex: (_i: number) => undefined as void });
   const guessingRef = useRef<UseGuessingReturn | null>(null);
   const chromeUnlockedRef = useRef(false);
   const wakeAtRef = useRef<number | null>(null);
+  const wasActivePlayRef = useRef(false);
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { setFullBleed } = useImmersionShell();
+  const coach = useProgressiveCoach();
+  const coachOfferRef = useRef(coach.offer);
+  coachOfferRef.current = coach.offer;
 
   const session: UseGameSessionReturn = useGameSession({
     loadFigures,
@@ -107,6 +119,15 @@ export default function Index() {
     commitGuessOnChain,
     onSolveOnchain: minter.handleSolveOnchain,
     formatScore,
+    onCoachOffer: (id) => { void coachOfferRef.current(id); },
+    onWrongGuessRedirect: () => {
+      setPulseNextMemory(true);
+      if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = setTimeout(() => {
+        setPulseNextMemory(false);
+        pulseTimerRef.current = null;
+      }, PULSE_NEXT_MS);
+    },
   });
   guessingRef.current = guessing;
 
@@ -154,7 +175,22 @@ export default function Index() {
     }
   }, [hasEnteredMemoryEarly, runFinishedEarly]);
 
-  // Full-bleed on web for threshold + entire active run; column returns when finished.
+  // Track live play this session so solve-hold only runs after an in-session finish.
+  useEffect(() => {
+    if (hasEnteredMemoryEarly && !runFinishedEarly) {
+      wasActivePlayRef.current = true;
+    }
+  }, [hasEnteredMemoryEarly, runFinishedEarly]);
+
+  // Brief hold in the room after solve/exhaust before column chrome.
+  useEffect(() => {
+    if (!runFinishedEarly || !wasActivePlayRef.current) return;
+    setRoomHold(true);
+    const t = setTimeout(() => setRoomHold(false), SOLVE_HOLD_MS);
+    return () => clearTimeout(t);
+  }, [runFinishedEarly]);
+
+  // Full-bleed on web for threshold + active run + solve hold; column after.
   useEffect(() => {
     const waitingForBoot =
       !session.identity.isLoaded || session.episode === undefined || session.run === undefined;
@@ -164,7 +200,7 @@ export default function Index() {
     }
     const inThreshold = !hasEnteredMemoryEarly && !runFinishedEarly;
     const inActivePlay = hasEnteredMemoryEarly && !runFinishedEarly;
-    setFullBleed(Platform.OS === "web" && (inThreshold || inActivePlay));
+    setFullBleed(Platform.OS === "web" && (inThreshold || inActivePlay || roomHold));
     return () => setFullBleed(false);
   }, [
     session.identity.isLoaded,
@@ -172,6 +208,7 @@ export default function Index() {
     session.run,
     hasEnteredMemoryEarly,
     runFinishedEarly,
+    roomHold,
     setFullBleed,
   ]);
 
@@ -276,6 +313,53 @@ export default function Index() {
     scrollRef.current?.scrollTo({ y: 0, animated: true });
   }, []);
 
+  const toggleGuessPanel = useCallback(() => {
+    const next = !guessing.isGuessPanelOpen;
+    if (next) {
+      void coach.offer("nameIdentity");
+      setLoadFigures(true);
+      unlockChrome();
+    }
+    guessing.setIsGuessPanelOpen(next);
+  }, [guessing.isGuessPanelOpen, guessing.setIsGuessPanelOpen, coach, unlockChrome]);
+
+  const unlockNextMemory = useCallback(() => {
+    setPulseNextMemory(false);
+    if (pulseTimerRef.current) {
+      clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = null;
+    }
+    void progression.handleUnlockNextMemory().then(() => {
+      void coach.offer("unlockNext");
+    });
+  }, [progression, coach]);
+
+  const closeSheets = useCallback(() => {
+    guessing.setIsGuessPanelOpen(false);
+  }, [guessing.setIsGuessPanelOpen]);
+
+  const selectRailIndex = useCallback((railIndex: number) => {
+    const epiIdx = progression.visibleScenes[railIndex]?.episodeIndex;
+    if (epiIdx != null) progression.setSceneIndex(epiIdx);
+  }, [progression]);
+
+  const keyboardEnabled =
+    hasEnteredMemoryEarly && (!runFinishedEarly || roomHold) && !roomHold;
+
+  useImmersionKeyboard({
+    enabled: keyboardEnabled,
+    onToggleGuess: toggleGuessPanel,
+    onCloseSheets: closeSheets,
+    onUnlockNext: unlockNextMemory,
+    onSelectRailIndex: selectRailIndex,
+    railCount: progression.visibleScenes.length,
+    guessPanelOpen: guessing.isGuessPanelOpen,
+  });
+
+  useEffect(() => () => {
+    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+  }, []);
+
   const waitingForBoot =
     !session.identity.isLoaded || session.episode === undefined || session.run === undefined;
   const bootError = useBootError(waitingForBoot);
@@ -343,6 +427,8 @@ export default function Index() {
     );
   }
 
+  const inImmersionSurface = hasEnteredMemory && (!runFinished || roomHold);
+
   const sceneState = {
     scene: currentScene,
     sceneIndex: progression.accessiblePosition,
@@ -356,14 +442,16 @@ export default function Index() {
     onHotspotOpen: guessing.handleOpenHotspot,
     onGenerateHint: guessing.handleGenerateHint,
   };
+
   const actionState = {
     isGuessPanelOpen: guessing.isGuessPanelOpen,
     isSolved,
     isExhausted,
     moreMemoriesAvailable,
     isBusy: guessing.isBusy,
-    onToggleGuessPanel: () => guessing.setIsGuessPanelOpen((c) => !c),
-    onUnlockNextMemory: progression.handleUnlockNextMemory,
+    onToggleGuessPanel: toggleGuessPanel,
+    onUnlockNextMemory: unlockNextMemory,
+    pulseNextMemory,
   };
   const guessState = {
     figureOptions: guessing.figureOptions,
@@ -394,26 +482,33 @@ export default function Index() {
     onShowGuessesTooltip: () => session.tooltip.show("guesses"),
   };
 
-  // ── Active run: continuous room + HUD (no phone-column jump) ────
-  if (hasEnteredMemory && !runFinished) {
+  // ── Active run (+ brief solve hold): room stays mounted ─────────
+  if (inImmersionSurface) {
     return (
       <View style={{ flex: 1 }}>
         <ImmersionSession
-          chromeUnlocked={chromeUnlocked}
+          chromeUnlocked={chromeUnlocked || roomHold}
           scene={sceneState}
           actions={actionState}
           guess={guessState}
           extras={extrasState}
           metrics={metricsState}
+          solveHold={roomHold}
+          solveHoldLabel={isSolved ? "Identity anchored…" : "The signal fades…"}
           onNameIdentity={() => {
             unlockChrome();
+            void coach.offer("nameIdentity");
             guessing.setIsGuessPanelOpen(true);
             setLoadFigures(true);
           }}
+          onOpenHowTo={() => router.push("/how-to")}
         />
+        {!roomHold ? (
+          <CoachWhisper message={coach.message} onDismiss={coach.dismiss} />
+        ) : null}
         <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} />
         <ToastLayer
-          visible={guessing.toastVisible && !toastDismissed}
+          visible={guessing.toastVisible && !toastDismissed && !roomHold}
           message={guessing.toastMessage}
           type={guessing.toastType}
           onDismiss={() => setToastDismissed(true)}

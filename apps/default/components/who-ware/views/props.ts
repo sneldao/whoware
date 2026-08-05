@@ -72,6 +72,8 @@ export interface ActionState {
   isBusy: boolean;
   onToggleGuessPanel: () => void;
   onUnlockNextMemory: () => void;
+  /** Soft pull toward Next memory after a wrong guess. */
+  pulseNextMemory?: boolean;
 }
 
 /** Guess panel inputs — figure options, guesses remaining, submission handler. */

@@ -79,6 +79,10 @@ Cold path (web):
 
 `lib/immersion-shell.tsx` drops the 560px web column while threshold or an active run is up. Returning mid-run players skip the threshold and land HUD-over-room with chrome unlocked.
 
+Progressive coaches (one-shot, AsyncStorage) fire at the moment of need: first wrong guess, first “Unlock next memory,” first open of Name identity. Optional full rules live at `/how-to` — never on the cold path.
+
+Desktop shortcuts while in the room: `Esc` close sheets · `G` Name identity · `N` next memory · `1`–`9` scene rail. A wrong guess soft-pulses **Next memory** instead of auto-advancing. After solve/exhaust, the room holds ~1.4s (“Identity anchored…”) before the phone-column ritual.
+
 ## Smart Contracts (Mantle Sepolia)
 
 | Contract | Address |

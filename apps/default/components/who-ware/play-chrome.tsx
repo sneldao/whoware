@@ -2,7 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated, {
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { ClueLedger } from "@/components/who-ware/clue-ledger";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { GuessPanel } from "@/components/who-ware/guess-panel";
@@ -31,6 +38,7 @@ interface PlayChromeProps {
   metrics: PlayChromeMetrics;
   /** Overlay: glass HUD over the room. Stacked: classic below-scene layout. */
   layout?: "overlay" | "stacked";
+  onOpenHowTo?: () => void;
 }
 
 /**
@@ -44,11 +52,13 @@ export function PlayChrome({
   extras,
   metrics,
   layout = "stacked",
+  onOpenHowTo,
 }: PlayChromeProps) {
   const {
     isGuessPanelOpen, isSolved, isExhausted,
     moreMemoriesAvailable, isBusy,
     onToggleGuessPanel, onUnlockNextMemory,
+    pulseNextMemory = false,
   } = actions;
   const {
     figureOptions, guessesLeft, playerName, onPlayerNameChange, onSubmitGuess,
@@ -67,6 +77,26 @@ export function PlayChrome({
   useEffect(() => {
     if (isGuessPanelOpen) setCluesSheetOpen(false);
   }, [isGuessPanelOpen]);
+
+  const pulseScale = useSharedValue(1);
+  useEffect(() => {
+    if (!pulseNextMemory || !moreMemoriesAvailable) {
+      pulseScale.value = 1;
+      return;
+    }
+    pulseScale.value = withRepeat(
+      withSequence(
+        withTiming(1.06, { duration: 420 }),
+        withTiming(1, { duration: 420 }),
+      ),
+      3,
+      false,
+    );
+  }, [pulseNextMemory, moreMemoriesAvailable, pulseScale]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
 
   const rail = (
     <View style={layout === "overlay" ? overlayStyles.railRow : styles.sceneRail}>
@@ -162,22 +192,34 @@ export function PlayChrome({
         style={[overlayStyles.topStrip, { paddingTop: Math.max(12, insets.top + 8) }]}
         pointerEvents="box-none"
       >
-        <View style={overlayStyles.metrics}>
-          <TappableMetric
-            label="Score"
-            value={`${metrics.scoreDisplay} pts`}
-            onPress={metrics.onShowScoreTooltip}
-          />
-          <TappableMetric
-            label="Clues"
-            value={`${metrics.hotspotsOpened}`}
-            onPress={() => setCluesSheetOpen((open) => !open)}
-          />
-          <TappableMetric
-            label="Guesses"
-            value={`${metrics.guessesLeft}/${metrics.guessCap}`}
-            onPress={metrics.onShowGuessesTooltip}
-          />
+        <View style={overlayStyles.topRow}>
+          <View style={overlayStyles.metrics}>
+            <TappableMetric
+              label="Score"
+              value={`${metrics.scoreDisplay} pts`}
+              onPress={metrics.onShowScoreTooltip}
+            />
+            <TappableMetric
+              label="Clues"
+              value={`${metrics.hotspotsOpened}`}
+              onPress={() => setCluesSheetOpen((open) => !open)}
+            />
+            <TappableMetric
+              label="Guesses"
+              value={`${metrics.guessesLeft}/${metrics.guessCap}`}
+              onPress={metrics.onShowGuessesTooltip}
+            />
+          </View>
+          {onOpenHowTo ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="How to play"
+              onPress={onOpenHowTo}
+              style={({ pressed }) => [overlayStyles.howTo, pressed && overlayStyles.pressed]}
+            >
+              <Ionicons name="help-circle-outline" size={18} color={theme.inkAlpha70} />
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -197,20 +239,28 @@ export function PlayChrome({
               {isGuessPanelOpen ? "Hide guesses" : "Name identity"}
             </Text>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            disabled={!moreMemoriesAvailable || isSolved || isBusy}
-            onPress={onUnlockNextMemory}
-            style={({ pressed }) => [
-              overlayStyles.secondaryBtn,
-              (!moreMemoriesAvailable || isSolved || isBusy) && overlayStyles.disabled,
-              pressed && overlayStyles.pressed,
+          <Animated.View
+            style={[
+              overlayStyles.secondaryWrap,
+              pulseNextMemory && moreMemoriesAvailable ? pulseStyle : undefined,
             ]}
           >
-            <Text style={overlayStyles.secondaryBtnText}>
-              {moreMemoriesAvailable ? "Next memory" : "All open"}
-            </Text>
-          </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={!moreMemoriesAvailable || isSolved || isBusy}
+              onPress={onUnlockNextMemory}
+              style={({ pressed }) => [
+                overlayStyles.secondaryBtn,
+                pulseNextMemory && moreMemoriesAvailable && overlayStyles.secondaryBtnPulse,
+                (!moreMemoriesAvailable || isSolved || isBusy) && overlayStyles.disabled,
+                pressed && overlayStyles.pressed,
+              ]}
+            >
+              <Text style={overlayStyles.secondaryBtnText}>
+                {moreMemoriesAvailable ? "Next memory" : "All open"}
+              </Text>
+            </Pressable>
+          </Animated.View>
         </View>
 
         {sheetExpanded ? (
@@ -239,7 +289,13 @@ const overlayStyles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 14,
   },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
   metrics: {
+    flex: 1,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
@@ -247,6 +303,16 @@ const overlayStyles = StyleSheet.create({
     borderRadius: 18,
     borderCurve: "continuous",
     backgroundColor: "rgba(8, 5, 2, 0.62)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 240, 214, 0.12)",
+  },
+  howTo: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(8, 5, 2, 0.55)",
     borderWidth: 1,
     borderColor: "rgba(255, 240, 214, 0.12)",
   },
@@ -281,8 +347,10 @@ const overlayStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900",
   },
-  secondaryBtn: {
+  secondaryWrap: {
     flex: 1,
+  },
+  secondaryBtn: {
     minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
@@ -291,6 +359,10 @@ const overlayStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.inkAlpha25,
     backgroundColor: "rgba(12, 8, 4, 0.55)",
+  },
+  secondaryBtnPulse: {
+    borderColor: theme.accentAlpha28,
+    backgroundColor: "rgba(217, 119, 6, 0.18)",
   },
   secondaryBtnText: {
     color: theme.ink,

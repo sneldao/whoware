@@ -92,6 +92,10 @@ export function HeroPanel(props: HeroPanelProps) {
             <Text style={styles.brand}>WhoWare</Text>
             <Text style={styles.drop}>Daily embodied history ritual</Text>
           </View>
+          <Pressable style={styles.archiveBadge} href="/how-to">
+            <Ionicons name="help-circle-outline" size={11} color={theme.ink} />
+            <Text style={styles.archiveBadgeText}>How to</Text>
+          </Pressable>
           {archiveCount > 0 && (
             <Pressable style={styles.archiveBadge} href="/archive">
               <Ionicons name="archive-outline" size={11} color={theme.ink} />

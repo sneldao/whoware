@@ -14,6 +14,7 @@ import { useOnchainCommit } from "@/hooks/use-onchain-commit";
 import { useLocalDiscovery } from "@/hooks/use-local-discovery";
 import { generateGuessSalt } from "@/lib/wallet";
 import { logger } from "@/lib/logger";
+import type { CoachTipId } from "@/lib/onboarding";
 import type { UseGameSessionReturn } from "./use-game-session";
 
 export interface UseGuessingParams {
@@ -28,6 +29,10 @@ export interface UseGuessingParams {
   commitGuessOnChain: (address: string, day: number, guess: string, salt: string) => Promise<string | null>;
   onSolveOnchain: (args: SolveOnchainArgs) => Promise<void>;
   formatScore: (score: number) => string;
+  /** Progressive coach — offer once at first wrong guess. */
+  onCoachOffer?: (id: CoachTipId) => void;
+  /** Soft redirect after a wrong guess when more memories exist. */
+  onWrongGuessRedirect?: () => void;
 }
 
 export interface SolveOnchainArgs {
@@ -92,6 +97,8 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
     onSolveOnchain,
     formatScore,
     hasMoreMemories,
+    onCoachOffer,
+    onWrongGuessRedirect,
   } = params;
 
   // Derive from session
@@ -288,6 +295,7 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         `−${GUESS_PENALTY.toLocaleString()} pts · ${result.guessesRemaining} guess${result.guessesRemaining !== 1 ? "es" : ""} left`,
         "error",
       );
+      onCoachOffer?.("wrongGuess");
       gameSounds.playWrongGuess();
       if (Platform.OS !== "web") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -304,30 +312,18 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
       }
 
       if (hasMoreMemories()) {
-        const finished = run?.status === "solved" || run?.status === "exhausted";
-        let nextIdx = -1;
-        for (let i = sceneIndex + 1; i < episode.scenes.length; i++) {
-          const s = episode.scenes[i] as { isMercy?: boolean };
-          if (!s.isMercy || finished) { nextIdx = i; break; }
-        }
-        if (nextIdx >= 0) {
-          try {
-            await enterSceneMutation({ runId: activeRun._id, sceneIndex: nextIdx });
-          } catch (e) {
-            logger.warn("useGuessing.handleGuess.advance", e);
-          }
-          setStatus("The body rejects that name. A deeper memory surfaces.");
-          return;
-        }
+        onWrongGuessRedirect?.();
+        setStatus("That name does not fit. Another memory might help.");
+        return;
       }
 
       setStatus("That name does not fit. You have reached the last memory.");
     },
     [
       episode, run?.status, guessesLeft, identity.identityId, ensureRun, hasEnteredMemory,
-      enterSceneMutation, wallet.address, commit, commitGuessOnChain, submitGuessMutation,
+      wallet.address, commit, commitGuessOnChain, submitGuessMutation,
       recordSolve, saveLastSolve, memoriesViewed, hotspotsOpened, formatScore, onSolveOnchain,
-      gameSounds, sceneIndex, hasMoreMemories, toast, reveal,
+      gameSounds, hasMoreMemories, toast, reveal, onCoachOffer, onWrongGuessRedirect,
     ],
   );
 
