@@ -65,3 +65,21 @@ private key — this is the maintainer's responsibility, not the repo's.
 `0x41E94Eb019C0762f9Bfcf9FB1E58725BfB0e7582` — official Circle USDC on
 Amoy. Hardcoded in `apps/default/lib/1shot.ts` and
 `packages/backend/convex/paywall.ts`.
+
+## Base Sepolia deployer (Inco Lightning)
+
+| Field | Value |
+| --- | --- |
+| Address | `0xfb8a7B42070334CB196e94E542cEA13655e2f394` |
+| Chain | Base Sepolia (chainId 84532) |
+| Purpose | Deploys + funds Inco Lightning `setAnswer` and `revealResult` transactions for WhoWareConfidentialGuess |
+
+> **Note:** This is the same deployer wallet used for Mantle Sepolia oracle
+> signing. It is shared across both chains. Fund it with Base Sepolia ETH
+> via faucets (Alchemy, Coinbase, Binance) — 0.1 ETH covers many episodes.
+>
+> The Inco contract address (`0xd6ad76bed934ea5e5b25d635fba7889e782e691a`)
+> is set in `apps/default/lib/contracts.ts` (`BASE_SEPOLIA_INCO_GUESS_CONTRACT`)
+> and in the backend env var `INCO_GUESS_CONTRACT`. When the env var is
+> unset, the on-chain encrypted guess flow is disabled and the legacy
+> commit-reveal on Mantle Sepolia is used as fallback.

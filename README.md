@@ -40,7 +40,7 @@ whoware/
 │   ├── lib/                                    # Cross-cutting helpers
 │   │   ├── immersion-shell.tsx                 # Web full-bleed flag (drops 560px column during play)
 │   │   ├── theme.ts, logger.ts, contracts.ts, site.ts, scene-quality.ts, onboarding.ts
-│   │   └── paywall.ts, wallet.ts, smart-account.ts, 1shot.ts
+│   │   └── paywall.ts, wallet.ts, smart-account.ts, 1shot.ts, inco-lightning.ts
 │   └── assets/                                 # Static images
 ├── packages/backend/                            # Convex backend
 │   ├── convex/                                 # Functions, schema, agent pipeline, AI fallback
@@ -53,6 +53,7 @@ whoware/
 - **Frontend:** Expo + React Native + StyleSheet; Three.js for the 3D scene renderer (web-only at first)
 - **Backend:** Convex (real-time DB, auth, serverless actions, AI pipeline)
 - **Blockchain:** Mantle Sepolia (EVM) — score NFTs, streak SBTs, commit-reveal guessing
+- **Confidential on-chain:** Base Sepolia via Inco Lightning — encrypted guessing with `e.eq` on-chain, single-tx submission, provably fair settlement
 - **Payments:** Polygon Amoy — USDC archive paywall with on-chain verification
 - **AI:** Venice AI primary (chat + image); Replicate fallback (Flux for images, Llama 3 70B for chat)
 - **Wallet:** MetaMask Smart Accounts (ERC-7710 delegation) + 1Shot permissionless relayer
@@ -102,6 +103,18 @@ Desktop shortcuts while in the room: `Esc` close sheets · `G` Name identity · 
 - **WhoWareScore** — Soul-bound score NFT, oracle-signed via EIP-712, non-transferable
 - **WhoWareStreak** — Soul-bound streak token with tier badges (spark/flame/inferno/eternal)
 - **WhoWareGuess** — Commit-reveal scheme for fair competitive play
+
+## Confidential On-Chain Guessing (Base Sepolia via Inco Lightning)
+
+| Contract | Address |
+|----------|---------|
+| WhoWareConfidentialGuess | `0xd6ad76bed934ea5e5b25d635fba7889e782e691a` |
+
+- **Chain:** Base Sepolia (chainId 84532)
+- **How it works:** The figure ID is encrypted on-chain as an `euint256` using Inco Lightning's TEE-based encrypted computation. Players submit a single encrypted guess; the contract checks `e.eq(encryptedGuess, encryptedAnswer)` producing an encrypted `ebool`. At episode close, `e.reveal` makes the result publicly verifiable — no commit-reveal, no salt, no timing attack surface.
+- **Fallback:** When Inco is unavailable (native mobile, or contract not deployed), the legacy commit-reveal flow on Mantle Sepolia is used instead. The `useIncoGuess` hook checks `isIncoEnabled()` (contract address non-zero) and `isIncoPlatformSupported()` (browser + wallet) to determine which path to take.
+- **Curator:** When an episode goes live, `inco.ts` (`setEpisodeAnswerOnChain`) encrypts the figure ID via `@inco/lightning-js` and calls `setAnswer(episodeDay, ciphertext)` on the contract. This is a no-op if the Inco env vars are not set.
+- **Basescan:** https://sepolia.basescan.org/address/0xd6ad76bed934ea5e5b25d635fba7889e782e691a
 
 ## Getting Started
 

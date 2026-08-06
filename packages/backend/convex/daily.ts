@@ -1,5 +1,6 @@
 import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 const episodeStatus = v.union(v.literal("staging"), v.literal("review"), v.literal("draft"), v.literal("live"), v.literal("closed"));
 
@@ -177,6 +178,15 @@ export const openExpired = internalMutation({
         status: "live",
         activeAt: episode.dropsAt,
       });
+
+      // Schedule on-chain encrypted answer for competitive episodes
+      if (episode.figureId) {
+        await ctx.scheduler.runAfter(0, internal.inco.scheduleAnswerForLiveEpisodes, {
+          episodeId: episode._id,
+          figureId: episode.figureId,
+          dropsAt: episode.dropsAt ?? episode.activeAt ?? Date.now(),
+        });
+      }
     }
     return { opened: drafts.length };
   },
