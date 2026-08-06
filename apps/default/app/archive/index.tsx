@@ -99,6 +99,8 @@ function ArchiveRow({ episodeId, figureName, difficulty, activeAt, identityId }:
             <Text style={styles.resultText}>
               {run.status === "solved" ? `Solved · ${formatScore(run.score ?? 0)} pts` : "Unsolved"}
             </Text>
+            <Ionicons name="school-outline" size={12} color={theme.accentAlpha60} />
+            <Text style={styles.practiceHint}>Practice</Text>
           </View>
         ) : isLocked ? (
           <View style={styles.lockedRow}>
@@ -214,6 +216,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
+  },
+  practiceHint: {
+    color: theme.accentAlpha60,
+    fontSize: 11,
+    fontWeight: "700",
   },
   noRun: {
     color: theme.inkAlpha40,

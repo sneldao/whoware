@@ -194,6 +194,16 @@ export default function ArchiveDetailScreen() {
                   />
                 )}
 
+                {/* Practice mode entry point — replay without affecting streak/score */}
+                <Pressable
+                  style={styles.practiceButton}
+                  href={`/practice/${episodeId}`}
+                >
+                  <Ionicons name="school-outline" size={16} color={theme.accent} />
+                  <Text style={styles.practiceText}>Practice this episode</Text>
+                  <Ionicons name="chevron-forward" size={16} color={theme.accentAlpha60} />
+                </Pressable>
+
                 <View style={styles.scenesSection}>
                   <Text style={styles.sectionTitle}>Memory scenes</Text>
                   <Suspense fallback={<ActivityIndicator size="large" color={theme.accent} />}>
@@ -299,4 +309,21 @@ const styles = StyleSheet.create({
   revealText: { flex: 1, color: theme.accent, fontSize: 15, fontWeight: "800" },
   scenesSection: { gap: 14 },
   sectionTitle: { color: theme.inkAlpha50, fontSize: 12, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
+  practiceButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 16,
+    borderRadius: 20,
+    borderCurve: "continuous",
+    backgroundColor: theme.accentAlpha10,
+    borderWidth: 1,
+    borderColor: theme.accentAlpha25,
+  },
+  practiceText: {
+    flex: 1,
+    color: theme.accent,
+    fontSize: 15,
+    fontWeight: "800",
+  },
 });

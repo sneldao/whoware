@@ -163,4 +163,18 @@ export default defineSchema({
     txHash: v.string(),
     paidAt: v.number(),
   }).index("by_identityId_and_episodeId", ["identityId", "episodeId"]),
+  practiceRuns: defineTable({
+    episodeId: v.id("episodes"),
+    identityId: v.string(),
+    status: v.union(v.literal("active"), v.literal("solved"), v.literal("abandoned")),
+    startedAt: v.number(),
+    solvedAt: v.optional(v.number()),
+    currentSceneIndex: v.number(),
+    memoriesViewed: v.number(),
+    hotspotsOpened: v.number(),
+    guessesUsed: v.number(),
+    figureId: v.optional(v.id("figures")),
+  })
+    .index("by_episodeId_and_identityId", ["episodeId", "identityId"])
+    .index("by_identityId_and_startedAt", ["identityId", "startedAt"]),
 });
