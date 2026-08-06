@@ -21,6 +21,18 @@ crons.interval(
   internal.notifications.dispatchPending,
 );
 
+crons.interval(
+  "notifications:streak-reminders",
+  { minutes: 15 },
+  internal.notifications.dispatchStreakReminders,
+);
+
+crons.daily(
+  "notifications:weekly-recap",
+  { hourUTC: 18, minuteUTC: 0 },
+  internal.notifications.dispatchWeeklyRecap,
+);
+
 crons.daily(
   "autonomous-generation",
   { hourUTC: 0, minuteUTC: 0 },

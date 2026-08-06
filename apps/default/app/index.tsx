@@ -31,6 +31,8 @@ import { SolvedView } from "@/components/who-ware/views/solved-view";
 import { ImmersionThreshold } from "@/components/who-ware/immersion-threshold";
 import { ImmersionSession } from "@/components/who-ware/immersion-session";
 import { CoachWhisper } from "@/components/who-ware/coach-whisper";
+import { InsightBanner } from "@/components/who-ware/insight-banner";
+import { useClueInsights } from "@/hooks/use-clue-insights";
 import { MAX_GUESSES_PER_RUN } from "@/convex/scoring";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { useProgressiveCoach } from "@/hooks/use-progressive-coach";
@@ -138,6 +140,8 @@ export default function Index() {
 
   hasMoreMemoriesRef.current = progression.hasMoreMemories;
   sceneIndexRef.current = { sceneIndex: progression.sceneIndex, setSceneIndex: progression.setSceneIndex };
+
+  const clueInsights = useClueInsights(guessing.discoveredClues);
 
   const unlockChrome = useCallback(() => {
     if (chromeUnlockedRef.current) return;
@@ -505,6 +509,12 @@ export default function Index() {
         />
         {!roomHold ? (
           <CoachWhisper message={coach.message} onDismiss={coach.dismiss} />
+        ) : null}
+        {!roomHold && clueInsights.currentInsight ? (
+          <InsightBanner
+            insight={clueInsights.currentInsight}
+            onDismiss={clueInsights.dismissInsight}
+          />
         ) : null}
         <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} />
         <ToastLayer

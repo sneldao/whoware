@@ -125,6 +125,18 @@ export function HeroPanel(props: HeroPanelProps) {
           dropsAt={countdownTarget}
           statusLabel={countdownLabel}
         />
+        {!hasEnteredMemory && !runFinished && archiveCount > 0 && (
+          <View style={styles.suggestionsCard}>
+            <Pressable style={styles.suggestionRow} href="/weekly">
+              <Ionicons name="calendar-outline" size={14} color={theme.violet} />
+              <Text style={styles.suggestionText}>Weekly recap ready</Text>
+            </Pressable>
+            <Pressable style={styles.suggestionRow} href="/archive">
+              <Ionicons name="refresh-outline" size={14} color={theme.violet} />
+              <Text style={styles.suggestionText}>Practice past episodes</Text>
+            </Pressable>
+          </View>
+        )}
         {runFinished && archiveCount > 0 && (
           <View style={styles.suggestionsCard}>
             <Pressable style={styles.suggestionRow} href="/archive">
@@ -132,6 +144,14 @@ export function HeroPanel(props: HeroPanelProps) {
               <Text style={styles.suggestionText}>
                 {archiveCount} past episode{archiveCount !== 1 ? "s" : ""} to explore
               </Text>
+            </Pressable>
+            <Pressable style={styles.suggestionRow} href="/weekly">
+              <Ionicons name="calendar-outline" size={14} color={theme.violet} />
+              <Text style={styles.suggestionText}>Your weekly recap is ready</Text>
+            </Pressable>
+            <Pressable style={styles.suggestionRow} href="/archive">
+              <Ionicons name="refresh-outline" size={14} color={theme.violet} />
+              <Text style={styles.suggestionText}>Practice past episodes</Text>
             </Pressable>
             <Pressable style={styles.suggestionRow} href="/curator">
               <Ionicons name="layers" size={14} color={theme.violet} />

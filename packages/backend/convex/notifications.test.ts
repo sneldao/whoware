@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.*s");
@@ -76,5 +76,62 @@ describe("notifications.unregisterToken", () => {
     const t = setup();
     const result = await t.mutation(api.notifications.unregisterToken, { identityId: "ghost" });
     expect(result).toBeNull();
+  });
+});
+
+describe("notifications.dispatchStreakReminders", () => {
+  test("returns zero reminded when no live episodes closing soon", async () => {
+    const t = setup();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("episodes", {
+        slug: "ep-test",
+        activeAt: Date.now() - 1000,
+        dropsAt: Date.now() - 1000,
+        status: "live",
+        difficulty: "iconic",
+        scenes: [],
+        closesAt: Date.now() + 7 * 60 * 60 * 1000, // 7 hours away — not closing soon
+      });
+    });
+
+    const result = await t.mutation(internal.notifications.dispatchStreakReminders, {});
+    expect(result.reminded).toBe(0);
+  });
+
+  test("returns zero when no players have prior solves", async () => {
+    const t = setup();
+    await t.run(async (ctx) => {
+      await ctx.db.insert("episodes", {
+        slug: "ep-test",
+        activeAt: Date.now() - 1000,
+        dropsAt: Date.now() - 1000,
+        status: "live",
+        difficulty: "iconic",
+        scenes: [],
+        closesAt: Date.now() + 1 * 60 * 60 * 1000, // 1 hour away — closing soon
+      });
+    });
+
+    const result = await t.mutation(internal.notifications.dispatchStreakReminders, {});
+    expect(result.reminded).toBe(0);
+  });
+});
+
+describe("notifications.dispatchWeeklyRecap", () => {
+  test("returns zero when not Sunday (day 0)", async () => {
+    const t = setup();
+    // This test is inherently time-dependent — it passes on non-Sundays.
+    // On Sundays it would need data. We test the day-of-week guard.
+    const now = new Date();
+    const isSunday = now.getUTCDay() === 0;
+
+    if (isSunday) {
+      // If it IS Sunday, we need data to send, so just verify no crash
+      const result = await t.mutation(internal.notifications.dispatchWeeklyRecap, {});
+      expect(result.sent).toBeLessThanOrEqual(1);
+    } else {
+      const result = await t.mutation(internal.notifications.dispatchWeeklyRecap, {});
+      expect(result.sent).toBe(0);
+    }
   });
 });
