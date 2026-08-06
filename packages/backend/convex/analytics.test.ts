@@ -227,3 +227,105 @@ describe("analytics.getRecentSolves", () => {
     expect(result[1]?.playerName).toBe("First");
   });
 });
+
+describe("analytics.getTodaysRoomStats", () => {
+  test("returns null for non-existent episode", async () => {
+    const t = setup();
+    // Create a valid episode ID format then delete it
+    const epId = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("episodes", {
+        slug: "temp",
+        activeAt: Date.now(),
+        dropsAt: Date.now(),
+        status: "live",
+        difficulty: "iconic",
+        scenes: [],
+      });
+      await ctx.db.delete(id);
+      return id;
+    });
+
+    const stats = await t.query(api.analytics.getTodaysRoomStats, { episodeId: epId });
+    expect(stats).toBeNull();
+  });
+
+  test("returns zero stats for episode with no runs", async () => {
+    const t = setup();
+    const epId = await t.run(async (ctx) => {
+      return await ctx.db.insert("episodes", {
+        slug: "ep-empty",
+        activeAt: Date.now(),
+        dropsAt: Date.now(),
+        status: "live",
+        difficulty: "iconic",
+        scenes: [],
+      });
+    });
+
+    const stats = await t.query(api.analytics.getTodaysRoomStats, { episodeId: epId });
+    expect(stats).not.toBeNull();
+    expect(stats!.totalAttempts).toBe(0);
+    expect(stats!.totalSolved).toBe(0);
+    expect(stats!.solveRate).toBe(0);
+    expect(stats!.averageScore).toBe(0);
+  });
+
+  test("computes solve rate, averages, and most common first clue", async () => {
+    const t = setup();
+    const epId = await t.run(async (ctx) => {
+      return await ctx.db.insert("episodes", {
+        slug: "ep-room",
+        activeAt: Date.now(),
+        dropsAt: Date.now(),
+        status: "live",
+        difficulty: "iconic",
+        scenes: [],
+      });
+    });
+
+    await t.run(async (ctx) => {
+      // Player A: solved with 2 memories, 1 guess, score 8800
+      const runA = await ctx.db.insert("playerRuns", {
+        episodeId: epId,
+        identityId: "player-a",
+        playerName: "Alice",
+        status: "solved",
+        startedAt: Date.now() - 120000,
+        solvedAt: Date.now() - 60000,
+        currentSceneIndex: 1,
+        memoriesViewed: 2,
+        hotspotsOpened: 1,
+        guessesUsed: 1,
+        score: 8800,
+      });
+      // Player B: exhausted with 5 memories, 5 guesses
+      await ctx.db.insert("playerRuns", {
+        episodeId: epId,
+        identityId: "player-b",
+        playerName: "Bob",
+        status: "exhausted",
+        startedAt: Date.now() - 300000,
+        currentSceneIndex: 4,
+        memoriesViewed: 5,
+        hotspotsOpened: 3,
+        guessesUsed: 5,
+      });
+
+      // Hotspot views for player A
+      await ctx.db.insert("playerHotspotViews", {
+        runId: runA,
+        sceneIndex: 0,
+        hotspotLabel: "Blackout notice",
+        firstViewedAt: Date.now() - 90000,
+      });
+    });
+
+    const stats = await t.query(api.analytics.getTodaysRoomStats, { episodeId: epId });
+    expect(stats).not.toBeNull();
+    expect(stats!.totalAttempts).toBe(2);
+    expect(stats!.totalSolved).toBe(1);
+    expect(stats!.solveRate).toBe(50);
+    expect(stats!.averageMemoriesUsed).toBeGreaterThan(0);
+    expect(stats!.difficulty).toBe("iconic");
+  });
+});

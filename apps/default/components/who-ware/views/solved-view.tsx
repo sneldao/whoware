@@ -4,6 +4,7 @@ import { FigureRevealCard } from "@/components/who-ware/figure-reveal-card";
 import { OnChainBadge } from "@/components/who-ware/on-chain-badge";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
 import { SmartAccountBadge } from "@/components/who-ware/smart-account-badge";
+import { TodaysRoomStats } from "@/components/who-ware/todays-room-stats";
 import { theme } from "@/lib/theme";
 import type { SolvedViewProps } from "./props";
 import styles from "@/app/index.styles";
@@ -11,9 +12,8 @@ import styles from "@/app/index.styles";
 export type { SolvedViewProps } from "./props";
 
 /**
- * The post-solve view: figure reveal card, result share card, on-chain badge
- * row, smart-account badge, and the next-actions row. Shown after the player
- * solves the episode.
+ * The post-solve view: figure reveal card, result share card, today's room
+ * social stats, on-chain badge row, smart-account badge, and next-actions row.
  */
 export function SolvedView(props: SolvedViewProps) {
   const { result, onchain, figureReveal, nextActions } = props;
@@ -47,6 +47,7 @@ export function SolvedView(props: SolvedViewProps) {
         figureEra={result.figureEra}
         figureRegion={result.figureRegion}
       />
+      <TodaysRoomStats episodeId={figureReveal.episodeId} />
       <View style={styles.onChainRow}>
         {isSmartAccountUpgraded && (
           <OnChainBadge

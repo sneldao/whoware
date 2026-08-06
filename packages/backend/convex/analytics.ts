@@ -278,3 +278,129 @@ export const getEpisodeBreakdowns = query({
     return results;
   },
 });
+
+/* ── Today's Room: social stats for the active episode ───────────── */
+
+const todaysRoomStatsShape = v.object({
+  totalAttempts: v.number(),
+  totalSolved: v.number(),
+  solveRate: v.number(),
+  averageMemoriesUsed: v.number(),
+  averageGuessesUsed: v.number(),
+  averageScore: v.number(),
+  medianMemoriesUsed: v.number(),
+  mostCommonFirstClue: v.optional(v.string()),
+  fastestSolveMs: v.number(),
+  difficulty: v.string(),
+});
+
+/**
+ * Aggregate social stats for the active episode. Surfaces community-wide
+ * interaction patterns (not individual player data) to create a shared
+ * daily conversation: "most players needed 3 memories," "the first clue
+ * everyone touched was the letter," etc.
+ */
+export const getTodaysRoomStats = query({
+  args: { episodeId: v.id("episodes") },
+  returns: v.union(todaysRoomStatsShape, v.null()),
+  handler: async (ctx, args) => {
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode) return null;
+
+    const runs = await ctx.db
+      .query("playerRuns")
+      .withIndex("by_episodeId_and_status", (q) => q.eq("episodeId", args.episodeId))
+      .collect();
+
+    if (runs.length === 0) {
+      return {
+        totalAttempts: 0,
+        totalSolved: 0,
+        solveRate: 0,
+        averageMemoriesUsed: 0,
+        averageGuessesUsed: 0,
+        averageScore: 0,
+        medianMemoriesUsed: 0,
+        mostCommonFirstClue: undefined,
+        fastestSolveMs: 0,
+        difficulty: episode.difficulty,
+      };
+    }
+
+    const solved = runs.filter((r) => r.status === "solved");
+    const solveRate = runs.length > 0 ? solved.length / runs.length : 0;
+
+    const memoriesUsed = runs.map((r) => r.memoriesViewed).filter((m) => m > 0);
+    const avgMemories = memoriesUsed.length > 0
+      ? Math.round((memoriesUsed.reduce((a, b) => a + b, 0) / memoriesUsed.length) * 10) / 10
+      : 0;
+
+    const guessesUsed = runs.map((r) => r.guessesUsed).filter((g) => g > 0);
+    const avgGuesses = guessesUsed.length > 0
+      ? Math.round((guessesUsed.reduce((a, b) => a + b, 0) / guessesUsed.length) * 10) / 10
+      : 0;
+
+    const scores = solved.map((r) => r.score ?? 0).filter((s) => s > 0);
+    const avgScore = scores.length > 0
+      ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+      : 0;
+
+    const sortedMemories = [...memoriesUsed].sort((a, b) => a - b);
+    const medianMemories = sortedMemories.length > 0
+      ? sortedMemories[Math.floor(sortedMemories.length / 2)]
+      : 0;
+
+    // Find most common first clue from hotspot views
+    const hotspotViews = await ctx.db
+      .query("playerHotspotViews")
+      .collect();
+    const episodeHotspots = hotspotViews.filter((h) => {
+      // We can't directly filter by episode, but hotspot views are linked to runs
+      // which are linked to episodes. We'd need to cross-reference.
+      return true;
+    });
+
+    // Find the first hotspot opened per run (lowest firstViewedAt per runId)
+    const firstHotspotByRun = new Map<string, string>();
+    for (const hv of episodeHotspots) {
+      const run = runs.find((r) => r._id === hv.runId);
+      if (!run) continue;
+      const existing = firstHotspotByRun.get(hv.runId);
+      if (!existing) {
+        firstHotspotByRun.set(hv.runId, hv.hotspotLabel);
+      }
+    }
+
+    const clueCounts = new Map<string, number>();
+    for (const label of firstHotspotByRun.values()) {
+      clueCounts.set(label, (clueCounts.get(label) ?? 0) + 1);
+    }
+    let mostCommonFirstClue: string | undefined;
+    let maxCount = 0;
+    for (const [label, count] of clueCounts) {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommonFirstClue = label;
+      }
+    }
+
+    // Fastest solve
+    const solveTimes = solved
+      .filter((r) => r.solvedAt && r.startedAt)
+      .map((r) => (r.solvedAt! - r.startedAt));
+    const fastestSolveMs = solveTimes.length > 0 ? Math.min(...solveTimes) : 0;
+
+    return {
+      totalAttempts: runs.length,
+      totalSolved: solved.length,
+      solveRate: Math.round(solveRate * 100),
+      averageMemoriesUsed: avgMemories,
+      averageGuessesUsed: avgGuesses,
+      averageScore: avgScore,
+      medianMemoriesUsed: medianMemories,
+      mostCommonFirstClue,
+      fastestSolveMs,
+      difficulty: episode.difficulty,
+    };
+  },
+});
