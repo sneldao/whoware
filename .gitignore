@@ -60,3 +60,4 @@ package-lock.json
 lost+found/
 .blackboxcli/
 .kimchi/
+.vercel
