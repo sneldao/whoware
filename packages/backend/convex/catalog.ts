@@ -1196,6 +1196,7 @@ Consider:
 - Balance across iconic (well-known), field (moderately known), and research (obscure) tiers
 - Geographic and temporal diversity
 - New player progression: bias toward iconic figures early in a season so new players build confidence, then gradually introduce field and research tiers
+- Figure relationships: occasionally select a figure connected to a recent episode (shared era, region, or historical relationship) to build a web of knowledge that rewards long-term play
 
 Respond with a JSON object:
 {

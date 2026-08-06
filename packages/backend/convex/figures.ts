@@ -14,6 +14,7 @@ export interface FigureSeed {
   tier: "iconic" | "field" | "research";
   tags: string[];
   difficulty: "iconic" | "field" | "research";
+  relatedFigures?: string[];
 }
 
 const seedCatalogData: FigureSeed[] = [
@@ -25,6 +26,7 @@ const seedCatalogData: FigureSeed[] = [
     tier: "iconic",
     tags: ["wartime", "prime minister", "orator", "world war 2"],
     difficulty: "iconic",
+    relatedFigures: ["Alan Turing", "Mahatma Gandhi", "Napoleon Bonaparte"],
   },
   {
     canonicalName: "Cleopatra",
@@ -34,6 +36,7 @@ const seedCatalogData: FigureSeed[] = [
     tier: "iconic",
     tags: ["pharaoh", "ptolemaic", "rome", "diplomat"],
     difficulty: "iconic",
+    relatedFigures: ["Hatshepsut", "Julius Caesar", "Hypatia of Alexandria"],
   },
   {
     canonicalName: "Leonardo da Vinci",
@@ -43,6 +46,7 @@ const seedCatalogData: FigureSeed[] = [
     tier: "iconic",
     tags: ["polymath", "painter", "inventor", "anatomist"],
     difficulty: "iconic",
+    relatedFigures: ["Galileo Galilei", "Hypatia of Alexandria", "Nikola Tesla"],
   },
   {
     canonicalName: "Marie Curie",
@@ -52,6 +56,7 @@ const seedCatalogData: FigureSeed[] = [
     tier: "iconic",
     tags: ["physicist", "chemist", "nobel", "radioactivity"],
     difficulty: "iconic",
+    relatedFigures: ["Albert Einstein", "Rosalind Franklin", "Ada Lovelace"],
   },
   {
     canonicalName: "Mahatma Gandhi",
@@ -70,6 +75,7 @@ const seedCatalogData: FigureSeed[] = [
     tier: "iconic",
     tags: ["physicist", "relativity", "nobel"],
     difficulty: "iconic",
+    relatedFigures: ["Marie Curie", "Nikola Tesla", "Srinivasa Ramanujan"],
   },
   {
     canonicalName: "Nelson Mandela",
@@ -115,6 +121,7 @@ const seedCatalogData: FigureSeed[] = [
     tier: "field",
     tags: ["mathematician", "computing", "analytical engine"],
     difficulty: "field",
+    relatedFigures: ["Alan Turing", "Grace Hopper", "Marie Curie"],
   },
   {
     canonicalName: "Alan Turing",
@@ -124,6 +131,7 @@ const seedCatalogData: FigureSeed[] = [
     tier: "iconic",
     tags: ["mathematician", "cryptanalyst", "computing", "bletchley"],
     difficulty: "iconic",
+    relatedFigures: ["Ada Lovelace", "Grace Hopper", "Winston Churchill"],
   },
   {
     canonicalName: "Florence Nightingale",
@@ -187,6 +195,7 @@ const seedCatalogData: FigureSeed[] = [
     tier: "iconic",
     tags: ["inventor", "electrical engineer", "alternating current", "wardenclyffe"],
     difficulty: "iconic",
+    relatedFigures: ["Albert Einstein", "Leonardo da Vinci", "Hedy Lamarr"],
   },
   {
     canonicalName: "Sima Qian",
@@ -349,6 +358,7 @@ export const seedCatalog = mutation({
         tags: seed.tags,
         difficulty: seed.difficulty,
         searchIndex: buildSearchIndex(seed),
+        relatedFigures: seed.relatedFigures ?? [],
       };
 
       if (existing) {
@@ -373,6 +383,7 @@ const figurePublicShape = v.object({
   tier: figureTier,
   tags: v.array(v.string()),
   difficulty: figureDifficulty,
+  relatedFigures: v.array(v.string()),
 });
 
 export const search = query({
@@ -450,5 +461,71 @@ export const get = query({
   returns: v.union(figurePublicShape, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db.get(args.figureId);
+  },
+});
+
+const relationshipShape = v.object({
+  canonicalName: v.string(),
+  era: v.string(),
+  region: v.string(),
+  tier: v.string(),
+  tags: v.array(v.string()),
+  hasBeenFeatured: v.boolean(),
+});
+
+/**
+ * Returns figures related to the given episode's figure — either via
+ * the `relatedFigures` field on the figure record or by matching era
+ * and region. Also indicates whether each related figure has been
+ * featured in a past episode, so the UI can show "encountered" badges.
+ */
+export const getFigureRelationships = query({
+  args: { episodeId: v.id("episodes") },
+  returns: v.union(v.array(relationshipShape), v.null()),
+  handler: async (ctx, args) => {
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode?.figureId) return null;
+
+    const figure = await ctx.db.get(episode.figureId);
+    if (!figure) return null;
+
+    const relatedNames = figure.relatedFigures ?? [];
+    if (relatedNames.length === 0) return null;
+
+    // Resolve related figure names to figure records
+    const related: Array<{
+      canonicalName: string;
+      era: string;
+      region: string;
+      tier: string;
+      tags: string[];
+      hasBeenFeatured: boolean;
+    }> = [];
+
+    for (const name of relatedNames) {
+      const found = await ctx.db
+        .query("figures")
+        .withIndex("by_canonicalName", (q) => q.eq("canonicalName", name))
+        .first();
+
+      if (found) {
+        // Check if this figure has been featured in a past episode
+        const featuredEpisode = await ctx.db
+          .query("episodes")
+          .withIndex("by_figureId", (q) => q.eq("figureId", found._id))
+          .first();
+
+        related.push({
+          canonicalName: found.canonicalName,
+          era: found.era,
+          region: found.region,
+          tier: found.tier,
+          tags: found.tags,
+          hasBeenFeatured: Boolean(featuredEpisode),
+        });
+      }
+    }
+
+    return related.length > 0 ? related : null;
   },
 });

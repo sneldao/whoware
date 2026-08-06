@@ -21,6 +21,15 @@ interface FigureBio {
   didYouKnow: string;
 }
 
+interface RelatedFigure {
+  canonicalName: string;
+  era: string;
+  region: string;
+  tier: string;
+  tags: string[];
+  hasBeenFeatured: boolean;
+}
+
 /**
  * Post-solve narrative reveal card. Fetches an AI-generated biographical
  * card from Venice after solve (or exhausted) to pay off the mystery:
@@ -35,6 +44,7 @@ export function FigureRevealCard({
 }: FigureRevealCardProps) {
   const cached = useQuery(api.venice.getFigureBio, { episodeId: episodeId as never });
   const generateBio = useAction(api.venice.generateFigureBio);
+  const relationships = useQuery(api.figures.getFigureRelationships, { episodeId: episodeId as never });
   const [bio, setBio] = useState<FigureBio | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasTried, setHasTried] = useState(false);
@@ -151,6 +161,26 @@ export function FigureRevealCard({
           {figureTags.slice(0, 5).map((tag) => (
             <View key={tag} style={styles.tag}>
               <Text style={styles.tagText}>{tag}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {relationships && relationships.length > 0 ? (
+        <View style={styles.relationshipsSection}>
+          <View style={styles.relationshipsHeader}>
+            <Ionicons name="git-network-outline" size={13} color={theme.inkAlpha55} />
+            <Text style={styles.relationshipsLabel}>Connected figures</Text>
+          </View>
+          {relationships.map((rf) => (
+            <View key={rf.canonicalName} style={styles.relationshipRow}>
+              <Text style={styles.relationshipName}>{rf.canonicalName}</Text>
+              <Text style={styles.relationshipMeta}>{rf.era} · {rf.region}</Text>
+              {rf.hasBeenFeatured ? (
+                <View style={styles.featuredBadge}>
+                  <Text style={styles.featuredBadgeText}>Encountered</Text>
+                </View>
+              ) : null}
             </View>
           ))}
         </View>
@@ -308,5 +338,56 @@ const styles = StyleSheet.create({
     color: theme.accent,
     fontSize: 11,
     fontWeight: "800",
+  },
+  relationshipsSection: {
+    gap: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    backgroundColor: theme.inkAlpha4,
+    borderWidth: 1,
+    borderColor: theme.inkAlpha8,
+  },
+  relationshipsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  relationshipsLabel: {
+    color: theme.inkAlpha55,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  relationshipRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  relationshipName: {
+    color: theme.ink,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  relationshipMeta: {
+    color: theme.inkAlpha50,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  featuredBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: theme.accentAlpha12,
+    borderWidth: 1,
+    borderColor: theme.accentAlpha25,
+  },
+  featuredBadgeText: {
+    color: theme.accent,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.3,
   },
 });

@@ -52,6 +52,7 @@ export default defineSchema({
     tags: v.array(v.string()),
     difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
     searchIndex: v.string(),
+    relatedFigures: v.optional(v.array(v.string())),
   })
     .index("by_canonicalName", ["canonicalName"])
     .index("by_tier", ["tier"])
