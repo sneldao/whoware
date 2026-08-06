@@ -24,6 +24,12 @@ import { getSceneImageSource } from "@/components/who-ware/scene-media";
 const SKYBOX_RADIUS = 500;
 const SKYBOX_SEGMENTS = 48;
 
+/** Props that emit light and should flicker/pulse in the render loop. */
+const FLICKER_PROP_KINDS = new Set([
+  "candle", "lantern", "oil_lamp", "fireplace", "gramophone",
+  "vintage_radio", "telegraph",
+]);
+
 interface SceneCanvasProps {
   scene: Scene;
   sceneIndex: number;
@@ -213,6 +219,9 @@ function CanvasMount({
     let looping = false;
     let raf = 0;
     let dragging = false;
+    let animClueMarkers: THREE.Object3D[] = [];
+    let animFlickerProps: { mesh: THREE.Mesh; baseIntensity: number; phase: number }[] = [];
+    const animStart = performance.now();
 
     const kick = () => {
       dirty = true;
@@ -223,9 +232,40 @@ function CanvasMount({
           looping = false;
           return;
         }
+        const now = performance.now();
+        const elapsed = (now - animStart) / 1000;
+
+        // Animate clue markers — pulse halo opacity + rotate ring
+        for (const obj of animClueMarkers) {
+          const halo = (obj as THREE.Group).getObjectByName("HotspotHalo");
+          const ring = (obj as THREE.Group).getObjectByName("HotspotRing");
+          if (halo) {
+            const mat = halo.material as THREE.MeshBasicMaterial;
+            mat.opacity = 0.12 + Math.sin(elapsed * 2.2) * 0.1;
+            const scale = 1 + Math.sin(elapsed * 2.2) * 0.15;
+            halo.scale.setScalar(scale);
+          }
+          if (ring) {
+            ring.rotation.z = elapsed * 0.6;
+            ring.lookAt(camera.position);
+            const rMat = ring.material as THREE.MeshBasicMaterial;
+            rMat.opacity = 0.25 + Math.sin(elapsed * 2.2 + Math.PI) * 0.2;
+          }
+        }
+
+        // Animate flickering props (candles, fireplaces, lamps)
+        for (const fp of animFlickerProps) {
+          const mat = fp.mesh.material as THREE.MeshStandardMaterial;
+          if (mat.emissive) {
+            const flicker = 1 + Math.sin(elapsed * 8 + fp.phase) * 0.25 + Math.sin(elapsed * 17 + fp.phase) * 0.12;
+            mat.emissiveIntensity = fp.baseIntensity * flicker;
+          }
+        }
+
         applyLook(camera, lookState);
         renderer.render(scene3d, camera);
-        if (dragging || dirty) {
+        // Keep looping while there are animated objects, or dragging, or dirty
+        if (dragging || dirty || animClueMarkers.length > 0 || animFlickerProps.length > 0) {
           dirty = false;
           raf = requestAnimationFrame(tick);
         } else {
@@ -270,10 +310,10 @@ function CanvasMount({
 
           for (const clue of cluesSnapshot) {
             const world = hotspotWorldPosition(clue.x, clue.y, SKYBOX_RADIUS);
-            const sphere = makeClueMarker(clue.label);
-            sphere.position.copy(world);
-            sphere.userData.clueLabel = clue.label;
-            scene3d.add(sphere);
+            const marker = makeClueMarker(clue.label);
+            marker.position.copy(world);
+            scene3d.add(marker);
+            animClueMarkers.push(marker);
           }
           kick();
         })
@@ -300,6 +340,22 @@ function CanvasMount({
       group.userData.clueLabel = prop.clueLabel;
       scene3d.add(group);
       propGroups.push(group);
+
+      // Track light-emitting props for flicker animation
+      if (FLICKER_PROP_KINDS.has(prop.kind)) {
+        group.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            const mat = child.material as THREE.MeshStandardMaterial;
+            if (mat.emissive && mat.emissiveIntensity > 0) {
+              animFlickerProps.push({
+                mesh: child,
+                baseIntensity: mat.emissiveIntensity,
+                phase: Math.random() * Math.PI * 2,
+              });
+            }
+          }
+        });
+      }
     }
 
     kick();
@@ -388,17 +444,47 @@ function CanvasMount({
   return <div ref={hostRef} style={styles.canvasHost} />;
 }
 
-function makeClueMarker(label: string): THREE.Mesh {
-  const geometry = new THREE.SphereGeometry(8, 12, 12);
-  const material = new THREE.MeshBasicMaterial({
+function makeClueMarker(label: string): THREE.Group {
+  const group = new THREE.Group();
+  group.name = `Hotspot:${label}`;
+  group.userData.clueLabel = label;
+  group.userData.isClueMarker = true;
+
+  // Inner solid sphere
+  const coreGeo = new THREE.SphereGeometry(6, 12, 12);
+  const coreMat = new THREE.MeshBasicMaterial({
     color: 0xfbbf24,
     transparent: true,
     opacity: 0.9,
   });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.name = `Hotspot:${label}`;
-  mesh.userData.clueLabel = label;
-  return mesh;
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  core.name = "HotspotCore";
+  group.add(core);
+
+  // Outer glow halo (pulsates via animation in render loop)
+  const haloGeo = new THREE.SphereGeometry(12, 16, 16);
+  const haloMat = new THREE.MeshBasicMaterial({
+    color: 0xfbbf24,
+    transparent: true,
+    opacity: 0.18,
+    depthWrite: false,
+  });
+  const halo = new THREE.Mesh(haloGeo, haloMat);
+  halo.name = "HotspotHalo";
+  group.add(halo);
+
+  // Ring marker at the sphere surface (slow rotation)
+  const ringGeo = new THREE.RingGeometry(14, 15.5, 32);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0xfbbf24,
+    transparent: true,
+    opacity: 0.4,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.name = "HotspotRing";
+  group.add(ring);
+
+  return group;
 }
 
 function disposeGroup(group: THREE.Group): void {

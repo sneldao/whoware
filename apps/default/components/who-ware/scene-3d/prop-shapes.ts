@@ -58,6 +58,16 @@ const STONE = 0x8a8a8a;
 const DEFAULT_MATERIAL = (color: number) =>
   new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0.1 });
 
+/** Emissive material for light sources (candle flames, lamp filaments, fire). */
+const EMISSIVE_MATERIAL = (color: number, intensity = 1.5) =>
+  new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.5,
+    metalness: 0.0,
+    emissive: new THREE.Color(color),
+    emissiveIntensity: intensity,
+  });
+
 function makeBox(w: number, h: number, d: number, color: number): THREE.Mesh {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(w, h, d),
@@ -162,14 +172,22 @@ export function buildPropShape(input: PropShapeInput): PropShape {
     halfExtents = new THREE.Vector3(1.2, 0.4, 0.5);
   } else if (input.kind === "candle") {
     add(makeCylinder(0.06 * s, 0.08 * s, 0.3 * s, PAPER), [0, 0, 0]);
-    add(makeSphere(0.04 * s, 0xffd66b), [0, 0.18 * s, 0]);
+    const flame = makeSphere(0.04 * s, 0xffd66b);
+    flame.material = EMISSIVE_MATERIAL(0xffd66b, 2.0);
+    add(flame, [0, 0.18 * s, 0]);
     halfExtents = new THREE.Vector3(0.08, 0.2, 0.08);
   } else if (input.kind === "lantern") {
     add(makeBox(0.3 * s, 0.4 * s, 0.3 * s, METAL), [0, 0, 0]);
+    const lanternLight = makeSphere(0.08 * s, 0xffd66b);
+    lanternLight.material = EMISSIVE_MATERIAL(0xffd66b, 1.5);
+    add(lanternLight, [0, 0.05 * s, 0]);
     add(makeCylinder(0.1 * s, 0.1 * s, 0.15 * s, BRASS), [0, 0.25 * s, 0]);
     halfExtents = new THREE.Vector3(0.15, 0.25, 0.15);
   } else if (input.kind === "oil_lamp") {
     add(makeSphere(0.18 * s, BRASS), [0, 0, 0]);
+    const lampFlame = makeSphere(0.05 * s, 0xffd66b);
+    lampFlame.material = EMISSIVE_MATERIAL(0xffd66b, 1.5);
+    add(lampFlame, [0, 0.25 * s, 0]);
     add(makeCylinder(0.05 * s, 0.05 * s, 0.15 * s, BRASS), [0, 0.2 * s, 0]);
     halfExtents = new THREE.Vector3(0.18, 0.2, 0.18);
   } else if (input.kind === "gramophone") {

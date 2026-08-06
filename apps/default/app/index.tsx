@@ -256,7 +256,7 @@ export default function Index() {
     void getSoundEnabled().then((enabled) => {
       if (cancelled || !enabled) return;
       setGameSoundsMuted(false);
-      startAmbientBed();
+      startAmbientBed(session.episode?.scenes[0]?.era);
     });
     return () => {
       cancelled = true;
@@ -272,7 +272,7 @@ export default function Index() {
       if (withSound) {
         unlockGameAudio();
         session.gameSounds.playSceneEnter();
-        session.gameSounds.startAmbient();
+        session.gameSounds.startAmbient(session.episode?.scenes[0]?.era);
       } else {
         session.gameSounds.stopAmbient();
       }

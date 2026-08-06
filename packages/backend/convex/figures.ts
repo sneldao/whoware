@@ -396,6 +396,47 @@ export const search = query({
   },
 });
 
+/**
+ * Returns figure options for the guess panel, scaled by difficulty:
+ * - iconic: 10 options (harder to find the right name among well-known figures)
+ * - field: 8 options
+ * - research: 5 options (the challenge is knowing the name at all)
+ * Always includes the correct figure if provided.
+ */
+export const searchForEpisode = query({
+  args: {
+    query: v.string(),
+    episodeId: v.optional(v.id("episodes")),
+  },
+  returns: v.array(figurePublicShape),
+  handler: async (ctx, args) => {
+    const episode = args.episodeId ? await ctx.db.get(args.episodeId) : null;
+    const difficulty = episode?.difficulty ?? "iconic";
+    const limit = difficulty === "iconic" ? 10 : difficulty === "field" ? 8 : 5;
+    const trimmed = args.query.trim();
+
+    let results;
+    if (!trimmed) {
+      results = await ctx.db.query("figures").order("asc").take(limit);
+    } else {
+      results = await ctx.db
+        .query("figures")
+        .withSearchIndex("by_name", (q) => q.search("searchIndex", trimmed))
+        .take(limit);
+    }
+
+    // Always ensure the correct figure is in the pool (if known)
+    if (episode?.figureId) {
+      const correctFigure = await ctx.db.get(episode.figureId);
+      if (correctFigure && !results.some((r) => r._id === correctFigure._id)) {
+        results = [correctFigure, ...results].slice(0, limit);
+      }
+    }
+
+    return results;
+  },
+});
+
 export const listAll = query({
   args: {},
   returns: v.array(figurePublicShape),

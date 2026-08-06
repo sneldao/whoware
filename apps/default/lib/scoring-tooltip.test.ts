@@ -32,12 +32,12 @@ describe("scoring constants — player-facing contract", () => {
     expect(GUESS_PENALTY).toBe(600);
   });
 
-  it("time bucket is 10 seconds", () => {
-    expect(TIME_BUCKET_MS).toBe(10_000);
+  it("time bucket is 30 seconds", () => {
+    expect(TIME_BUCKET_MS).toBe(30_000);
   });
 
-  it("time penalty is 10 points per 10-second bucket", () => {
-    expect(TIME_BUCKET_PENALTY).toBe(10);
+  it("time penalty is 5 points per 30-second bucket", () => {
+    expect(TIME_BUCKET_PENALTY).toBe(5);
   });
 
   it("max guesses per run is 5", () => {
@@ -51,10 +51,10 @@ describe("computeScore", () => {
   });
 
   it("subtracts per-memory, per-hotspot, per-wrong-guess, and per-time-bucket penalties", () => {
-    // 2 memories * 1200 + 3 hotspots * 250 + (3-1) * 600 wrong-guesses + 30s = 3 buckets
-    // 10_000 - 2400 - 750 - 1200 - 30 = 5_620
+    // 2 memories * 1200 + 3 hotspots * 250 + (3-1) * 600 wrong-guesses + 30s = 1 bucket * 5
+    // 10_000 - 2400 - 750 - 1200 - 5 = 5_645
     const score = computeScore({ memoriesViewed: 2, hotspotsOpened: 3, guessesUsed: 3, elapsedMs: 30_000 });
-    expect(score).toBe(10_000 - 2_400 - 750 - 1_200 - 30);
+    expect(score).toBe(10_000 - 2_400 - 750 - 1_200 - 5);
   });
 
   it("floors the result at zero (no negative scores)", () => {

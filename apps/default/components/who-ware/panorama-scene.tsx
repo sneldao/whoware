@@ -2,8 +2,8 @@ import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
-import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { PanResponder, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -89,17 +89,62 @@ export function PanoramaScene({
   const imageSource = getSceneImageSource(scene.imageKey, sceneIndex, scene.imageUrl);
 
   const shimmerX = useSharedValue(0);
+  const haloPulse = useSharedValue(0);
+  const parallaxX = useSharedValue(0);
+  const parallaxY = useSharedValue(0);
   useEffect(() => {
     shimmerX.value = withRepeat(
       withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
       -1,
       false,
     );
-  }, [shimmerX]);
+    haloPulse.value = withRepeat(
+      withTiming(1, { duration: 2200, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      false,
+    );
+  }, [shimmerX, haloPulse]);
 
   const shimmerStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: -100 + shimmerX.value * 200 }],
   }));
+
+  const haloAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + haloPulse.value * 0.4 }],
+    opacity: 0.6 - haloPulse.value * 0.4,
+  }));
+
+  // Parallax: image shifts more than glow layers for depth
+  const parallaxImageStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: parallaxX.value * 12 }, { translateY: parallaxY.value * 8 }],
+  }));
+
+  const parallaxGlowStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: parallaxX.value * 6 }, { translateY: parallaxY.value * 4 }],
+  }));
+
+  const parallaxGlowRightStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: parallaxX.value * -6 }, { translateY: parallaxY.value * -4 }],
+  }));
+
+  // Pan responder for parallax depth — drag on the panorama shifts layers
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_e, gestureState) => {
+        // Only capture horizontal drags (not taps on hotspots)
+        return Math.abs(gestureState.dx) > 3 && Math.abs(gestureState.dy) < 20;
+      },
+      onPanResponderMove: (_e, gestureState) => {
+        parallaxX.value = Math.max(-1, Math.min(1, gestureState.dx / 200));
+        parallaxY.value = Math.max(-1, Math.min(1, gestureState.dy / 300));
+      },
+      onPanResponderRelease: () => {
+        // Ease back to center
+        parallaxX.value = withTiming(0, { duration: 800, easing: Easing.out(Easing.ease) });
+        parallaxY.value = withTiming(0, { duration: 800, easing: Easing.out(Easing.ease) });
+      },
+    }),
+  ).current;
 
   useEffect(() => {
     setActiveClue(null);
@@ -122,11 +167,12 @@ export function PanoramaScene({
           { height, backgroundColor: colors[0] },
           fill && styles.panoramaFill,
         ]}
+        {...panResponder.panHandlers}
       >
         {imageSource ? (
-          <Image
+          <Animated.Image
             source={imageSource}
-            style={styles.memoryImage}
+            style={[styles.memoryImage, parallaxImageStyle]}
             contentFit="cover"
             transition={150}
             onLoad={() => setImageLoaded(true)}
@@ -137,8 +183,8 @@ export function PanoramaScene({
             <Animated.View style={[styles.shimmerBar, shimmerStyle]} />
           </View>
         ) : null}
-        <View style={[styles.glow, styles.glowLeft, { backgroundColor: colors[1] }]} />
-        <View style={[styles.glow, styles.glowRight, { backgroundColor: colors[2] }]} />
+        <Animated.View style={[styles.glow, styles.glowLeft, { backgroundColor: colors[1] }, parallaxGlowStyle]} />
+        <Animated.View style={[styles.glow, styles.glowRight, { backgroundColor: colors[2] }, parallaxGlowRightStyle]} />
         <View style={styles.vignette} />
         <View style={styles.scanline} />
 
@@ -150,7 +196,7 @@ export function PanoramaScene({
             onPress={() => handleCluePress(clue)}
             style={[styles.hotspot, { left: `${clue.x}%`, top: `${clue.y}%` }]}
           >
-            <View style={styles.hotspotHalo} />
+            <Animated.View style={[styles.hotspotHalo, haloAnimatedStyle]} />
             <View style={styles.hotspotDot} />
           </Pressable>
         ))}

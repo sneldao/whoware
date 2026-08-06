@@ -169,12 +169,13 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
   const handleOpenHotspot = useCallback(
     async (label: string) => {
       if (!episode) return;
-      gameSounds.playClueFound();
+      const scene = episode.scenes[sceneIndex];
+      const clue = scene?.clues.find((c) => c.label === label);
+      const xPercent = clue?.x ?? 50;
+      gameSounds.playClueFoundAt(xPercent);
       const hotspotKey = `${sceneIndex}:${label}`;
       discovery.recordHotspot(hotspotKey);
 
-      const scene = episode.scenes[sceneIndex];
-      const clue = scene?.clues.find((c) => c.label === label);
       if (clue && scene) {
         const firstClue = discovery.discoveredClues.length === 0;
         discovery.recordClue({ sceneIndex, sceneTitle: scene.title, label: clue.label, detail: clue.detail });
@@ -253,7 +254,7 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
 
       if (result.isCorrect) {
         setIsGuessPanelOpen(false);
-        gameSounds.playCorrectGuess();
+        gameSounds.playSolveMotif(episode.scenes[0]?.era ?? "");
         if (Platform.OS !== "web") {
           void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }

@@ -89,6 +89,7 @@ export function ImmersionSession({
           location={scene.scene.location}
           era={scene.scene.era}
           palette={scene.scene.palette}
+          isMercy={(scene.scene as { isMercy?: boolean }).isMercy}
         >
           <MemoryScene
             scene={scene.scene as unknown as Parameters<typeof MemoryScene>[0]["scene"]}

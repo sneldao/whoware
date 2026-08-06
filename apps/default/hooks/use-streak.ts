@@ -3,7 +3,10 @@ import { useCallback, useEffect, useState } from "react";
 import { logger } from "@/lib/logger";
 
 const STREAK_STORAGE_KEY = "*****************";
+const STREAK_FREEZE_KEY = "whoware.streak.freeze";
 const DAY_MS = 86_400_000;
+const MAX_FREEZES = 1;
+const FREEZE_COOLDOWN_DAYS = 7;
 // streak persistence (no auth required)
 
 export interface StreakState {
@@ -15,6 +18,10 @@ export interface StreakState {
   lastSolvedDay: number;
   /** Total episodes solved all-time. */
   totalSolved: number;
+  /** Number of streak freezes available (max 1). */
+  freezesAvailable: number;
+  /** UTC day index of the last freeze used. */
+  lastFreezeDay: number;
 }
 
 const EMPTY_STREAK: StreakState = {
@@ -22,6 +29,8 @@ const EMPTY_STREAK: StreakState = {
   best: 0,
   lastSolvedDay: -1,
   totalSolved: 0,
+  freezesAvailable: MAX_FREEZES,
+  lastFreezeDay: -1,
 };
 
 function utcDayIndex(timestampMs: number): number {
@@ -35,8 +44,23 @@ function isStreakState(value: unknown): value is StreakState {
     typeof record.current === "number" &&
     typeof record.best === "number" &&
     typeof record.lastSolvedDay === "number" &&
-    typeof record.totalSolved === "number"
+    typeof record.totalSolved === "number" &&
+    // Migrate old streaks that don't have freeze fields
+    (record.freezesAvailable === undefined || typeof record.freezesAvailable === "number") &&
+    (record.lastFreezeDay === undefined || typeof record.lastFreezeDay === "number")
   );
+}
+
+/** Migrate old streak records that lack freeze fields. */
+function migrateStreak(value: Record<string, unknown>): StreakState {
+  return {
+    current: value.current as number,
+    best: value.best as number,
+    lastSolvedDay: value.lastSolvedDay as number,
+    totalSolved: value.totalSolved as number,
+    freezesAvailable: typeof value.freezesAvailable === "number" ? value.freezesAvailable : MAX_FREEZES,
+    lastFreezeDay: typeof value.lastFreezeDay === "number" ? value.lastFreezeDay : -1,
+  };
 }
 
 /**
@@ -56,7 +80,12 @@ export function useStreak() {
         const raw = await AsyncStorage.getItem(STREAK_STORAGE_KEY);
         if (!cancelled && raw) {
           const parsed: unknown = JSON.parse(raw);
-          if (isStreakState(parsed)) setStreak(parsed);
+          if (isStreakState(parsed)) {
+            const migrated = (parsed as Record<string, unknown>).freezesAvailable === undefined
+              ? migrateStreak(parsed as Record<string, unknown>)
+              : parsed as StreakState;
+            setStreak(migrated);
+          }
         }
       } catch (e) {
         logger.warn("useStreak loadStorage", e);
@@ -79,13 +108,31 @@ export function useStreak() {
         next = previous;
         return previous;
       }
-      const continues = previous.lastSolvedDay === solvedDay - 1;
+
+      // Check if a freeze should apply (missed exactly 1 day, have a freeze available)
+      const dayDiff = solvedDay - previous.lastSolvedDay;
+      const usedFreeze = dayDiff === 2 && previous.freezesAvailable > 0;
+
+      const continues = previous.lastSolvedDay === solvedDay - 1
+        || (usedFreeze && previous.lastSolvedDay === solvedDay - 2);
       const current = continues ? previous.current + 1 : 1;
+
+      // Replenish freeze if cooldown has passed
+      const freezeCooldownPassed = previous.lastFreezeDay >= 0
+        && (solvedDay - previous.lastFreezeDay) >= FREEZE_COOLDOWN_DAYS;
+      const freezesAvailable = usedFreeze
+        ? 0
+        : freezeCooldownPassed
+          ? Math.max(previous.freezesAvailable, MAX_FREEZES)
+          : previous.freezesAvailable;
+
       next = {
         current,
         best: Math.max(previous.best, current),
         lastSolvedDay: solvedDay,
         totalSolved: previous.totalSolved + 1,
+        freezesAvailable,
+        lastFreezeDay: usedFreeze ? solvedDay - 1 : previous.lastFreezeDay,
       };
       return next;
     });

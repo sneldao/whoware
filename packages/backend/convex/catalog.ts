@@ -1195,6 +1195,7 @@ Consider:
 - Recent episodes (avoid repeating eras, regions, or difficulty tiers in quick succession)
 - Balance across iconic (well-known), field (moderately known), and research (obscure) tiers
 - Geographic and temporal diversity
+- New player progression: bias toward iconic figures early in a season so new players build confidence, then gradually introduce field and research tiers
 
 Respond with a JSON object:
 {

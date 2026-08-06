@@ -2,8 +2,8 @@ export const BASE_SCORE = 10_000;
 export const MEMORY_PENALTY = 1200;
 export const HOTSPOT_PENALTY = 250;
 export const GUESS_PENALTY = 600;
-export const TIME_BUCKET_MS = 10_000;
-export const TIME_BUCKET_PENALTY = 10;
+export const TIME_BUCKET_MS = 30_000;
+export const TIME_BUCKET_PENALTY = 5;
 export const MAX_GUESSES_PER_RUN = 5;
 
 export interface ScoringInput {

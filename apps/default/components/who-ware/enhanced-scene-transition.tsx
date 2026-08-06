@@ -20,6 +20,7 @@ interface EnhancedSceneTransitionProps {
   location: string;
   era: string;
   palette: string[];
+  isMercy?: boolean;
   children: ReactNode;
 }
 
@@ -39,6 +40,7 @@ export function EnhancedSceneTransition({
   location,
   era,
   palette,
+  isMercy = false,
   children,
 }: EnhancedSceneTransitionProps) {
   const opacity = useSharedValue(1);
@@ -205,13 +207,16 @@ export function EnhancedSceneTransition({
           {phase === "title-card" && (
             <View style={styles.titleCardContainer}>
               <Text style={[styles.memoryLabel, { color: colors[2] ?? theme.parchment }]}>
-                Memory {currentIndex + 1}
+                {isMercy ? `Memory ${currentIndex + 1} · Mercy` : `Memory ${currentIndex + 1}`}
               </Text>
               <Text style={[styles.titleText, { color: theme.ink }]}>{title}</Text>
               <Text style={styles.locationText}>{location}</Text>
               <View style={[styles.eraBadge, { backgroundColor: `${colors[1]}44`, borderColor: `${colors[1]}66` }]}>
                 <Text style={[styles.eraText, { color: colors[2] ?? theme.parchment }]}>{era}</Text>
               </View>
+              {isMercy ? (
+                <Text style={styles.mercyHint}>A gentler memory — easier to read</Text>
+              ) : null}
             </View>
           )}
         </View>
@@ -333,5 +338,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     letterSpacing: 0.5,
+  },
+  mercyHint: {
+    marginTop: 6,
+    color: theme.inkAlpha50,
+    fontSize: 11,
+    fontWeight: "700",
+    fontStyle: "italic",
   },
 });
