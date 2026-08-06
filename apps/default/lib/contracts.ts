@@ -28,11 +28,11 @@ export const POLYGON_AMOY_PAYWALL_TREASURY: Address =
 /**
  * Inco Lightning — WhoWareConfidentialGuess on Base Sepolia.
  *
- * Deployed address will be set after running `deploy:base-sepolia`.
- * Until then, the Inco flow is disabled (the hook checks this address).
+ * Deployed via `npx hardhat run scripts/deploy-inco.ts --network baseSepolia`.
+ * Uses @inco/lightning encrypted types for single-tx confidential guessing.
  */
 export const BASE_SEPOLIA_INCO_GUESS_CONTRACT: Address =
-  "0x0000000000000000000000000000000000000000";
+  "0xd6ad76bed934ea5e5b25d635fba7889e782e691a";
 
 export const BASE_SEPOLIA_CHAIN_ID = 84532;
 
