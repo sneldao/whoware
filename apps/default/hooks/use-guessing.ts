@@ -11,6 +11,7 @@ import { useVeniceHint } from "@/hooks/use-venice-hint";
 import { useGameToast } from "@/hooks/use-game-toast";
 import { useRevealState, RevealFigure, SolvedRun } from "@/hooks/use-reveal-state";
 import { useOnchainCommit } from "@/hooks/use-onchain-commit";
+import { useIncoGuess } from "@/hooks/use-inco-guess";
 import { useLocalDiscovery } from "@/hooks/use-local-discovery";
 import { generateGuessSalt } from "@/lib/wallet";
 import { logger } from "@/lib/logger";
@@ -45,6 +46,8 @@ export interface SolveOnchainArgs {
   memoriesViewed: number;
   hotspotsOpened: number;
   commitState: { guess: string; salt: string; txHash: string | null; isCommitting: boolean; hasCommitted: boolean } | null;
+  /** Inco Lightning tx hash — present when the guess was submitted via encrypted on-chain tx. */
+  incoTxHash?: string | null;
 }
 
 export interface UseGuessingReturn {
@@ -54,6 +57,8 @@ export interface UseGuessingReturn {
   status: string;
   setStatus: (s: string) => void;
   commitState: ReturnType<typeof useOnchainCommit>["commitState"];
+  incoGuessState: ReturnType<typeof useIncoGuess>["state"];
+  incoAvailable: boolean;
   activeHint: string | null;
   revealDismissed: boolean;
   setRevealDismissed: (v: boolean) => void;
@@ -132,6 +137,10 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
     identityId: identity.identityId,
   });
   const commit = useOnchainCommit();
+  const incoGuess = useIncoGuess({
+    competitiveMode: episode?.competitiveMode ?? false,
+    dropsAt: episode?.dropsAt ?? 0,
+  });
   const discovery = useLocalDiscovery(episode?._id, identity.identityId);
 
   // Derived
@@ -232,16 +241,27 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         await enterSceneMutation({ runId: activeRun._id, sceneIndex: 0 });
       }
 
-      // Commit-reveal: commit guess on-chain before submitting (competitive mode)
-      if (episode.competitiveMode && wallet.address && !commit.hasCommitted) {
-        const salt = generateGuessSalt();
-        commit.beginCommit(_guessText, salt);
-        const episodeDay = Math.max(1, Math.floor(episode.dropsAt / 86400000));
-        const txHash = await commitGuessOnChain(wallet.address, episodeDay, _guessText, salt);
-        commit.finishCommit(txHash);
-        if (!txHash) {
-          setStatus("Could not commit guess on-chain. Check your wallet connection and try again.");
-          return;
+      // On-chain guess: use Inco encrypted guess if available, else commit-reveal
+      if (episode.competitiveMode && wallet.address) {
+        if (incoGuess.isAvailable) {
+          // Inco Lightning: single encrypted tx on Base Sepolia
+          if (incoGuess.state.hasSubmitted) return; // prevent double-submit
+          const submitted = await incoGuess.submitEncrypted(wallet.address, _figureId);
+          if (!submitted) {
+            setStatus("Could not submit encrypted guess. Check your wallet and try again.");
+            return;
+          }
+        } else if (!commit.hasCommitted) {
+          // Legacy: commit-reveal on Mantle Sepolia
+          const salt = generateGuessSalt();
+          commit.beginCommit(_guessText, salt);
+          const episodeDay = Math.max(1, Math.floor(episode.dropsAt / 86400000));
+          const txHash = await commitGuessOnChain(wallet.address, episodeDay, _guessText, salt);
+          commit.finishCommit(txHash);
+          if (!txHash) {
+            setStatus("Could not commit guess on-chain. Check your wallet connection and try again.");
+            return;
+          }
         }
       }
 
@@ -288,6 +308,8 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
           memoriesViewed: activeRun.memoriesViewed,
           hotspotsOpened,
           commitState: commit.commitState?.hasCommitted ? commit.commitState : null,
+          // Inco tx hash (when encrypted guess was used instead of commit-reveal)
+          incoTxHash: incoGuess.state.hasSubmitted ? incoGuess.state.txHash : null,
         });
         return;
       }
@@ -327,6 +349,7 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
       wallet.address, commit, commitGuessOnChain, submitGuessMutation,
       recordSolve, saveLastSolve, memoriesViewed, hotspotsOpened, formatScore, onSolveOnchain,
       gameSounds, hasMoreMemories, toast, reveal, onCoachOffer, onWrongGuessRedirect,
+      incoGuess,
     ],
   );
 
@@ -337,6 +360,8 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
     status,
     setStatus,
     commitState: commit.commitState,
+    incoGuessState: incoGuess.state,
+    incoAvailable: incoGuess.isAvailable,
     activeHint,
     revealDismissed: reveal.revealDismissed,
     setRevealDismissed: reveal.setRevealDismissed,

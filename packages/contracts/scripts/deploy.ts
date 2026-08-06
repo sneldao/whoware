@@ -20,6 +20,14 @@ async function main() {
   const guess = await hre.viem.deployContract("WhoWareGuess", []);
   console.log(`WhoWareGuess deployed to: ${guess.address}`);
 
+  // Deploy WhoWareConfidentialGuess (Inco Lightning — encrypted guesses on Base)
+  try {
+    const confidentialGuess = await hre.viem.deployContract("WhoWareConfidentialGuess", []);
+    console.log(`WhoWareConfidentialGuess deployed to: ${confidentialGuess.address}`);
+  } catch (err) {
+    console.log(`WhoWareConfidentialGuess: skipped (requires Inco covalidator on this network) — ${err}`);
+  }
+
   console.log("\n--- Deployment Summary ---");
   console.log(`WhoWareScore: ${score.address}`);
   console.log(`WhoWareStreak: ${streak.address}`);

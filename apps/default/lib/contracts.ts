@@ -25,6 +25,17 @@ export const MANTLE_SEPOLIA_ORACLE: Address =
 export const POLYGON_AMOY_PAYWALL_TREASURY: Address =
   "0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a";
 
+/**
+ * Inco Lightning — WhoWareConfidentialGuess on Base Sepolia.
+ *
+ * Deployed address will be set after running `deploy:base-sepolia`.
+ * Until then, the Inco flow is disabled (the hook checks this address).
+ */
+export const BASE_SEPOLIA_INCO_GUESS_CONTRACT: Address =
+  "0x0000000000000000000000000000000000000000";
+
+export const BASE_SEPOLIA_CHAIN_ID = 84532;
+
 export const CONTRACTS = {
   mantleSepolia: {
     score: MANTLE_SEPOLIA_SCORE_CONTRACT,
@@ -34,5 +45,8 @@ export const CONTRACTS = {
   },
   polygonAmoy: {
     paywallTreasury: POLYGON_AMOY_PAYWALL_TREASURY,
+  },
+  baseSepolia: {
+    incoGuess: BASE_SEPOLIA_INCO_GUESS_CONTRACT,
   },
 } as const;
