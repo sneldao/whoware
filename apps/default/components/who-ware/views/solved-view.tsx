@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
+import { FigureRevealCard } from "@/components/who-ware/figure-reveal-card";
 import { OnChainBadge } from "@/components/who-ware/on-chain-badge";
 import { ResultShareCard } from "@/components/who-ware/result-share-card";
 import { SmartAccountBadge } from "@/components/who-ware/smart-account-badge";
@@ -10,11 +11,12 @@ import styles from "@/app/index.styles";
 export type { SolvedViewProps } from "./props";
 
 /**
- * The post-solve view: result share card, on-chain badge row, smart-account
- * badge, and the next-actions row. Shown after the player solves the episode.
+ * The post-solve view: figure reveal card, result share card, on-chain badge
+ * row, smart-account badge, and the next-actions row. Shown after the player
+ * solves the episode.
  */
 export function SolvedView(props: SolvedViewProps) {
-  const { result, onchain, nextActions } = props;
+  const { result, onchain, figureReveal, nextActions } = props;
   const {
     isSmartAccountUpgraded, delegationTxHash, isDelegating,
     mintTxHash, isMinting, streakTxHash, isStreakUpdating,
@@ -23,6 +25,13 @@ export function SolvedView(props: SolvedViewProps) {
 
   return (
     <>
+      <FigureRevealCard
+        episodeId={figureReveal.episodeId}
+        figureName={figureReveal.figureName}
+        figureEra={figureReveal.figureEra}
+        figureRegion={figureReveal.figureRegion}
+        figureTags={figureReveal.figureTags}
+      />
       <ResultShareCard
         episodeNumber={result.episodeNumber}
         memoriesViewed={result.memoriesViewed}

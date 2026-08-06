@@ -339,3 +339,168 @@ export const getVeniceWeeklyStats = query({
     return { days, maxDaily, weeklyEpisodes, weeklyHints, weeklyImages };
   },
 });
+
+
+/* ── Figure bio (post-solve reveal) ──────────────────────────────── */
+
+const FIGURE_BIO_PROMPT = `You are a historian writing for WhoWare, a daily history guessing game.
+The player has just solved (or exhausted) today's episode and discovered the historical figure.
+Write a compelling biographical reveal card that pays off the mystery.
+
+You will receive: canonical name, era, region, tags, and the scene locations from the episode.
+
+Return a JSON object with these exact fields:
+{
+  "summary": "2-3 sentence who-they-were summary. Plain language, no fluff.",
+  "whatTheyChanged": "1-2 sentences on their lasting impact. What did they change about the world?",
+  "whyThisRoom": "1-2 sentences connecting the figure to the scene locations. Why were they in these rooms?",
+  "didYouKnow": "One surprising, lesser-known fact. Concrete, not vague."
+}
+
+Rules:
+- Be accurate and specific. Use real dates, real achievements, real places.
+- Be engaging — this is a payoff moment, not a Wikipedia lead.
+- NEVER use the word "intriguing" or "fascinating."
+- Keep each field under 60 words.
+- Return ONLY the JSON, no markdown fences.`;
+
+export const generateFigureBio = action({
+  args: { episodeId: v.id("episodes") },
+  returns: v.union(
+    v.object({
+      summary: v.string(),
+      whatTheyChanged: v.string(),
+      whyThisRoom: v.string(),
+      didYouKnow: v.string(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const cacheKey = `bio:${args.episodeId}`;
+
+    const existing = await ctx.db
+      .query("veniceHints")
+      .withIndex("by_cacheKey", (q) => q.eq("cacheKey", cacheKey))
+      .first();
+
+    if (existing && Date.now() - existing.cachedAt < CACHE_TTL_MS) {
+      try {
+        const parsed = JSON.parse(existing.hint);
+        if (parsed && parsed.summary) return parsed;
+      } catch {
+        // fall through to regeneration
+      }
+    }
+
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode?.figureId) return null;
+    const figure = await ctx.db.get(episode.figureId);
+    if (!figure) return null;
+
+    const sceneLocations = episode.scenes
+      .map((s) => `${s.title} (${s.location})`)
+      .join("; ");
+
+    const apiKey = process.env.VENICE_API_KEY;
+    if (!apiKey) return null;
+
+    const userMessage = [
+      `Name: ${figure.canonicalName}`,
+      `Era: ${figure.era}`,
+      `Region: ${figure.region}`,
+      `Tags: ${figure.tags.join(", ")}`,
+      `Scene locations from the episode: ${sceneLocations}`,
+      "",
+      "Generate the biographical reveal card as JSON.",
+    ].join("\n");
+
+    const response = await fetch(VENICE_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "venice-uncensored",
+        messages: [
+          { role: "system", content: FIGURE_BIO_PROMPT },
+          { role: "user", content: userMessage },
+        ],
+        max_tokens: 500,
+        temperature: 0.6,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Venice bio API error:", response.status, await response.text());
+      return null;
+    }
+
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) return null;
+
+    let parsed: { summary: string; whatTheyChanged: string; whyThisRoom: string; didYouKnow: string } | null = null;
+    try {
+      // Strip markdown fences if present
+      const jsonStr = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      console.error("Venice bio: failed to parse response", raw.slice(0, 200));
+      return null;
+    }
+
+    if (!parsed || !parsed.summary) return null;
+
+    const bio = {
+      summary: String(parsed.summary).slice(0, 500),
+      whatTheyChanged: String(parsed.whatTheyChanged ?? "").slice(0, 500),
+      whyThisRoom: String(parsed.whyThisRoom ?? "").slice(0, 500),
+      didYouKnow: String(parsed.didYouKnow ?? "").slice(0, 500),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { hint: JSON.stringify(bio), cachedAt: Date.now() });
+    } else {
+      await ctx.db.insert("veniceHints", {
+        cacheKey,
+        hint: JSON.stringify(bio),
+        cachedAt: Date.now(),
+      });
+    }
+
+    return bio;
+  },
+});
+
+export const getFigureBio = query({
+  args: { episodeId: v.id("episodes") },
+  returns: v.union(
+    v.object({
+      summary: v.string(),
+      whatTheyChanged: v.string(),
+      whyThisRoom: v.string(),
+      didYouKnow: v.string(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const cacheKey = `bio:${args.episodeId}`;
+    const existing = await ctx.db
+      .query("veniceHints")
+      .withIndex("by_cacheKey", (q) => q.eq("cacheKey", cacheKey))
+      .first();
+    if (!existing) return null;
+    if (Date.now() - existing.cachedAt >= CACHE_TTL_MS) return null;
+    try {
+      const parsed = JSON.parse(existing.hint);
+      if (parsed && parsed.summary) return parsed;
+    } catch {
+      return null;
+    }
+    return null;
+  },
+});
+

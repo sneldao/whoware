@@ -1,6 +1,15 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { clampInteger, computeScore, MAX_GUESSES_PER_RUN } from "./scoring";
+import { clampInteger, computeProximity, computeScore, MAX_GUESSES_PER_RUN, proximityMessage } from "./scoring";
+
+const guessProximity = v.union(
+  v.literal("correct"),
+  v.literal("same_era"),
+  v.literal("same_region"),
+  v.literal("same_era_and_region"),
+  v.literal("same_century"),
+  v.literal("off"),
+);
 
 const runStatus = v.union(v.literal("active"), v.literal("solved"), v.literal("exhausted"));
 
@@ -185,6 +194,9 @@ export const submitGuess = mutation({
   returns: v.object({
     isCorrect: v.boolean(),
     answer: v.optional(v.string()),
+    guessedFigureName: v.string(),
+    proximity: guessProximity,
+    proximityMessage: v.string(),
     score: v.optional(v.number()),
     elapsedMs: v.number(),
     guessesUsed: v.number(),
@@ -215,6 +227,18 @@ export const submitGuess = mutation({
       : correctFigure
         ? guessedFigure.canonicalName.toLowerCase() === correctFigure.canonicalName.toLowerCase()
         : false;
+
+    // Compute guess proximity for feedback tiers
+    let proximity: "correct" | "same_era" | "same_region" | "same_era_and_region" | "same_century" | "off" = "off";
+    if (correctFigure) {
+      proximity = isCorrect
+        ? "correct"
+        : computeProximity({
+            guessed: { era: guessedFigure.era, region: guessedFigure.region, tags: guessedFigure.tags },
+            correct: { era: correctFigure.era, region: correctFigure.region, tags: correctFigure.tags },
+          });
+    }
+    const proximityMsg = proximityMessage(proximity, guessedFigure.canonicalName);
 
     let finalStatus: "active" | "solved" | "exhausted" = run.status;
     let score: number | undefined;
@@ -267,6 +291,9 @@ export const submitGuess = mutation({
     return {
       isCorrect,
       answer: isCorrect && correctFigure ? correctFigure.canonicalName : undefined,
+      guessedFigureName: guessedFigure.canonicalName,
+      proximity,
+      proximityMessage: proximityMsg,
       score,
       elapsedMs,
       guessesUsed,

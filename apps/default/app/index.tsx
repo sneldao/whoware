@@ -616,6 +616,13 @@ export default function Index() {
                 onShowMintTooltip: () => session.tooltip.show("mint"),
                 onShowStreakTooltip: () => session.tooltip.show("streak"),
               }}
+              figureReveal={{
+                episodeId: session.episode._id,
+                figureName: guessing.solvedFigure?.name ?? "",
+                figureEra: revealFigureRecord?.era,
+                figureRegion: revealFigureRecord?.region,
+                figureTags: revealFigureRecord?.tags,
+              }}
               nextActions={{
                 onShowHistory: () => {
                   setLoadHistory(true);
@@ -629,6 +636,11 @@ export default function Index() {
         )}
         {isExhausted && (
           <ExhaustedView
+            episodeId={session.episode._id}
+            figureName={guessing.solvedFigure?.name ?? ""}
+            figureEra={revealFigureRecord?.era}
+            figureRegion={revealFigureRecord?.region}
+            figureTags={revealFigureRecord?.tags}
             onLearnMoreArchive={() => router.push("/archive")}
             onTomorrow={scrollToCountdown}
           />

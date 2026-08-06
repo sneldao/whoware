@@ -257,6 +257,51 @@ describe("runs lifecycle", () => {
     expect(stored?.guessesUsed).toBe(5);
   });
 
+  test("submitGuess returns proximity feedback on wrong guesses", async () => {
+    const t = setup();
+    const episodeId = await seedEpisode(t);
+    // Churchill is the correct figure (era: "20th century", region: "Britain")
+    const churchill = await t.query(api.figures.search, { query: "Churchill" }).then((rows) => rows[0]);
+    // Einstein: era "20th century", region "Germany / USA" — same era, different region
+    const einstein = await t.query(api.figures.search, { query: "Einstein" }).then((rows) => rows[0]);
+    // Tesla: era "19th–20th century", region "Serbia / USA" — different era, different region
+    const tesla = await t.query(api.figures.search, { query: "Tesla" }).then((rows) => rows[0]);
+
+    const run = await t.mutation(api.runs.startRun, {
+      episodeId,
+      identityId: "player-prox",
+      playerName: "Prox",
+    });
+    await t.mutation(api.runs.enterScene, { runId: run._id, sceneIndex: 0 });
+
+    // Einstein: same era (20th century), different region → "same_era"
+    const einsteinResult = await t.mutation(api.runs.submitGuess, {
+      runId: run._id,
+      figureId: einstein._id,
+    });
+    expect(einsteinResult.isCorrect).toBe(false);
+    expect(einsteinResult.proximity).toBe("same_era");
+    expect(einsteinResult.guessedFigureName).toBe("Albert Einstein");
+    expect(einsteinResult.proximityMessage).toContain("Albert Einstein");
+
+    // Tesla: different era, different region → "off" or "same_century" depending on century overlap
+    const teslaResult = await t.mutation(api.runs.submitGuess, {
+      runId: run._id,
+      figureId: tesla._id,
+    });
+    expect(teslaResult.isCorrect).toBe(false);
+    expect(teslaResult.proximity).not.toBe("correct");
+    expect(teslaResult.guessedFigureName).toBe("Nikola Tesla");
+
+    // Churchill: correct
+    const churchillResult = await t.mutation(api.runs.submitGuess, {
+      runId: run._id,
+      figureId: churchill._id,
+    });
+    expect(churchillResult.isCorrect).toBe(true);
+    expect(churchillResult.proximity).toBe("correct");
+  });
+
   test("submitGuess enforces the five-guess cap even if the client tries to keep going", async () => {
     const t = setup();
     const episodeId = await seedEpisode(t);

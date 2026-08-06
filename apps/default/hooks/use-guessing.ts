@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { MAX_GUESSES_PER_RUN, HOTSPOT_PENALTY, GUESS_PENALTY } from "@/convex/scoring";
+import { MAX_GUESSES_PER_RUN, HOTSPOT_PENALTY } from "@/convex/scoring";
 import { FigureOption } from "@/components/who-ware/guess-panel";
 import { useVeniceHint } from "@/hooks/use-venice-hint";
 import { useGameToast } from "@/hooks/use-game-toast";
@@ -291,9 +291,11 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         return;
       }
 
+      // Wrong guess — use proximity feedback tier instead of generic penalty text
+      const isClose = result.proximity === "same_era" || result.proximity === "same_region" || result.proximity === "same_era_and_region" || result.proximity === "same_century";
       toast.show(
-        `−${GUESS_PENALTY.toLocaleString()} pts · ${result.guessesRemaining} guess${result.guessesRemaining !== 1 ? "es" : ""} left`,
-        "error",
+        result.proximityMessage,
+        isClose ? "warning" : "error",
       );
       onCoachOffer?.("wrongGuess");
       gameSounds.playWrongGuess();
@@ -307,17 +309,17 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
       }
 
       if (!hasEnteredMemory) {
-        setStatus("That name does not fit yet. Open the first memory or spend another unassisted guess.");
+        setStatus(`${result.proximityMessage} Open the first memory or spend another unassisted guess.`);
         return;
       }
 
       if (hasMoreMemories()) {
         onWrongGuessRedirect?.();
-        setStatus("That name does not fit. Another memory might help.");
+        setStatus(`${result.proximityMessage} Another memory might help.`);
         return;
       }
 
-      setStatus("That name does not fit. You have reached the last memory.");
+      setStatus(result.proximityMessage);
     },
     [
       episode, run?.status, guessesLeft, identity.identityId, ensureRun, hasEnteredMemory,

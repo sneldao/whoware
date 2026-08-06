@@ -148,6 +148,13 @@ export interface OnchainBadges {
 export interface SolvedViewProps {
   result: ResultShareData;
   onchain: OnchainBadges;
+  figureReveal: {
+    episodeId: string;
+    figureName: string;
+    figureEra?: string;
+    figureRegion?: string;
+    figureTags?: string[];
+  };
   nextActions: {
     onShowHistory: () => void;
     onShare: () => void;
