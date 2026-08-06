@@ -4,6 +4,7 @@
 
 > **Live demo:** https://whoware-lhlw4wcza-snel.vercel.app
 > **3D roadmap:** see [`3D-PLAN.md`](./3D-PLAN.md)
+> **On-chain vision:** see [`ONCHAIN-VISION.md`](./ONCHAIN-VISION.md)
 > **Treasury wallet:** see [`TREASURY.md`](./TREASURY.md)
 
 WhoWare is a daily history guessing game where you step into a 3D memory scene, walk through it, inspect props for clues, and identify the historical figure before your guesses run out. Think Wordle meets an explorable history museum.

@@ -1,4 +1,5 @@
-import { action, query } from "./_generated/server";
+import { action, internalQuery, internalMutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 const VENICE_API_URL = "https://api.venice.ai/api/v1/chat/completions";
@@ -39,6 +40,79 @@ export const getEpisodeFigure = query({
   },
 });
 
+/* ── Internal helpers for actions (actions can't use ctx.db) ────── */
+
+export const getCachedHint = internalQuery({
+  args: { cacheKey: v.string() },
+  returns: v.union(
+    v.object({ _id: v.id("veniceHints"), hint: v.string(), cachedAt: v.number() }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("veniceHints")
+      .withIndex("by_cacheKey", (q) => q.eq("cacheKey", args.cacheKey))
+      .first();
+    if (!existing) return null;
+    return { _id: existing._id, hint: existing.hint, cachedAt: existing.cachedAt };
+  },
+});
+
+export const getEpisodeFigureInternal = internalQuery({
+  args: { episodeId: v.id("episodes") },
+  returns: v.union(
+    v.object({
+      canonicalName: v.string(),
+      era: v.string(),
+      region: v.string(),
+      tier: v.string(),
+      tags: v.array(v.string()),
+      aliases: v.array(v.string()),
+      sceneLocations: v.string(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const episode = await ctx.db.get(args.episodeId);
+    if (!episode?.figureId) return null;
+    const figure = await ctx.db.get(episode.figureId);
+    if (!figure) return null;
+    const sceneLocations = episode.scenes
+      .map((s) => `${s.title} (${s.location})`)
+      .join("; ");
+    return {
+      canonicalName: figure.canonicalName,
+      era: figure.era,
+      region: figure.region,
+      tier: figure.tier,
+      tags: figure.tags,
+      aliases: figure.aliases,
+      sceneLocations,
+    };
+  },
+});
+
+export const upsertHint = internalMutation({
+  args: {
+    cacheKey: v.string(),
+    hint: v.string(),
+    existingId: v.optional(v.id("veniceHints")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    if (args.existingId) {
+      await ctx.db.patch(args.existingId, { hint: args.hint, cachedAt: Date.now() });
+    } else {
+      await ctx.db.insert("veniceHints", {
+        cacheKey: args.cacheKey,
+        hint: args.hint,
+        cachedAt: Date.now(),
+      });
+    }
+    return null;
+  },
+});
+
 export const generateHint = action({
   args: {
     sceneAmbientText: v.string(),
@@ -58,10 +132,7 @@ Rules:
 - Reference era, location, and contextual details that narrow the identity
 - Sound like a whispered memory, not a Wikipedia article`;
 
-    const existing = await ctx.db
-      .query("veniceHints")
-      .withIndex("by_cacheKey", (q) => q.eq("cacheKey", cacheKey))
-      .first();
+    const existing = await ctx.runQuery(internal.venice.getCachedHint, { cacheKey });
 
     if (existing && Date.now() - existing.cachedAt < CACHE_TTL_MS) {
       return existing.hint;
@@ -105,15 +176,11 @@ Rules:
       return "The memory yields nothing yet.";
     }
 
-    if (existing) {
-      await ctx.db.patch(existing._id, { hint, cachedAt: Date.now() });
-    } else {
-      await ctx.db.insert("veniceHints", {
-        cacheKey,
-        hint,
-        cachedAt: Date.now(),
-      });
-    }
+    await ctx.runMutation(internal.venice.upsertHint, {
+      cacheKey,
+      hint,
+      existingId: existing?._id,
+    });
 
     return hint;
   },
@@ -125,20 +192,13 @@ export const generateIdentityHint = action({
   handler: async (ctx, args) => {
     const cacheKey = `identity:${args.episodeId}`;
 
-    const existing = await ctx.db
-      .query("veniceHints")
-      .withIndex("by_cacheKey", (q) => q.eq("cacheKey", cacheKey))
-      .first();
+    const existing = await ctx.runQuery(internal.venice.getCachedHint, { cacheKey });
 
     if (existing && Date.now() - existing.cachedAt < CACHE_TTL_MS) {
       return existing.hint;
     }
 
-    const episode = await ctx.db.get(args.episodeId);
-    if (!episode?.figureId) {
-      return "The identity is still hidden.";
-    }
-    const figure = await ctx.db.get(episode.figureId);
+    const figure = await ctx.runQuery(internal.venice.getEpisodeFigureInternal, { episodeId: args.episodeId });
     if (!figure) {
       return "The identity is still hidden.";
     }
@@ -194,15 +254,11 @@ export const generateIdentityHint = action({
       ? "The memory whispers in riddles."
       : rawHint;
 
-    if (existing) {
-      await ctx.db.patch(existing._id, { hint, cachedAt: Date.now() });
-    } else {
-      await ctx.db.insert("veniceHints", {
-        cacheKey,
-        hint,
-        cachedAt: Date.now(),
-      });
-    }
+    await ctx.runMutation(internal.venice.upsertHint, {
+      cacheKey,
+      hint,
+      existingId: existing?._id,
+    });
 
     return hint;
   },
@@ -378,10 +434,7 @@ export const generateFigureBio = action({
   handler: async (ctx, args) => {
     const cacheKey = `bio:${args.episodeId}`;
 
-    const existing = await ctx.db
-      .query("veniceHints")
-      .withIndex("by_cacheKey", (q) => q.eq("cacheKey", cacheKey))
-      .first();
+    const existing = await ctx.runQuery(internal.venice.getCachedHint, { cacheKey });
 
     if (existing && Date.now() - existing.cachedAt < CACHE_TTL_MS) {
       try {
@@ -392,14 +445,8 @@ export const generateFigureBio = action({
       }
     }
 
-    const episode = await ctx.db.get(args.episodeId);
-    if (!episode?.figureId) return null;
-    const figure = await ctx.db.get(episode.figureId);
+    const figure = await ctx.runQuery(internal.venice.getEpisodeFigureInternal, { episodeId: args.episodeId });
     if (!figure) return null;
-
-    const sceneLocations = episode.scenes
-      .map((s) => `${s.title} (${s.location})`)
-      .join("; ");
 
     const apiKey = process.env.VENICE_API_KEY;
     if (!apiKey) return null;
@@ -409,7 +456,7 @@ export const generateFigureBio = action({
       `Era: ${figure.era}`,
       `Region: ${figure.region}`,
       `Tags: ${figure.tags.join(", ")}`,
-      `Scene locations from the episode: ${sceneLocations}`,
+      `Scene locations from the episode: ${figure.sceneLocations}`,
       "",
       "Generate the biographical reveal card as JSON.",
     ].join("\n");
@@ -461,15 +508,11 @@ export const generateFigureBio = action({
       didYouKnow: String(parsed.didYouKnow ?? "").slice(0, 500),
     };
 
-    if (existing) {
-      await ctx.db.patch(existing._id, { hint: JSON.stringify(bio), cachedAt: Date.now() });
-    } else {
-      await ctx.db.insert("veniceHints", {
-        cacheKey,
-        hint: JSON.stringify(bio),
-        cachedAt: Date.now(),
-      });
-    }
+    await ctx.runMutation(internal.venice.upsertHint, {
+      cacheKey,
+      hint: JSON.stringify(bio),
+      existingId: existing?._id,
+    });
 
     return bio;
   },
