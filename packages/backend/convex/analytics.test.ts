@@ -329,3 +329,76 @@ describe("analytics.getTodaysRoomStats", () => {
     expect(stats!.difficulty).toBe("iconic");
   });
 });
+
+describe("analytics.getWeeklyRecap", () => {
+  test("returns empty recap when no closed episodes exist", async () => {
+    const t = setup();
+    const recap = await t.query(api.analytics.getWeeklyRecap, {});
+    expect(recap.figures).toHaveLength(0);
+    expect(recap.totalSolved).toBe(0);
+    expect(recap.totalAttempted).toBe(0);
+  });
+
+  test("returns weekly figures with player solve status", async () => {
+    const t = setup();
+    await t.mutation(api.figures.seedCatalog, {});
+    const churchill = await t.query(api.figures.search, { query: "Churchill" }).then((r) => r[0]);
+    const einstein = await t.query(api.figures.search, { query: "Einstein" }).then((r) => r[0]);
+
+    await t.run(async (ctx) => {
+      // Episode 1 — solved by player
+      const ep1 = await ctx.db.insert("episodes", {
+        slug: "ep1",
+        figureId: churchill._id,
+        figureName: churchill.canonicalName,
+        activeAt: Date.now() - 2 * 86_400_000,
+        dropsAt: Date.now() - 2 * 86_400_000,
+        closesAt: Date.now() - 86_400_000,
+        status: "closed",
+        difficulty: "iconic",
+        scenes: [],
+      });
+      await ctx.db.insert("playerRuns", {
+        episodeId: ep1,
+        identityId: "player-x",
+        playerName: "Player X",
+        status: "solved",
+        startedAt: Date.now() - 2 * 86_400_000,
+        solvedAt: Date.now() - 2 * 86_400_000 + 60000,
+        currentSceneIndex: 1,
+        memoriesViewed: 2,
+        hotspotsOpened: 1,
+        guessesUsed: 1,
+        score: 8500,
+      });
+
+      // Episode 2 — not solved by player
+      await ctx.db.insert("episodes", {
+        slug: "ep2",
+        figureId: einstein._id,
+        figureName: einstein.canonicalName,
+        activeAt: Date.now() - 86_400_000,
+        dropsAt: Date.now() - 86_400_000,
+        closesAt: Date.now() - 3_600_000,
+        status: "closed",
+        difficulty: "iconic",
+        scenes: [],
+      });
+    });
+
+    const recap = await t.query(api.analytics.getWeeklyRecap, { identityId: "player-x" });
+    expect(recap.figures).toHaveLength(2);
+    expect(recap.totalAttempted).toBe(2);
+    expect(recap.totalSolved).toBe(1);
+    expect(recap.bestScore).toBe(8500);
+
+    const churchillFig = recap.figures.find((f) => f.figureName === "Winston Churchill");
+    expect(churchillFig).toBeDefined();
+    expect(churchillFig!.playerSolved).toBe(true);
+    expect(churchillFig!.playerScore).toBe(8500);
+
+    const einsteinFig = recap.figures.find((f) => f.figureName === "Albert Einstein");
+    expect(einsteinFig).toBeDefined();
+    expect(einsteinFig!.playerSolved).toBe(false);
+  });
+});

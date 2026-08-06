@@ -404,3 +404,118 @@ export const getTodaysRoomStats = query({
     };
   },
 });
+
+/* ── Weekly recap ────────────────────────────────────────────────── */
+
+const weeklyRecapFigureShape = v.object({
+  episodeId: v.id("episodes"),
+  slug: v.string(),
+  figureName: v.string(),
+  era: v.string(),
+  region: v.string(),
+  tags: v.array(v.string()),
+  difficulty: v.string(),
+  activeAt: v.number(),
+  playerSolved: v.boolean(),
+  playerScore: v.optional(v.number()),
+});
+
+const weeklyRecapShape = v.object({
+  figures: v.array(weeklyRecapFigureShape),
+  totalSolved: v.number(),
+  totalAttempted: v.number(),
+  bestScore: v.optional(v.number()),
+  currentStreak: v.number(),
+});
+
+/**
+ * Returns the past 7 days of episodes with the player's solve status.
+ * Used by the weekly recap screen to show a summary + quiz of the
+ * week's figures.
+ */
+export const getWeeklyRecap = query({
+  args: { identityId: v.optional(v.string()) },
+  returns: weeklyRecapShape,
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const weekAgo = now - 7 * 86_400_000;
+
+    const recentEpisodes = await ctx.db
+      .query("episodes")
+      .withIndex("by_status_and_dropsAt", (q) => q.eq("status", "closed"))
+      .filter((q) => q.gte(q.field("closesAt") ?? q.field("activeAt"), weekAgo))
+      .take(20);
+
+    const identityId = args.identityId?.trim();
+
+    let playerRuns: Array<{ episodeId: any; status: string; score?: number }> = [];
+    if (identityId) {
+      const allRuns = await ctx.db
+        .query("playerRuns")
+        .withIndex("by_identityId_and_startedAt", (q) => q.eq("identityId", identityId))
+        .take(50);
+      playerRuns = allRuns.map((r) => ({
+        episodeId: r.episodeId,
+        status: r.status,
+        score: r.score,
+      }));
+    }
+
+    const figures: Array<{
+      episodeId: any;
+      slug: string;
+      figureName: string;
+      era: string;
+      region: string;
+      tags: string[];
+      difficulty: string;
+      activeAt: number;
+      playerSolved: boolean;
+      playerScore?: number;
+    }> = [];
+
+    for (const ep of recentEpisodes) {
+      const figure = ep.figureId ? await ctx.db.get(ep.figureId) : null;
+      const playerRun = playerRuns.find((r) => r.episodeId === ep._id);
+
+      figures.push({
+        episodeId: ep._id,
+        slug: ep.slug,
+        figureName: figure?.canonicalName ?? ep.figureName ?? "Unknown",
+        era: figure?.era ?? "",
+        region: figure?.region ?? "",
+        tags: figure?.tags ?? [],
+        difficulty: ep.difficulty,
+        activeAt: ep.activeAt,
+        playerSolved: playerRun?.status === "solved",
+        playerScore: playerRun?.score,
+      });
+    }
+
+    // Sort by activeAt descending (most recent first)
+    figures.sort((a, b) => b.activeAt - a.activeAt);
+
+    const totalSolved = figures.filter((f) => f.playerSolved).length;
+    const totalAttempted = figures.length;
+    const scores = figures.filter((f) => f.playerScore).map((f) => f.playerScore!);
+    const bestScore = scores.length > 0 ? Math.max(...scores) : undefined;
+
+    // Current streak is approximate — based on consecutive solved days
+    let currentStreak = 0;
+    for (const f of figures) {
+      if (f.playerSolved) {
+        currentStreak++;
+      } else if (f.activeAt < now - 86_400_000) {
+        break;
+      }
+    }
+
+    return {
+      figures: figures.slice(0, 7),
+      totalSolved,
+      totalAttempted,
+      bestScore,
+      currentStreak,
+    };
+  },
+});
