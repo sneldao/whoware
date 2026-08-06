@@ -15,6 +15,7 @@ import Animated, {
 import { ClueDetailPanel } from "@/components/who-ware/clue-detail-panel";
 import { MemoryMediaStrip } from "@/components/who-ware/memory-media-strip";
 import { getSceneImageSource } from "@/components/who-ware/scene-media";
+import { useGyroscopeParallax } from "@/hooks/use-gyroscope-parallax";
 
 export interface Clue {
   label: string;
@@ -126,6 +127,9 @@ export function PanoramaScene({
   const parallaxGlowRightStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: parallaxX.value * -6 }, { translateY: parallaxY.value * -4 }],
   }));
+
+  // Gyroscope tilt-to-look on native (complements drag on both platforms)
+  useGyroscopeParallax(parallaxX, parallaxY, fill);
 
   // Pan responder for parallax depth — drag on the panorama shifts layers
   const panResponder = useRef(
