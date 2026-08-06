@@ -1,7 +1,7 @@
 {
   "buildCommand": "cd apps/default && npx expo export --platform web",
   "outputDirectory": "apps/default/dist",
-  "installCommand": "npm install --legacy-peer-deps",
+  "installCommand": "bun install --no-optional",
   "framework": null,
   "rewrites": [
     { "source": "/api/:path*", "destination": "https://cheery-elk-110.convex.site/api/:path*" }
