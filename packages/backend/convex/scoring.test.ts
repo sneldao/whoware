@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { computeProximity, proximityMessage } from "./scoring";
+import { computeProximity, computeScore, proximityMessage } from "./scoring";
 
 describe("computeProximity", () => {
   test("returns 'same_era_and_region' when guessed and correct are the same figure (identical data)", () => {
@@ -89,5 +89,36 @@ describe("proximityMessage", () => {
 
   test("off mentions 'not the one'", () => {
     expect(proximityMessage("off", "Tesla")).toContain("not the one");
+  });
+});
+
+describe("computeScore", () => {
+  test("deducts hintsUsed from the final score", () => {
+    const base = computeScore({
+      memoriesViewed: 2,
+      hotspotsOpened: 3,
+      hintsUsed: 0,
+      guessesUsed: 1,
+      elapsedMs: 0,
+    });
+    const withHints = computeScore({
+      memoriesViewed: 2,
+      hotspotsOpened: 3,
+      hintsUsed: 1,
+      guessesUsed: 1,
+      elapsedMs: 0,
+    });
+    expect(base - withHints).toBe(150);
+  });
+
+  test("clamps to zero", () => {
+    const score = computeScore({
+      memoriesViewed: 5,
+      hotspotsOpened: 20,
+      hintsUsed: 10,
+      guessesUsed: 1,
+      elapsedMs: 0,
+    });
+    expect(score).toBe(0);
   });
 });

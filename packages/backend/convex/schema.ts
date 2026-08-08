@@ -85,6 +85,7 @@ export default defineSchema({
     currentSceneIndex: v.number(),
     memoriesViewed: v.number(),
     hotspotsOpened: v.number(),
+    hintsUsed: v.optional(v.number()),
     guessesUsed: v.number(),
     score: v.optional(v.number()),
     walletAddress: v.optional(v.string()),

@@ -26,6 +26,9 @@ const runPublicShape = v.object({
   currentSceneIndex: v.number(),
   memoriesViewed: v.number(),
   hotspotsOpened: v.number(),
+  // Optional until the backfillHintsUsed migration has run on production —
+  // legacy rows lack the field and would fail return validation otherwise.
+  hintsUsed: v.optional(v.number()),
   guessesUsed: v.number(),
   score: v.optional(v.number()),
 });
@@ -89,6 +92,7 @@ export const startRun = mutation({
       currentSceneIndex: 0,
       memoriesViewed: 0,
       hotspotsOpened: 0,
+      hintsUsed: 0,
       guessesUsed: 0,
     });
 
@@ -184,6 +188,26 @@ export const openHotspot = mutation({
   },
 });
 
+export const useHint = mutation({
+  args: {
+    runId: v.id("playerRuns"),
+    /** How many hint units to charge. Identity nudges cost 2; scene whispers cost 1. */
+    count: v.optional(v.number()),
+  },
+  returns: v.object({ hintsUsed: v.number() }),
+  handler: async (ctx, args) => {
+    const run = await ctx.db.get(args.runId);
+    if (!run) throw new Error("Run not found");
+    if (run.status !== "active") {
+      throw new Error("Run is already resolved or exhausted");
+    }
+    const count = clampInteger(args.count ?? 1, 1, 10);
+    const hintsUsed = (run.hintsUsed ?? 0) + count;
+    await ctx.db.patch(args.runId, { hintsUsed });
+    return { hintsUsed };
+  },
+});
+
 export const submitGuess = mutation({
   args: {
     runId: v.id("playerRuns"),
@@ -249,6 +273,7 @@ export const submitGuess = mutation({
       score = computeScore({
         memoriesViewed: run.memoriesViewed,
         hotspotsOpened: run.hotspotsOpened,
+        hintsUsed: run.hintsUsed ?? 0,
         guessesUsed,
         elapsedMs,
       });
@@ -326,6 +351,7 @@ export const getPlayerHistory = query({
       score: v.optional(v.number()),
       memoriesViewed: v.number(),
       hotspotsOpened: v.number(),
+      hintsUsed: v.number(),
       guessesUsed: v.number(),
     }),
   ),
@@ -352,6 +378,7 @@ export const getPlayerHistory = query({
           score: run.score,
           memoriesViewed: run.memoriesViewed,
           hotspotsOpened: run.hotspotsOpened,
+          hintsUsed: run.hintsUsed ?? 0,
           guessesUsed: run.guessesUsed,
         };
       }),

@@ -119,11 +119,21 @@ export const generateHint = action({
     clueLabel: v.string(),
     sceneLocation: v.string(),
     sceneEra: v.string(),
+    episodeId: v.optional(v.id("episodes")),
+    tier: v.optional(v.union(v.literal("socratic"), v.literal("era"), v.literal("proximity"))),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
-    const cacheKey = `${args.clueLabel}:${args.sceneLocation}`;
-    const sceneSystemPrompt = `You are a mystery game hint generator for WhoWare, a daily history guessing game.
+    const tier = args.tier ?? "socratic";
+    const cacheKey = `${args.clueLabel}:${args.sceneLocation}:${tier}`;
+
+    // For tier 2/3, fetch figure metadata for era/region proximity
+    let figureMeta: { era: string; region: string } | null = null;
+    if ((tier === "era" || tier === "proximity") && args.episodeId) {
+      figureMeta = await ctx.runQuery(internal.venice.getEpisodeFigureInternal, { episodeId: args.episodeId });
+    }
+
+    const socraticPrompt = `You are a mystery game hint generator for WhoWare, a daily history guessing game.
 Given a historical scene description and a clue label, provide a subtle, atmospheric hint that guides the player toward identifying the historical figure WITHOUT naming them directly.
 Rules:
 - Never name the person or use their full name
@@ -131,6 +141,25 @@ Rules:
 - Keep hints under 2 sentences
 - Reference era, location, and contextual details that narrow the identity
 - Sound like a whispered memory, not a Wikipedia article`;
+
+    const eraPrompt = `You are a mystery game hint generator for WhoWare, a daily history guessing game.
+The player has already received a subtle hint and needs a more direct nudge. Provide a hint about the ERA and REGION of the historical figure WITHOUT naming them.
+Rules:
+- Never name the person or use any alias
+- Explicitly mention the era and region (continent/country) of the figure
+- Keep hints under 2 sentences
+- Be direct but atmospheric — this is a stronger nudge`;
+
+    const proximityPrompt = `You are a mystery game hint generator for WhoWare, a daily history guessing game.
+The player is very stuck and needs a strong proximity hint. Provide a hint that narrows the figure's domain, era, and a notable characteristic WITHOUT naming them.
+Rules:
+- NEVER name the person or use any alias
+- Mention their field/domain (e.g. politics, science, art), their era, and one distinctive trait
+- Keep hints under 2 sentences
+- Be direct — this is the strongest hint tier`;
+
+    const systemPrompt =
+      tier === "era" ? eraPrompt : tier === "proximity" ? proximityPrompt : socraticPrompt;
 
     const existing = await ctx.runQuery(internal.venice.getCachedHint, { cacheKey });
 
@@ -143,7 +172,14 @@ Rules:
       return "The memory is too faint — hints are unavailable right now.";
     }
 
-    const userMessage = `Scene location: ${args.sceneLocation}\nScene era: ${args.sceneEra}\nScene atmosphere: ${args.sceneAmbientText}\nClue the player is inspecting: ${args.clueLabel}\n\nGenerate a subtle hint.`;
+    let userMessage: string;
+    if (tier === "era" && figureMeta) {
+      userMessage = `The figure lived in the ${figureMeta.era} era, in ${figureMeta.region}.\nScene location: ${args.sceneLocation}\nScene era: ${args.sceneEra}\nClue the player is inspecting: ${args.clueLabel}\n\nGenerate a hint about the era and region.`;
+    } else if (tier === "proximity" && figureMeta) {
+      userMessage = `The figure's era: ${figureMeta.era}\nThe figure's region: ${figureMeta.region}\nScene location: ${args.sceneLocation}\nClue the player is inspecting: ${args.clueLabel}\n\nGenerate a proximity hint about their domain, era, and a distinctive trait.`;
+    } else {
+      userMessage = `Scene location: ${args.sceneLocation}\nScene era: ${args.sceneEra}\nScene atmosphere: ${args.sceneAmbientText}\nClue the player is inspecting: ${args.clueLabel}\n\nGenerate a subtle hint.`;
+    }
 
     const response = await fetch(VENICE_API_URL, {
       method: "POST",
@@ -154,7 +190,7 @@ Rules:
       body: JSON.stringify({
         model: "venice-uncensored",
         messages: [
-          { role: "system", content: sceneSystemPrompt },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
         max_tokens: 150,

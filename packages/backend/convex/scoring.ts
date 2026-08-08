@@ -1,6 +1,9 @@
 export const BASE_SCORE = 10_000;
 export const MEMORY_PENALTY = 1200;
 export const HOTSPOT_PENALTY = 250;
+export const HINT_PENALTY = 150;
+/** Identity nudges cost double a scene hint — they narrow the figure directly. */
+export const IDENTITY_HINT_PENALTY = HINT_PENALTY * 2;
 export const GUESS_PENALTY = 600;
 export const TIME_BUCKET_MS = 30_000;
 export const TIME_BUCKET_PENALTY = 5;
@@ -9,6 +12,7 @@ export const MAX_GUESSES_PER_RUN = 5;
 export interface ScoringInput {
   memoriesViewed: number;
   hotspotsOpened: number;
+  hintsUsed: number;
   guessesUsed: number;
   elapsedMs: number;
 }
@@ -19,6 +23,7 @@ export function computeScore(input: ScoringInput): number {
     BASE_SCORE -
     input.memoriesViewed * MEMORY_PENALTY -
     input.hotspotsOpened * HOTSPOT_PENALTY -
+    input.hintsUsed * HINT_PENALTY -
     (input.guessesUsed - 1) * GUESS_PENALTY -
     timePenalty;
   return Math.max(0, raw);

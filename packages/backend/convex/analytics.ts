@@ -287,6 +287,7 @@ const todaysRoomStatsShape = v.object({
   solveRate: v.number(),
   averageMemoriesUsed: v.number(),
   averageGuessesUsed: v.number(),
+  averageHintsUsed: v.number(),
   averageScore: v.number(),
   medianMemoriesUsed: v.number(),
   mostCommonFirstClue: v.optional(v.string()),
@@ -319,6 +320,7 @@ export const getTodaysRoomStats = query({
         solveRate: 0,
         averageMemoriesUsed: 0,
         averageGuessesUsed: 0,
+        averageHintsUsed: 0,
         averageScore: 0,
         medianMemoriesUsed: 0,
         mostCommonFirstClue: undefined,
@@ -338,6 +340,11 @@ export const getTodaysRoomStats = query({
     const guessesUsed = runs.map((r) => r.guessesUsed).filter((g) => g > 0);
     const avgGuesses = guessesUsed.length > 0
       ? Math.round((guessesUsed.reduce((a, b) => a + b, 0) / guessesUsed.length) * 10) / 10
+      : 0;
+
+    const hintsUsed = runs.map((r) => r.hintsUsed ?? 0).filter((h) => h > 0);
+    const avgHints = hintsUsed.length > 0
+      ? Math.round((hintsUsed.reduce((a, b) => a + b, 0) / hintsUsed.length) * 10) / 10
       : 0;
 
     const scores = solved.map((r) => r.score ?? 0).filter((s) => s > 0);
@@ -396,6 +403,7 @@ export const getTodaysRoomStats = query({
       solveRate: Math.round(solveRate * 100),
       averageMemoriesUsed: avgMemories,
       averageGuessesUsed: avgGuesses,
+      averageHintsUsed: avgHints,
       averageScore: avgScore,
       medianMemoriesUsed: medianMemories,
       mostCommonFirstClue,

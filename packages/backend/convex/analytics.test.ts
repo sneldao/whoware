@@ -267,6 +267,7 @@ describe("analytics.getTodaysRoomStats", () => {
     expect(stats!.totalAttempts).toBe(0);
     expect(stats!.totalSolved).toBe(0);
     expect(stats!.solveRate).toBe(0);
+    expect(stats!.averageHintsUsed).toBe(0);
     expect(stats!.averageScore).toBe(0);
   });
 
@@ -326,6 +327,7 @@ describe("analytics.getTodaysRoomStats", () => {
     expect(stats!.totalSolved).toBe(1);
     expect(stats!.solveRate).toBe(50);
     expect(stats!.averageMemoriesUsed).toBeGreaterThan(0);
+    expect(stats!.averageHintsUsed).toBeGreaterThanOrEqual(0);
     expect(stats!.difficulty).toBe("iconic");
   });
 });

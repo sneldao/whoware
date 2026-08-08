@@ -123,6 +123,7 @@ describe("runs lifecycle", () => {
     expect(first.guessesUsed).toBe(0);
     expect(first.memoriesViewed).toBe(0);
     expect(first.hotspotsOpened).toBe(0);
+    expect(first.hintsUsed).toBe(0);
   });
 
   test("enterScene increments memoriesViewed once per unique scene", async () => {
@@ -180,6 +181,25 @@ describe("runs lifecycle", () => {
       hotspotLabel: "Blackout notice",
     });
     expect(differentScene.hotspotsOpened).toBe(3);
+  });
+
+  test("useHint increments hintsUsed and rejects on a resolved run", async () => {
+    const t = setup();
+    const episodeId = await seedEpisode(t);
+    const run = await t.mutation(api.runs.startRun, {
+      episodeId,
+      identityId: "player-hints",
+      playerName: "Hints",
+    });
+
+    const first = await t.mutation(api.runs.useHint, { runId: run._id });
+    expect(first.hintsUsed).toBe(1);
+
+    const repeated = await t.mutation(api.runs.useHint, { runId: run._id });
+    expect(repeated.hintsUsed).toBe(2);
+
+    const stored = await t.query(api.runs.getActiveRun, { episodeId, identityId: "player-hints" });
+    expect(stored?.hintsUsed).toBe(2);
   });
 
   test("submitGuess with correct figureId solves the run and computes a score", async () => {
