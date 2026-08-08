@@ -200,6 +200,7 @@ describe("archive.getRun", () => {
         currentSceneIndex: 0,
         memoriesViewed: 3,
         hotspotsOpened: 2,
+        hintsUsed: 0,
         guessesUsed: 1,
         score: 7500,
       });

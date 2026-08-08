@@ -74,6 +74,7 @@ describe("analytics.getGlobalStats", () => {
         currentSceneIndex: 2,
         memoriesViewed: 2,
         hotspotsOpened: 3,
+        hintsUsed: 0,
         guessesUsed: 1,
         mintTxHash: "0xabc123",
       });
@@ -87,6 +88,7 @@ describe("analytics.getGlobalStats", () => {
         currentSceneIndex: 3,
         memoriesViewed: 3,
         hotspotsOpened: 4,
+        hintsUsed: 0,
         guessesUsed: 2,
       });
     });
@@ -296,6 +298,7 @@ describe("analytics.getTodaysRoomStats", () => {
         currentSceneIndex: 1,
         memoriesViewed: 2,
         hotspotsOpened: 1,
+        hintsUsed: 0,
         guessesUsed: 1,
         score: 8800,
       });
@@ -309,6 +312,7 @@ describe("analytics.getTodaysRoomStats", () => {
         currentSceneIndex: 4,
         memoriesViewed: 5,
         hotspotsOpened: 3,
+        hintsUsed: 0,
         guessesUsed: 5,
       });
 
@@ -370,6 +374,7 @@ describe("analytics.getWeeklyRecap", () => {
         currentSceneIndex: 1,
         memoriesViewed: 2,
         hotspotsOpened: 1,
+        hintsUsed: 0,
         guessesUsed: 1,
         score: 8500,
       });

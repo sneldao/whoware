@@ -342,7 +342,7 @@ export const getTodaysRoomStats = query({
       ? Math.round((guessesUsed.reduce((a, b) => a + b, 0) / guessesUsed.length) * 10) / 10
       : 0;
 
-    const hintsUsed = runs.map((r) => r.hintsUsed ?? 0).filter((h) => h > 0);
+    const hintsUsed = runs.map((r) => r.hintsUsed).filter((h) => h > 0);
     const avgHints = hintsUsed.length > 0
       ? Math.round((hintsUsed.reduce((a, b) => a + b, 0) / hintsUsed.length) * 10) / 10
       : 0;

@@ -26,9 +26,8 @@ const runPublicShape = v.object({
   currentSceneIndex: v.number(),
   memoriesViewed: v.number(),
   hotspotsOpened: v.number(),
-  // Optional until the backfillHintsUsed migration has run on production —
-  // legacy rows lack the field and would fail return validation otherwise.
-  hintsUsed: v.optional(v.number()),
+  // Required post-backfill; all production playerRuns rows now carry it.
+  hintsUsed: v.number(),
   guessesUsed: v.number(),
   score: v.optional(v.number()),
 });
@@ -202,7 +201,7 @@ export const useHint = mutation({
       throw new Error("Run is already resolved or exhausted");
     }
     const count = clampInteger(args.count ?? 1, 1, 10);
-    const hintsUsed = (run.hintsUsed ?? 0) + count;
+    const hintsUsed = run.hintsUsed + count;
     await ctx.db.patch(args.runId, { hintsUsed });
     return { hintsUsed };
   },
@@ -273,7 +272,7 @@ export const submitGuess = mutation({
       score = computeScore({
         memoriesViewed: run.memoriesViewed,
         hotspotsOpened: run.hotspotsOpened,
-        hintsUsed: run.hintsUsed ?? 0,
+        hintsUsed: run.hintsUsed,
         guessesUsed,
         elapsedMs,
       });
@@ -378,7 +377,7 @@ export const getPlayerHistory = query({
           score: run.score,
           memoriesViewed: run.memoriesViewed,
           hotspotsOpened: run.hotspotsOpened,
-          hintsUsed: run.hintsUsed ?? 0,
+          hintsUsed: run.hintsUsed,
           guessesUsed: run.guessesUsed,
         };
       }),
