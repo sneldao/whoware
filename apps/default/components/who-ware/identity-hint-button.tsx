@@ -1,13 +1,16 @@
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Ionicons } from "@expo/vector-icons";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "@/lib/theme";
+import { IDENTITY_HINT_PENALTY } from "@/convex/scoring";
 
 interface IdentityHintButtonProps {
   episodeId: Id<"episodes">;
+  /** Active run id — used to charge the hint penalty. */
+  runId: Id<"playerRuns"> | null;
   scenesRevealed: number;
   streak: number;
   isRunActive: boolean;
@@ -16,20 +19,21 @@ interface IdentityHintButtonProps {
 /**
  * Progressive "identity nudge" button. Unlocks once the player has viewed at
  * least 3 scenes OR carries a streak of 1+, to discourage early crutches.
- * Renders nothing when the run is already solved/exhausted.
+ * Costs IDENTITY_HINT_PENALTY (2x scene-hint) from the run score.
  */
 export function IdentityHintButton({
   episodeId,
+  runId,
   scenesRevealed,
   streak,
   isRunActive,
 }: IdentityHintButtonProps) {
   const generateIdentityHint = useAction(api.venice.generateIdentityHint);
+  const useHintMutation = useMutation(api.runs.useHint);
   const cached = useQuery(api.venice.getIdentityHint, { episodeId });
   const [hint, setHint] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const isUnlocked = scenesRevealed >= 3 || streak >= 1;
 
   useEffect(() => {
@@ -55,9 +59,14 @@ export function IdentityHintButton({
     setIsLoading(true);
     setError(null);
     try {
+      if (runId) {
+        // Identity nudges cost double a scene hint (2 units x HINT_PENALTY = IDENTITY_HINT_PENALTY).
+        await useHintMutation({ runId, count: 2 });
+      }
       const result = await generateIdentityHint({ episodeId });
       setHint(result);
-    } catch {
+    } catch (e) {
+      console.warn("IdentityHintButton.generateIdentityHint", e);
       setError("The signal slipped. Tap to try again.");
     } finally {
       setIsLoading(false);
@@ -70,6 +79,7 @@ export function IdentityHintButton({
         <View style={styles.hintHeader}>
           <Ionicons name="compass-outline" size={14} color={theme.accent} />
           <Text style={styles.hintLabel}>Identity nudge</Text>
+          <Text style={styles.hintCost}>−{IDENTITY_HINT_PENALTY} pts</Text>
         </View>
         <Text style={styles.hintText}>{hint}</Text>
       </View>
@@ -89,7 +99,11 @@ export function IdentityHintButton({
         <Ionicons name="compass-outline" size={16} color={theme.inkInverted} />
       )}
       <Text style={styles.buttonText}>
-        {error ? error : isLoading ? "Listening…" : "Ask the memory who it was"}
+        {error
+          ? error
+          : isLoading
+            ? "Listening…"
+            : `Ask the memory who it was · −${IDENTITY_HINT_PENALTY} pts`}
       </Text>
     </Pressable>
   );
@@ -122,6 +136,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flex: 1,
   },
   hintLabel: {
     color: theme.accent,
@@ -129,6 +144,12 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 1.2,
     textTransform: "uppercase",
+  },
+  hintCost: {
+    alignSelf: "flex-end",
+    color: theme.inkAlpha40,
+    fontSize: 10,
+    fontWeight: "800",
   },
   hintText: {
     color: theme.ink,

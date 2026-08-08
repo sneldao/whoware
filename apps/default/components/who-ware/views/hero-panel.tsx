@@ -37,6 +37,7 @@ export interface HeroPanelProps {
   isBusy: boolean;
   scoreDisplay: string;
   hotspotsOpened: number;
+  hintsUsed: number;
   guessesLeft: number;
   guessCap: number;
   rawScore: number | null;
@@ -49,6 +50,7 @@ export interface HeroPanelProps {
   isGuessPanelOpen: boolean;
   onShowScoreTooltip: () => void;
   onShowCluesTooltip: () => void;
+  onShowHintsTooltip: () => void;
   onShowGuessesTooltip: () => void;
 }
 
@@ -66,11 +68,11 @@ export function HeroPanel(props: HeroPanelProps) {
     revealProgress, isSolved, statusText,
     countdownTarget, countdownLabel, runFinished,
     currentStreak, bestStreak, solvedToday,
-    hasEnteredMemory, isBusy, scoreDisplay, hotspotsOpened, guessesLeft, guessCap,
+    hasEnteredMemory, isBusy, scoreDisplay, hotspotsOpened, hintsUsed, guessesLeft, guessCap,
     rawScore, maxPotential,
     onConnect, onUpgrade, onSwitchChain,
     onGuessNow, onEnterMemory, isGuessPanelOpen,
-    onShowScoreTooltip, onShowCluesTooltip, onShowGuessesTooltip,
+    onShowScoreTooltip, onShowCluesTooltip, onShowHintsTooltip, onShowGuessesTooltip,
   } = props;
 
   return (
@@ -190,6 +192,7 @@ export function HeroPanel(props: HeroPanelProps) {
             <View style={styles.scoreStrip}>
               <TappableMetric label="Score" value={`${scoreDisplay} pts`} onPress={onShowScoreTooltip} />
               <TappableMetric label="Clues opened" value={`${hotspotsOpened}`} onPress={onShowCluesTooltip} />
+              <TappableMetric label="Hints" value={`${hintsUsed}`} onPress={onShowHintsTooltip} />
               <TappableMetric label="Guesses" value={`${guessesLeft}/${guessCap}`} onPress={onShowGuessesTooltip} />
             </View>
             {rawScore != null && (

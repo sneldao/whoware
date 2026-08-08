@@ -441,10 +441,16 @@ export default function Index() {
     currentSceneIndex: progression.sceneIndex,
     discoveredClues: guessing.discoveredClues,
     activeHint: guessing.activeHint,
+    activeHintTier: guessing.activeHintTier,
+    hintsUsed: guessing.hintsUsed,
+    hintUsedForScene: guessing.hintUsedForScene,
+    hasHintTierForScene: guessing.hasHintTierForScene,
+    canRequestHintForClue: guessing.canRequestHintForClue,
     isHintGenerating: guessing.isHintGenerating,
     onSelectScene: progression.setSceneIndex,
     onHotspotOpen: guessing.handleOpenHotspot,
     onGenerateHint: guessing.handleGenerateHint,
+    onDismissHint: guessing.handleDismissHint,
   };
 
   const actionState = {
@@ -466,6 +472,7 @@ export default function Index() {
   };
   const extrasState = {
     episodeId: session.episode._id,
+    runId: session.run?._id ?? null,
     memoriesViewed,
     currentStreak: session.streak.current,
     leaderboardEntries: session.leaderboardSnapshot?.entries ?? [],
@@ -479,10 +486,12 @@ export default function Index() {
   const metricsState = {
     scoreDisplay: session.run?.score != null ? formatScore(session.run.score) : "—",
     hotspotsOpened,
+    hintsUsed: guessing.hintsUsed,
     guessesLeft,
     guessCap,
     onShowScoreTooltip: () => session.tooltip.show("score"),
     onShowCluesTooltip: () => session.tooltip.show("clues"),
+    onShowHintsTooltip: () => session.tooltip.show("hints"),
     onShowGuessesTooltip: () => session.tooltip.show("guesses"),
   };
 
@@ -581,6 +590,7 @@ export default function Index() {
           rawScore={session.run?.score ?? null}
           maxPotential={10_000}
           hotspotsOpened={hotspotsOpened}
+          hintsUsed={guessing.hintsUsed}
           guessesLeft={guessesLeft}
           guessCap={guessCap}
           onConnect={session.wallet.connect}
@@ -594,6 +604,7 @@ export default function Index() {
           isGuessPanelOpen={guessing.isGuessPanelOpen}
           onShowScoreTooltip={() => session.tooltip.show("score")}
           onShowCluesTooltip={() => session.tooltip.show("clues")}
+          onShowHintsTooltip={() => session.tooltip.show("hints")}
           onShowGuessesTooltip={() => session.tooltip.show("guesses")}
         />
         {isSolved && guessing.solvedRun && (

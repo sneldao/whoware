@@ -23,10 +23,12 @@ import styles from "@/app/index.styles";
 export interface PlayChromeMetrics {
   scoreDisplay: string;
   hotspotsOpened: number;
+  hintsUsed: number;
   guessesLeft: number;
   guessCap: number;
   onShowScoreTooltip: () => void;
   onShowCluesTooltip: () => void;
+  onShowHintsTooltip: () => void;
   onShowGuessesTooltip: () => void;
 }
 
@@ -64,7 +66,7 @@ export function PlayChrome({
     figureOptions, guessesLeft, playerName, onPlayerNameChange, onSubmitGuess,
   } = guess;
   const {
-    episodeId, memoriesViewed, currentStreak,
+    episodeId, runId, memoriesViewed, currentStreak,
     leaderboardEntries, playerRank, rankedCount,
   } = extras;
 
@@ -123,6 +125,7 @@ export function PlayChrome({
       {isGuessPanelOpen && episodeId && !isSolved && !isExhausted && (
         <IdentityHintButton
           episodeId={episodeId}
+          runId={runId}
           scenesRevealed={memoriesViewed}
           streak={currentStreak}
           isRunActive={!isSolved && !isExhausted}
@@ -203,6 +206,11 @@ export function PlayChrome({
               label="Clues"
               value={`${metrics.hotspotsOpened}`}
               onPress={() => setCluesSheetOpen((open) => !open)}
+            />
+            <TappableMetric
+              label="Hints"
+              value={`${metrics.hintsUsed}`}
+              onPress={metrics.onShowHintsTooltip}
             />
             <TappableMetric
               label="Guesses"

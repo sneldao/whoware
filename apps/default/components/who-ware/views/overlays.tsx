@@ -3,7 +3,7 @@ import { EnhancedIdentityReveal } from "@/components/who-ware/enhanced-identity-
 import { SmartAccountUpgradeOverlay } from "@/components/who-ware/smart-account-upgrade-overlay";
 import { TooltipOverlay } from "@/components/curator/tooltip";
 import {
-  BASE_SCORE, GUESS_PENALTY, HOTSPOT_PENALTY, MAX_GUESSES_PER_RUN,
+  BASE_SCORE, GUESS_PENALTY, HINT_PENALTY, HOTSPOT_PENALTY, MAX_GUESSES_PER_RUN,
   MEMORY_PENALTY, TIME_BUCKET_MS, TIME_BUCKET_PENALTY,
 } from "@/convex/scoring";
 import { theme } from "@/lib/theme";
@@ -30,6 +30,10 @@ export function TooltipLayer({ activeBadge, onDismiss }: TooltipLayerProps) {
         clues: {
           title: "Clues opened",
           description: `Clues are hidden details embedded in each scene's imagery. Opening a clue reveals information about the figure but reduces your max score by ${HOTSPOT_PENALTY.toLocaleString()} points per clue.`,
+        },
+        hints: {
+          title: "AI hints used",
+          description: `Each Venice AI hint (memory whisper) reduces your max score by ${HINT_PENALTY.toLocaleString()} points. One hint per scene. Higher tiers cost the same but reveal more.`,
         },
         guesses: {
           title: "Guesses remaining",

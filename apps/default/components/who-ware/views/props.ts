@@ -57,10 +57,16 @@ export interface SceneState {
   currentSceneIndex: number;
   discoveredClues: ClueEntry[];
   activeHint: string | null;
+  activeHintTier: "socratic" | "era" | "proximity" | null;
+  hintsUsed: number;
+  hintUsedForScene: (sceneIndex: number) => boolean;
+  hasHintTierForScene: (sceneIndex: number, tier: "socratic" | "era" | "proximity") => boolean;
+  canRequestHintForClue: (clueLabel: string) => boolean;
   isHintGenerating: boolean;
   onSelectScene: (episodeIndex: number) => void;
   onHotspotOpen: (label: string) => Promise<void>;
-  onGenerateHint: (clueLabel: string) => Promise<void>;
+  onGenerateHint: (clueLabel: string, tier?: "socratic" | "era" | "proximity") => Promise<void>;
+  onDismissHint: () => void;
 }
 
 /** Action bar state + handlers (guess panel toggle, unlock memory). */
@@ -88,6 +94,7 @@ export interface GuessState {
 /** Leaderboard query + footer meta (archive count, push, episode identity). */
 export interface ExtrasState {
   episodeId: Id<"episodes"> | null;
+  runId: Id<"playerRuns"> | null;
   memoriesViewed: number;
   currentStreak: number;
   leaderboardEntries: LeaderboardEntry[];
