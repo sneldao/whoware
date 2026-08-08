@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BASE_SCORE,
   GUESS_PENALTY,
+  HINT_PENALTY,
   HOTSPOT_PENALTY,
   MAX_GUESSES_PER_RUN,
   MEMORY_PENALTY,
@@ -28,6 +29,14 @@ describe("scoring constants — player-facing contract", () => {
     expect(HOTSPOT_PENALTY).toBe(250);
   });
 
+  it("hint penalty is 150 points per unit", () => {
+    expect(HINT_PENALTY).toBe(150);
+  });
+
+  it("identity nudge costs 2x a scene hint", () => {
+    expect(HINT_PENALTY * 2).toBe(300);
+  });
+
   it("wrong-guess penalty is 600 points", () => {
     expect(GUESS_PENALTY).toBe(600);
   });
@@ -47,25 +56,31 @@ describe("scoring constants — player-facing contract", () => {
 
 describe("computeScore", () => {
   it("returns the base score for an untouched, instant solve", () => {
-    expect(computeScore({ memoriesViewed: 0, hotspotsOpened: 0, guessesUsed: 1, elapsedMs: 0 })).toBe(10_000);
+    expect(computeScore({ memoriesViewed: 0, hotspotsOpened: 0, hintsUsed: 0, guessesUsed: 1, elapsedMs: 0 })).toBe(10_000);
   });
 
-  it("subtracts per-memory, per-hotspot, per-wrong-guess, and per-time-bucket penalties", () => {
-    // 2 memories * 1200 + 3 hotspots * 250 + (3-1) * 600 wrong-guesses + 30s = 1 bucket * 5
-    // 10_000 - 2400 - 750 - 1200 - 5 = 5_645
-    const score = computeScore({ memoriesViewed: 2, hotspotsOpened: 3, guessesUsed: 3, elapsedMs: 30_000 });
-    expect(score).toBe(10_000 - 2_400 - 750 - 1_200 - 5);
+  it("subtracts per-memory, per-hotspot, per-wrong-guess, per-hint, and per-time-bucket penalties", () => {
+    // 2 memories * 1200 + 3 hotspots * 250 + (3-1) * 600 wrong-guesses + 1 hint * 150 + 30s = 1 bucket * 5
+    // 10_000 - 2400 - 750 - 1200 - 150 - 5 = 5_445
+    const score = computeScore({ memoriesViewed: 2, hotspotsOpened: 3, hintsUsed: 1, guessesUsed: 3, elapsedMs: 30_000 });
+    expect(score).toBe(10_000 - 2_400 - 750 - 1_200 - 150 - 5);
   });
 
   it("floors the result at zero (no negative scores)", () => {
-    const score = computeScore({ memoriesViewed: 50, hotspotsOpened: 50, guessesUsed: 5, elapsedMs: 600_000 });
+    const score = computeScore({ memoriesViewed: 50, hotspotsOpened: 50, hintsUsed: 20, guessesUsed: 5, elapsedMs: 600_000 });
     expect(score).toBe(0);
   });
 
   it("does not penalize the first guess (only guesses 2+ cost)", () => {
     // Same elapsed and one guess, two paths differ only in guessesUsed.
-    const base = computeScore({ memoriesViewed: 0, hotspotsOpened: 0, guessesUsed: 1, elapsedMs: 0 });
-    const second = computeScore({ memoriesViewed: 0, hotspotsOpened: 0, guessesUsed: 2, elapsedMs: 0 });
+    const base = computeScore({ memoriesViewed: 0, hotspotsOpened: 0, hintsUsed: 0, guessesUsed: 1, elapsedMs: 0 });
+    const second = computeScore({ memoriesViewed: 0, hotspotsOpened: 0, hintsUsed: 0, guessesUsed: 2, elapsedMs: 0 });
     expect(base - second).toBe(GUESS_PENALTY);
+  });
+
+  it("deducts 150 pts per hint used", () => {
+    const noHints = computeScore({ memoriesViewed: 2, hotspotsOpened: 3, hintsUsed: 0, guessesUsed: 1, elapsedMs: 0 });
+    const withHints = computeScore({ memoriesViewed: 2, hotspotsOpened: 3, hintsUsed: 2, guessesUsed: 1, elapsedMs: 0 });
+    expect(noHints - withHints).toBe(300);
   });
 });

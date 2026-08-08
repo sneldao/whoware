@@ -36,9 +36,14 @@ interface SceneCanvasProps {
   totalScenes: number;
   height: number;
   onHotspotOpen?: (label: string) => void;
-  onGenerateHint?: (clueLabel: string) => void;
+  onGenerateHint?: (clueLabel: string, tier?: "socratic" | "era" | "proximity") => void;
   activeHint?: string | null;
+  activeHintTier?: "socratic" | "era" | "proximity" | null;
+  hintUsedForScene?: (sceneIndex: number) => boolean;
+  hasHintTierForScene?: (sceneIndex: number, tier: "socratic" | "era" | "proximity") => boolean;
+  canRequestHintForClue?: (clueLabel: string) => boolean;
   isHintGenerating?: boolean;
+  onDismissHint?: () => void;
   /** Edge-to-edge immersion — no card chrome or below-fold hint. */
   fill?: boolean;
 }
@@ -55,7 +60,12 @@ export function SceneCanvas({
   onHotspotOpen,
   onGenerateHint,
   activeHint,
+  activeHintTier,
+  hintUsedForScene,
+  hasHintTierForScene,
+  canRequestHintForClue,
   isHintGenerating,
+  onDismissHint,
   fill = false,
 }: SceneCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -65,7 +75,8 @@ export function SceneCanvas({
 
   useEffect(() => {
     setActiveClue(null);
-  }, [scene.title, sceneIndex]);
+    onDismissHint?.(); // Clear the hint when navigating to a different scene
+  }, [scene.title, sceneIndex, onDismissHint]);
 
   if (Platform.OS !== "web") {
     return (
@@ -78,6 +89,9 @@ export function SceneCanvas({
 
   function handleHotspot(label: string) {
     const clue = scene.clues.find((c) => c.label === label) ?? null;
+    if (clue && activeClue?.label !== clue.label) {
+      onDismissHint?.(); // Fresh slate when switching to a different clue
+    }
     if (clue) setActiveClue(clue);
     onHotspotOpenRef.current?.(label);
   }
@@ -115,9 +129,15 @@ export function SceneCanvas({
           <View style={styles.fillClue}>
             <ClueDetailPanel
               clue={activeClue}
+              hintLabel="Ask the memory (AI hint)"
               onGenerateHint={onGenerateHint}
               activeHint={activeHint}
+              activeHintTier={activeHintTier}
               isHintGenerating={isHintGenerating}
+              hintUsedForScene={hintUsedForScene ? hintUsedForScene(sceneIndex) : undefined}
+              hasHintTier={hasHintTierForScene ? (tier) => hasHintTierForScene(sceneIndex, tier) : undefined}
+              canRequestHint={canRequestHintForClue ? canRequestHintForClue(activeClue.label) : undefined}
+              onDismissHint={onDismissHint}
             />
           </View>
         ) : null}
@@ -127,9 +147,15 @@ export function SceneCanvas({
         activeClue ? (
           <ClueDetailPanel
             clue={activeClue}
+            hintLabel="Ask the memory (AI hint)"
             onGenerateHint={onGenerateHint}
             activeHint={activeHint}
+            activeHintTier={activeHintTier}
             isHintGenerating={isHintGenerating}
+            hintUsedForScene={hintUsedForScene ? hintUsedForScene(sceneIndex) : undefined}
+            hasHintTier={hasHintTierForScene ? (tier) => hasHintTierForScene(sceneIndex, tier) : undefined}
+            canRequestHint={canRequestHintForClue ? canRequestHintForClue(activeClue.label) : undefined}
+            onDismissHint={onDismissHint}
           />
         ) : (
           <View style={styles.hintRow}>

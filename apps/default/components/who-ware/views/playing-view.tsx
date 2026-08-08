@@ -39,7 +39,12 @@ export function PlayingView(props: PlayingViewProps) {
             onHotspotOpen={scene.onHotspotOpen}
             onGenerateHint={scene.onGenerateHint}
             activeHint={scene.activeHint}
+            activeHintTier={scene.activeHintTier}
+            hintUsedForScene={scene.hintUsedForScene}
+            hasHintTierForScene={scene.hasHintTierForScene}
+            canRequestHintForClue={scene.canRequestHintForClue}
             isHintGenerating={scene.isHintGenerating}
+            onDismissHint={scene.onDismissHint}
           />
         </EnhancedSceneTransition>
       </ErrorBoundary>

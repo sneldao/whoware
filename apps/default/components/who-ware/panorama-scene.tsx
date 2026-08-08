@@ -64,9 +64,14 @@ interface PanoramaSceneProps {
   sceneIndex: number;
   totalScenes: number;
   onHotspotOpen?: (label: string) => void;
-  onGenerateHint?: (clueLabel: string) => void;
+  onGenerateHint?: (clueLabel: string, tier?: "socratic" | "era" | "proximity") => void;
   activeHint?: string | null;
+  activeHintTier?: "socratic" | "era" | "proximity" | null;
+  hintUsedForScene?: (sceneIndex: number) => boolean;
+  hasHintTierForScene?: (sceneIndex: number, tier: "socratic" | "era" | "proximity") => boolean;
+  canRequestHintForClue?: (clueLabel: string) => boolean;
   isHintGenerating?: boolean;
+  onDismissHint?: () => void;
   /** Panorama frame height. Defaults to 430. */
   height?: number;
   /** Edge-to-edge room — no card chrome or below-fold media. */
@@ -80,7 +85,12 @@ export function PanoramaScene({
   onHotspotOpen,
   onGenerateHint,
   activeHint,
+  activeHintTier,
+  hintUsedForScene,
+  hasHintTierForScene,
+  canRequestHintForClue,
   isHintGenerating,
+  onDismissHint,
   height = 430,
   fill = false,
 }: PanoramaSceneProps) {
@@ -153,9 +163,13 @@ export function PanoramaScene({
   useEffect(() => {
     setActiveClue(null);
     setImageLoaded(false);
-  }, [scene.title]);
+    onDismissHint?.(); // Clear the hint when the scene changes
+  }, [scene.title, onDismissHint]);
 
   function handleCluePress(clue: Clue) {
+    if (activeClue?.label !== clue.label) {
+      onDismissHint?.(); // Fresh slate when switching to a different clue
+    }
     setActiveClue(clue);
     onHotspotOpen?.(clue.label);
     if (Platform.OS !== "web") {
@@ -221,9 +235,15 @@ export function PanoramaScene({
           <View style={styles.fillClue}>
             <ClueDetailPanel
               clue={activeClue}
+              hintLabel="Ask the memory (AI hint)"
               onGenerateHint={onGenerateHint}
               activeHint={activeHint}
+              activeHintTier={activeHintTier}
               isHintGenerating={isHintGenerating}
+              hintUsedForScene={hintUsedForScene ? hintUsedForScene(sceneIndex) : undefined}
+              hasHintTier={hasHintTierForScene ? (tier) => hasHintTierForScene(sceneIndex, tier) : undefined}
+              canRequestHint={canRequestHintForClue ? canRequestHintForClue(activeClue.label) : undefined}
+              onDismissHint={onDismissHint}
             />
           </View>
         ) : null}
@@ -247,9 +267,15 @@ export function PanoramaScene({
           {activeClue ? (
             <ClueDetailPanel
               clue={activeClue}
+              hintLabel="Ask the memory (AI hint)"
               onGenerateHint={onGenerateHint}
               activeHint={activeHint}
+              activeHintTier={activeHintTier}
               isHintGenerating={isHintGenerating}
+              hintUsedForScene={hintUsedForScene ? hintUsedForScene(sceneIndex) : undefined}
+              hasHintTier={hasHintTierForScene ? (tier) => hasHintTierForScene(sceneIndex, tier) : undefined}
+              canRequestHint={canRequestHintForClue ? canRequestHintForClue(activeClue.label) : undefined}
+              onDismissHint={onDismissHint}
             />
           ) : (
             <View style={styles.hintRow}>

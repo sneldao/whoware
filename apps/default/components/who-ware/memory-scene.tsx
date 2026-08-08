@@ -16,9 +16,14 @@ interface MemorySceneProps {
   sceneIndex: number;
   totalScenes: number;
   onHotspotOpen?: (label: string) => void;
-  onGenerateHint?: (clueLabel: string) => void;
+  onGenerateHint?: (clueLabel: string, tier?: "socratic" | "era" | "proximity") => void;
   activeHint?: string | null;
+  activeHintTier?: "socratic" | "era" | "proximity" | null;
+  hintUsedForScene?: (sceneIndex: number) => boolean;
+  hasHintTierForScene?: (sceneIndex: number, tier: "socratic" | "era" | "proximity") => boolean;
+  canRequestHintForClue?: (clueLabel: string) => boolean;
   isHintGenerating?: boolean;
+  onDismissHint?: () => void;
   /** Frame height in px. Immersion uses viewport height; stacked play defaults to 430. */
   height?: number;
   /** Edge-to-edge room (no panorama card chrome). */
@@ -38,7 +43,12 @@ export function MemoryScene({
   onHotspotOpen,
   onGenerateHint,
   activeHint,
+  activeHintTier,
+  hintUsedForScene,
+  hasHintTierForScene,
+  canRequestHintForClue,
   isHintGenerating,
+  onDismissHint,
   height = 430,
   fill = false,
   forceMode,
@@ -64,7 +74,12 @@ export function MemoryScene({
           onHotspotOpen={onHotspotOpen}
           onGenerateHint={onGenerateHint}
           activeHint={activeHint}
+          activeHintTier={activeHintTier}
+          hintUsedForScene={hintUsedForScene}
+          hasHintTierForScene={hasHintTierForScene}
+          canRequestHintForClue={canRequestHintForClue}
           isHintGenerating={isHintGenerating}
+          onDismissHint={onDismissHint}
         />
       </Suspense>
     );
@@ -80,7 +95,12 @@ export function MemoryScene({
       onHotspotOpen={onHotspotOpen}
       onGenerateHint={onGenerateHint}
       activeHint={activeHint}
+      activeHintTier={activeHintTier}
+      hintUsedForScene={hintUsedForScene}
+      hasHintTierForScene={hasHintTierForScene}
+      canRequestHintForClue={canRequestHintForClue}
       isHintGenerating={isHintGenerating}
+      onDismissHint={onDismissHint}
     />
   );
 }
