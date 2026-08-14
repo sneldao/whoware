@@ -87,6 +87,14 @@ export interface GuessState {
   figureOptions: FigureOption[];
   guessesLeft: number;
   playerName: string;
+  guessAttempts?: Array<{
+    figureName: string;
+    isCorrect: boolean;
+    eraMatch: boolean;
+    regionMatch: boolean;
+    fieldMatch: boolean;
+    message?: string;
+  }>;
   onPlayerNameChange: (name: string) => void;
   onSubmitGuess: (text: string, figureId: string, playerName: string) => Promise<void>;
 }

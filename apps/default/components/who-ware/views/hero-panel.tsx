@@ -29,6 +29,10 @@ export interface HeroPanelProps {
   statusText: string;
   countdownTarget: number | null;
   countdownLabel: string;
+  /** Spoiler-free "Tomorrow's room" teaser. */
+  nextDropTeaser?: string;
+  onRemindMe?: () => void;
+  isReminded?: boolean;
   runFinished: boolean;
   currentStreak: number;
   bestStreak: number;
@@ -126,6 +130,9 @@ export function HeroPanel(props: HeroPanelProps) {
           isSolved={isSolved}
           dropsAt={countdownTarget}
           statusLabel={countdownLabel}
+          teaser={props.nextDropTeaser}
+          onRemindMe={props.onRemindMe}
+          isReminded={props.isReminded}
         />
         {!hasEnteredMemory && !runFinished && archiveCount > 0 && (
           <View style={styles.suggestionsCard}>

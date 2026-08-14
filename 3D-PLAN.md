@@ -88,6 +88,21 @@ minute, not a dashboard:
 - **Atmosphere.** Procedural ambient bed in `use-game-sounds.ts` on
   Enter with sound; ducks under clue/guess SFX; hard mute without.
 
+### Phase 2.3 — Living room (shipped 2026-08-14)
+
+The skybox is no longer the only thing in the room that feels real:
+
+- **Hotspot hover tooltips.** `SceneCanvas` raycasts props + clue
+  markers on pointermove (touch pointers skipped, shared scratch
+  raycaster) and shows an "Inspect: {label}" pill — spatial
+  detective work instead of clicking random glowing dots.
+- **Atmospheric dust.** ~180 additive `THREE.Points` motes drift
+  through the room in the render loop. Positions oscillate around
+  stored base values (no integrated velocity), so motes never
+  drift out of the room; geometry/material disposed on unmount.
+- **Cursor affordance.** Grab cursor at rest, grabbing while
+  dragging (`look-controls.ts`).
+
 ### Phase 3 — AI-driven prop generation (1-2 weeks)
 
 The procedural primitives in `prop-shapes.ts` are deliberately crude —
@@ -120,6 +135,9 @@ feet.
   ~3 units) shows a soft outline + label. The label is the
   prop's `clueLabel` (if any) so the player knows what they're
   about to find.
+  *(2026-08-14: hover tooltips shipped early — `SceneCanvas`
+  raycasts props + clue markers on mousemove and shows an
+  "Inspect: {label}" pill; soft-outline variant still pending.)*
 - **Native support** — add `expo-three` + `expo-gl` for iOS / Android.
   Web-only stays the default for the first release.
 

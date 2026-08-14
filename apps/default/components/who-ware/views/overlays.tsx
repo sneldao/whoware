@@ -70,11 +70,14 @@ export interface RevealLayerProps {
   era: string;
   region: string;
   tags: string[];
+  summary?: string;
+  /** Episode whose AI bio powers the story-first reveal. */
+  episodeId?: string;
   imageUrl?: string;
   onContinue: () => void;
 }
 
-export function RevealLayer({ visible, figureName, era, region, tags, imageUrl, onContinue }: RevealLayerProps) {
+export function RevealLayer({ visible, figureName, era, region, tags, summary, episodeId, imageUrl, onContinue }: RevealLayerProps) {
   if (!visible) return null;
   return (
     <EnhancedIdentityReveal
@@ -82,6 +85,8 @@ export function RevealLayer({ visible, figureName, era, region, tags, imageUrl, 
       era={era}
       region={region}
       tags={tags}
+      summary={summary}
+      episodeId={episodeId}
       imageUrl={imageUrl}
       onContinue={onContinue}
     />

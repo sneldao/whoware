@@ -52,21 +52,23 @@ export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlaye
       </View>
 
       <TextInput
-        value={playerName}
-        onChangeText={onPlayerNameChange}
-        placeholder="Leaderboard name"
-        placeholderTextColor={theme.inkAlpha38}
-        style={styles.input}
-        maxLength={32}
-      />
-
-      <TextInput
         value={query}
         onChangeText={setQuery}
         placeholder="Whose body are you inside?"
         placeholderTextColor={theme.inkAlpha38}
         style={styles.input}
         editable={!isSolved && guessesLeft > 0}
+        autoFocus
+      />
+
+      <TextInput
+        value={playerName}
+        onChangeText={onPlayerNameChange}
+        placeholder="Leaderboard name"
+        placeholderTextColor={theme.inkAlpha38}
+        style={styles.input}
+        maxLength={32}
+        editable={!isSolved}
       />
 
       <View style={styles.options}>

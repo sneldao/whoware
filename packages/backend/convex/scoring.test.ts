@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { computeProximity, computeScore, proximityMessage } from "./scoring";
+import { computeDetailedProximity, computeProximity, computeScore, proximityMessage } from "./scoring";
 
 describe("computeProximity", () => {
   test("returns 'same_era_and_region' when guessed and correct are the same figure (identical data)", () => {
@@ -70,6 +70,71 @@ describe("computeProximity", () => {
         correct: { era: "Renaissance", region: "Britain", tags: [] },
       }),
     ).toBe("same_era");
+  });
+});
+
+describe("computeDetailedProximity", () => {
+  test("reports era/region/field booleans for a same-era wrong-region guess", () => {
+    const r = computeDetailedProximity({
+      guessed: { era: "20th century", region: "Germany / USA", tags: ["physicist", "nobel"] },
+      correct: { era: "20th century", region: "Britain", tags: ["wartime", "prime minister"] },
+    }, "Albert Einstein");
+    expect(r.proximity).toBe("same_era");
+    expect(r.eraMatch).toBe(true);
+    expect(r.regionMatch).toBe(false);
+    expect(r.fieldMatch).toBe(false);
+    expect(r.message).toContain("Albert Einstein");
+  });
+
+  test("fieldMatch fires on shared tags even when era and region differ", () => {
+    const r = computeDetailedProximity({
+      guessed: { era: "19th century", region: "England", tags: ["mathematician", "computing"] },
+      correct: { era: "20th century", region: "Britain", tags: ["mathematician", "cryptanalyst"] },
+    }, "Ada Lovelace");
+    // 19th vs 20th century overlap within the era tolerance window
+    expect(r.eraMatch).toBe(true);
+    expect(r.regionMatch).toBe(false);
+    expect(r.fieldMatch).toBe(true);
+  });
+
+  test("fieldMatch is case- and whitespace-insensitive", () => {
+    const r = computeDetailedProximity({
+      guessed: { era: "15th century", region: "China", tags: [" Painter "] },
+      correct: { era: "20th century", region: "Mexico", tags: ["painter", "surrealism"] },
+    }, "Guess");
+    expect(r.fieldMatch).toBe(true);
+  });
+
+  test("fieldMatch is false when either side has no tags", () => {
+    expect(
+      computeDetailedProximity({
+        guessed: { era: "20th century", region: "Britain", tags: [] },
+        correct: { era: "20th century", region: "Britain", tags: ["wartime"] },
+      }, "X").fieldMatch,
+    ).toBe(false);
+  });
+
+  test("tier and booleans stay consistent for same-era-and-region", () => {
+    const r = computeDetailedProximity({
+      guessed: { era: "20th century", region: "Britain", tags: [] },
+      correct: { era: "20th century", region: "Britain", tags: [] },
+    }, "Alan Turing");
+    expect(r.proximity).toBe("same_era_and_region");
+    expect(r.eraMatch).toBe(true);
+    expect(r.regionMatch).toBe(true);
+  });
+
+  test("delegation keeps computeProximity tiers identical", () => {
+    const cases = [
+      { guessed: { era: "20th century", region: "Britain", tags: [] }, correct: { era: "20th century", region: "Britain", tags: [] } },
+      { guessed: { era: "20th century", region: "Germany / USA", tags: [] }, correct: { era: "20th century", region: "Britain", tags: [] } },
+      { guessed: { era: "15th century", region: "Britain", tags: [] }, correct: { era: "20th century", region: "Britain", tags: [] } },
+      { guessed: { era: "20th century", region: "Britain", tags: [] }, correct: { era: "15th century", region: "China", tags: [] } },
+      { guessed: { era: "Renaissance", region: "Italy", tags: [] }, correct: { era: "Renaissance", region: "Britain", tags: [] } },
+    ];
+    for (const input of cases) {
+      expect(computeProximity(input)).toBe(computeDetailedProximity(input, "X").proximity);
+    }
   });
 });
 

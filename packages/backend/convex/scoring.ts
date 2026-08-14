@@ -80,23 +80,55 @@ export interface ProximityInput {
  * 5. same_century   — neither era nor region match, but the century overlaps
  * 6. off            — completely different
  */
-export function computeProximity(input: ProximityInput): GuessProximity {
+export interface DetailedProximity {
+  proximity: GuessProximity;
+  eraMatch: boolean;
+  regionMatch: boolean;
+  fieldMatch: boolean;
+  sameCentury: boolean;
+  message: string;
+}
+
+export function computeDetailedProximity(input: ProximityInput, guessedName: string): DetailedProximity {
   const sameEra = erasOverlap(input.guessed.era, input.correct.era);
   const sameRegion = regionsOverlap(input.guessed.region, input.correct.region);
-
-  if (sameEra && sameRegion) return "same_era_and_region";
-  if (sameEra) return "same_era";
-  if (sameRegion) return "same_region";
+  const sameField = fieldsOverlap(input.guessed.tags, input.correct.tags);
 
   const guessCenturies = extractCenturies(input.guessed.era);
   const correctCenturies = extractCenturies(input.correct.era);
-  if (guessCenturies.length > 0 && correctCenturies.length > 0) {
-    if (guessCenturies.some((gc) => correctCenturies.some((cc) => Math.abs(gc - cc) <= 0))) {
-      return "same_century";
-    }
-  }
+  const sameCentury = guessCenturies.length > 0 && correctCenturies.length > 0 &&
+    guessCenturies.some((gc) => correctCenturies.some((cc) => Math.abs(gc - cc) <= 1));
 
-  return "off";
+  let proximity: GuessProximity = "off";
+  if (sameEra && sameRegion) proximity = "same_era_and_region";
+  else if (sameEra) proximity = "same_era";
+  else if (sameRegion) proximity = "same_region";
+  else if (sameCentury) proximity = "same_century";
+
+  const message = proximityMessage(proximity, guessedName);
+
+  return {
+    proximity,
+    eraMatch: sameEra,
+    regionMatch: sameRegion,
+    fieldMatch: sameField,
+    sameCentury,
+    message,
+  };
+}
+
+/**
+ * Tier-only proximity. Delegates to computeDetailedProximity so the
+ * tier and the Era/Region/Field booleans can never diverge.
+ */
+export function computeProximity(input: ProximityInput): GuessProximity {
+  return computeDetailedProximity(input, "").proximity;
+}
+
+function fieldsOverlap(aTags: string[], bTags: string[]): boolean {
+  if (!aTags || !bTags || aTags.length === 0 || bTags.length === 0) return false;
+  const aSet = new Set(aTags.map((t) => t.toLowerCase().trim()));
+  return bTags.some((t) => aSet.has(t.toLowerCase().trim()));
 }
 
 /** Human-readable message for each proximity tier. */

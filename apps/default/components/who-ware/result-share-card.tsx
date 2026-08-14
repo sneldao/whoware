@@ -267,10 +267,10 @@ function ShareStat({ label, value }: ShareStatProps) {
 }
 
 function buildMemoryGrid(memoriesViewed: number, cluesOpened: number): string[] {
-  if (memoriesViewed <= 0) return ["🟨"];
+  const memCount = Math.max(1, Math.min(memoriesViewed, 3));
   const tiles: string[] = [];
-  for (let index = 0; index < Math.min(memoriesViewed, 5); index += 1) tiles.push("🟫");
-  for (let index = 0; index < Math.min(cluesOpened, 5); index += 1) tiles.push("🔍");
+  for (let i = 0; i < memCount; i += 1) tiles.push("🏛️");
+  for (let i = 0; i < Math.min(cluesOpened, 6); i += 1) tiles.push("🔍");
   return tiles;
 }
 
@@ -284,14 +284,14 @@ function buildShareText(args: {
   streak: number;
 }): string {
   const { episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak } = args;
-  const memoryLabel = memoriesViewed === 1 ? "memory" : "memories";
-  const percentileLine = percentile !== null ? ` · top ${percentile}%` : "";
-  const streakLine = streak > 0 ? ` · 🔥${streak}` : "";
+  const percentileLine = percentile !== null ? ` (Top ${percentile}%)` : "";
+  const streakLine = streak > 1 ? ` · 🔥 ${streak}-day streak` : "";
+  
   return [
-    `WhoWare #${episodeNumber}`,
-    memoryGrid.join(""),
-    `${memoriesViewed} ${memoryLabel} · ${cluesOpened} clues · ${formatElapsed(elapsedMs)}${percentileLine}${streakLine}`,
-    `Can you name them in fewer? whoware.app`,
+    `WhoWare #${episodeNumber} 🏛️`,
+    `${memoryGrid.join("")}`,
+    `⏱️ ${formatElapsed(elapsedMs)} · ${memoriesViewed} room${memoriesViewed > 1 ? "s" : ""} · ${cluesOpened} clue${cluesOpened !== 1 ? "s" : ""}${percentileLine}${streakLine}`,
+    `Can you name them from the room? 🗝️ https://whoware.app`,
   ].join("\n");
 }
 

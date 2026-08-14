@@ -1,6 +1,7 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 
 const episodeStatus = v.union(v.literal("staging"), v.literal("review"), v.literal("draft"), v.literal("live"), v.literal("closed"));
 
@@ -69,6 +70,21 @@ export const getCurrentDrop = query({
   },
 });
 
+/**
+ * Spoiler-free teaser for an upcoming episode: the figure's era and
+ * region, never its name. Used for the "Tomorrow's room" hook.
+ */
+async function teaserForEpisode(
+  ctx: QueryCtx,
+  episodeId: Id<"episodes">,
+): Promise<{ teaserEra?: string; teaserRegion?: string }> {
+  const episode = await ctx.db.get(episodeId);
+  if (!episode?.figureId) return {};
+  const figure = await ctx.db.get(episode.figureId);
+  if (!figure) return {};
+  return { teaserEra: figure.era, teaserRegion: figure.region };
+}
+
 export const getNextDrop = query({
   args: {},
   returns: v.union(
@@ -77,6 +93,8 @@ export const getNextDrop = query({
       closesAt: v.optional(v.number()),
       slug: v.string(),
       episodeId: v.id("episodes"),
+      teaserEra: v.optional(v.string()),
+      teaserRegion: v.optional(v.string()),
     }),
     v.null(),
   ),
@@ -90,7 +108,7 @@ export const getNextDrop = query({
       .filter((q) => q.lte(q.field("dropsAt"), now))
       .first();
     if (live?.closesAt && live.closesAt > now) {
-      return { dropsAt: live.dropsAt, closesAt: live.closesAt, slug: live.slug, episodeId: live._id };
+      return { dropsAt: live.dropsAt, closesAt: live.closesAt, slug: live.slug, episodeId: live._id, ...(await teaserForEpisode(ctx, live._id)) };
     }
 
     const upcomingLive = await ctx.db
@@ -100,7 +118,7 @@ export const getNextDrop = query({
       .filter((q) => q.gt(q.field("dropsAt"), now))
       .first();
     if (upcomingLive) {
-      return { dropsAt: upcomingLive.dropsAt, closesAt: upcomingLive.closesAt, slug: upcomingLive.slug, episodeId: upcomingLive._id };
+      return { dropsAt: upcomingLive.dropsAt, closesAt: upcomingLive.closesAt, slug: upcomingLive.slug, episodeId: upcomingLive._id, ...(await teaserForEpisode(ctx, upcomingLive._id)) };
     }
 
     const scheduled = await ctx.db
@@ -110,7 +128,7 @@ export const getNextDrop = query({
       .filter((q) => q.gt(q.field("dropsAt"), now))
       .first();
     if (scheduled) {
-      return { dropsAt: scheduled.dropsAt, closesAt: scheduled.closesAt, slug: scheduled.slug, episodeId: scheduled._id };
+      return { dropsAt: scheduled.dropsAt, closesAt: scheduled.closesAt, slug: scheduled.slug, episodeId: scheduled._id, ...(await teaserForEpisode(ctx, scheduled._id)) };
     }
 
     return null;

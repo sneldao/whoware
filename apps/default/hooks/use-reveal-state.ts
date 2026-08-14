@@ -14,6 +14,8 @@ import type { Id } from "@/convex/_generated/dataModel";
 export interface SolvedRun {
   elapsedMs: number;
   score: number;
+  guessesUsed?: number;
+  hotspotsOpened?: number;
 }
 
 export interface RevealFigure {

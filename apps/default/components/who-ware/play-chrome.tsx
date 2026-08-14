@@ -11,6 +11,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { ClueLedger } from "@/components/who-ware/clue-ledger";
+import { DeductionBoard } from "@/components/who-ware/deduction-board";
 import { ErrorBoundary } from "@/components/shared/error-boundary";
 import { GuessPanel } from "@/components/who-ware/guess-panel";
 import { IdentityHintButton } from "@/components/who-ware/identity-hint-button";
@@ -130,6 +131,9 @@ export function PlayChrome({
           streak={currentStreak}
           isRunActive={!isSolved && !isExhausted}
         />
+      )}
+      {guess.guessAttempts && guess.guessAttempts.length > 0 && (
+        <DeductionBoard attempts={guess.guessAttempts} maxGuesses={metrics.guessCap} />
       )}
       {(isGuessPanelOpen || isSolved || isExhausted || guessesLeft <= 0) && (
         <GuessPanel

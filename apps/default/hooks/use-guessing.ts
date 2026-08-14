@@ -54,6 +54,14 @@ export interface SolveOnchainArgs {
 export interface UseGuessingReturn {
   isGuessPanelOpen: boolean;
   setIsGuessPanelOpen: (v: boolean) => void;
+  guessAttempts: Array<{
+    figureName: string;
+    isCorrect: boolean;
+    eraMatch: boolean;
+    regionMatch: boolean;
+    fieldMatch: boolean;
+    message?: string;
+  }>;
   solvedRun: SolvedRun | null;
   status: string;
   setStatus: (s: string) => void;
@@ -69,6 +77,7 @@ export interface UseGuessingReturn {
   revealDismissed: boolean;
   setRevealDismissed: (v: boolean) => void;
   isBusy: boolean;
+  setIsBusy: (v: boolean) => void;
   localHotspots: string[];
   discoveredClues: Array<{ sceneIndex: number; sceneTitle: string; label: string; detail: string }>;
   solvedFigure: RevealFigure | null;
@@ -136,6 +145,14 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
   const [activeHint, setActiveHint] = useState<string | null>(null);
   const [activeHintTier, setActiveHintTier] = useState<HintTier | null>(null);
   const [hintsUsed, setHintsUsed] = useState(0);
+  const [guessAttempts, setGuessAttempts] = useState<Array<{
+    figureName: string;
+    isCorrect: boolean;
+    eraMatch: boolean;
+    regionMatch: boolean;
+    fieldMatch: boolean;
+    message?: string;
+  }>>([]);
   /** Tiers generated per scene — each tier may be generated once per scene. */
   const [sceneHintTiers, setSceneHintTiers] = useState<Map<number, Set<HintTier>>>(new Map());
   /** Generated hints keyed by `${sceneIndex}:${tier}` for instant tier switching. */
@@ -183,10 +200,11 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
     setActiveHintTier(null);
   }, [sceneIndex, episode?._id]);
 
-  // Reset per-scene hint state for a new episode/identity
+  // Reset per-scene hint state and the deduction log for a new episode/identity
   useEffect(() => {
     setSceneHintTiers(new Map());
     setSceneHints(new Map());
+    setGuessAttempts([]);
     setHintsUsed(0);
   }, [episode?._id, identity.identityId]);
 
@@ -385,6 +403,19 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         walletAddress: wallet.address ?? undefined,
       });
 
+      // Record in local deduction log
+      setGuessAttempts((prev) => [
+        ...prev,
+        {
+          figureName: _guessText,
+          isCorrect: result.isCorrect,
+          eraMatch: result.eraMatch ?? false,
+          regionMatch: result.regionMatch ?? false,
+          fieldMatch: result.fieldMatch ?? false,
+          message: result.proximityMessage,
+        },
+      ]);
+
       if (result.isCorrect) {
         setIsGuessPanelOpen(false);
         gameSounds.playSolveMotif(episode.scenes[0]?.era ?? "");
@@ -394,7 +425,12 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         const solvedAt = Date.now();
         await recordSolve(solvedAt);
         const finalScore = result.score ?? 0;
-        reveal.setSolvedRun({ elapsedMs: result.elapsedMs, score: finalScore });
+        reveal.setSolvedRun({
+          elapsedMs: result.elapsedMs,
+          score: finalScore,
+          guessesUsed: result.guessesUsed,
+          hotspotsOpened,
+        });
         reveal.setSolvedFigure({ name: result.answer ?? "Unknown", figureId });
         saveLastSolve({
           episodeSlug: episode.slug,
@@ -469,6 +505,7 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
   return {
     isGuessPanelOpen,
     setIsGuessPanelOpen,
+    guessAttempts,
     solvedRun: reveal.solvedRun,
     status,
     setStatus,
@@ -484,6 +521,7 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
     revealDismissed: reveal.revealDismissed,
     setRevealDismissed: reveal.setRevealDismissed,
     isBusy,
+    setIsBusy,
     localHotspots: discovery.localHotspots,
     discoveredClues: discovery.discoveredClues,
     solvedFigure: reveal.solvedFigure,

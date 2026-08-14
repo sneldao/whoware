@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { clampInteger, computeProximity, computeScore, MAX_GUESSES_PER_RUN, proximityMessage } from "./scoring";
+import { clampInteger, computeDetailedProximity, computeScore, MAX_GUESSES_PER_RUN, proximityMessage } from "./scoring";
 
 const guessProximity = v.union(
   v.literal("correct"),
@@ -220,6 +220,9 @@ export const submitGuess = mutation({
     guessedFigureName: v.string(),
     proximity: guessProximity,
     proximityMessage: v.string(),
+    eraMatch: v.boolean(),
+    regionMatch: v.boolean(),
+    fieldMatch: v.boolean(),
     score: v.optional(v.number()),
     elapsedMs: v.number(),
     guessesUsed: v.number(),
@@ -253,15 +256,35 @@ export const submitGuess = mutation({
 
     // Compute guess proximity for feedback tiers
     let proximity: "correct" | "same_era" | "same_region" | "same_era_and_region" | "same_century" | "off" = "off";
+    let eraMatch = false;
+    let regionMatch = false;
+    let fieldMatch = false;
+    let proximityMsg = "";
+
     if (correctFigure) {
-      proximity = isCorrect
-        ? "correct"
-        : computeProximity({
+      if (isCorrect) {
+        proximity = "correct";
+        eraMatch = true;
+        regionMatch = true;
+        fieldMatch = true;
+        proximityMsg = `${guessedFigure.canonicalName} — identity anchored.`;
+      } else {
+        const detailed = computeDetailedProximity(
+          {
             guessed: { era: guessedFigure.era, region: guessedFigure.region, tags: guessedFigure.tags },
             correct: { era: correctFigure.era, region: correctFigure.region, tags: correctFigure.tags },
-          });
+          },
+          guessedFigure.canonicalName,
+        );
+        proximity = detailed.proximity;
+        eraMatch = detailed.eraMatch;
+        regionMatch = detailed.regionMatch;
+        fieldMatch = detailed.fieldMatch;
+        proximityMsg = detailed.message;
+      }
+    } else {
+      proximityMsg = proximityMessage(proximity, guessedFigure.canonicalName);
     }
-    const proximityMsg = proximityMessage(proximity, guessedFigure.canonicalName);
 
     let finalStatus: "active" | "solved" | "exhausted" = run.status;
     let score: number | undefined;
@@ -318,6 +341,9 @@ export const submitGuess = mutation({
       guessedFigureName: guessedFigure.canonicalName,
       proximity,
       proximityMessage: proximityMsg,
+      eraMatch,
+      regionMatch,
+      fieldMatch,
       score,
       elapsedMs,
       guessesUsed,

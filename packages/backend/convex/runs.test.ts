@@ -303,6 +303,10 @@ describe("runs lifecycle", () => {
     expect(einsteinResult.proximity).toBe("same_era");
     expect(einsteinResult.guessedFigureName).toBe("Albert Einstein");
     expect(einsteinResult.proximityMessage).toContain("Albert Einstein");
+    // Deduction-board booleans ship with the result and match the tier
+    expect(einsteinResult.eraMatch).toBe(true);
+    expect(einsteinResult.regionMatch).toBe(false);
+    expect(einsteinResult.fieldMatch).toBe(false);
 
     // Tesla: different era, different region → "off" or "same_century" depending on century overlap
     const teslaResult = await t.mutation(api.runs.submitGuess, {
@@ -313,13 +317,16 @@ describe("runs lifecycle", () => {
     expect(teslaResult.proximity).not.toBe("correct");
     expect(teslaResult.guessedFigureName).toBe("Nikola Tesla");
 
-    // Churchill: correct
+    // Churchill: correct — every deduction signal lights up
     const churchillResult = await t.mutation(api.runs.submitGuess, {
       runId: run._id,
       figureId: churchill._id,
     });
     expect(churchillResult.isCorrect).toBe(true);
     expect(churchillResult.proximity).toBe("correct");
+    expect(churchillResult.eraMatch).toBe(true);
+    expect(churchillResult.regionMatch).toBe(true);
+    expect(churchillResult.fieldMatch).toBe(true);
   });
 
   test("submitGuess enforces the five-guess cap even if the client tries to keep going", async () => {

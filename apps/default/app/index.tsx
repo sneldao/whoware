@@ -414,6 +414,13 @@ export default function Index() {
     : isSolved
       ? "Next body opens in"
       : "Next drop opens in";
+  // Spoiler-free "Tomorrow's room" teaser — only for a different, upcoming episode.
+  const nextDropIsFutureDifferentEpisode =
+    session.nextDrop?.episodeId !== session.episode._id &&
+    (session.nextDrop?.dropsAt ?? 0) > Date.now();
+  const nextDropTeaser = nextDropIsFutureDifferentEpisode
+    ? [session.nextDrop?.teaserEra, session.nextDrop?.teaserRegion].filter(Boolean).join(" · ") || undefined
+    : undefined;
 
   // ── Threshold (cold start) ──────────────────────────────────────
   if (!hasEnteredMemory && !runFinished) {
@@ -467,6 +474,7 @@ export default function Index() {
     figureOptions: guessing.figureOptions,
     guessesLeft,
     playerName: session.playerName,
+    guessAttempts: guessing.guessAttempts,
     onPlayerNameChange: session.setPlayerName,
     onSubmitGuess: guessing.handleGuess,
   };
@@ -580,6 +588,9 @@ export default function Index() {
           statusText={guessing.status}
           countdownTarget={countdownTarget}
           countdownLabel={countdownLabel}
+          nextDropTeaser={nextDropTeaser}
+          onRemindMe={session.pushNotifications.toggleNotifications}
+          isReminded={session.pushNotifications.isOptedIn}
           runFinished={runFinished}
           currentStreak={session.streak.current}
           bestStreak={session.streak.best}
@@ -619,8 +630,8 @@ export default function Index() {
                 rank: session.leaderboardSnapshot?.playerRank?.rank ?? null,
                 rankedCount: session.leaderboardSnapshot?.rankedCount ?? 0,
                 streak: session.streak.current,
-                guessesUsed: guessing.solvedRun.guessesUsed,
-                hotspotsOpened: guessing.solvedRun.hotspotsOpened,
+                guessesUsed: guessing.solvedRun.guessesUsed ?? session.run?.guessesUsed ?? 1,
+                hotspotsOpened: guessing.solvedRun.hotspotsOpened ?? hotspotsOpened,
                 difficulty: session.episode.difficulty,
                 figureEra: revealFigureRecord?.era,
                 figureRegion: revealFigureRecord?.region,
@@ -700,6 +711,7 @@ export default function Index() {
         era={revealFigureRecord?.era ?? ""}
         region={revealFigureRecord?.region ?? ""}
         tags={revealFigureRecord?.tags ?? []}
+        episodeId={session.episode._id}
         imageUrl={solvedSceneImageUrl}
         onContinue={() => guessing.setRevealDismissed(true)}
       />

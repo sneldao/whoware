@@ -64,6 +64,7 @@ export function attachLookControls(input: LookInput): LookControlsHandle {
     dragging = true;
     lastX = ev.clientX;
     lastY = ev.clientY;
+    input.canvas.style.cursor = "grabbing";
     input.canvas.setPointerCapture(ev.pointerId);
     input.onActiveChange?.(true);
   };
@@ -83,6 +84,7 @@ export function attachLookControls(input: LookInput): LookControlsHandle {
   const onUp = (ev: PointerEvent) => {
     if (dragging) input.onActiveChange?.(false);
     dragging = false;
+    input.canvas.style.cursor = "grab";
     try {
       input.canvas.releasePointerCapture(ev.pointerId);
     } catch {

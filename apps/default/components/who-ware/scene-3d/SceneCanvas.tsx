@@ -70,11 +70,13 @@ export function SceneCanvas({
 }: SceneCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [activeClue, setActiveClue] = useState<Clue | null>(null);
+  const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const onHotspotOpenRef = useRef(onHotspotOpen);
   onHotspotOpenRef.current = onHotspotOpen;
 
   useEffect(() => {
     setActiveClue(null);
+    setHoverLabel(null);
     onDismissHint?.(); // Clear the hint when navigating to a different scene
   }, [scene.title, sceneIndex, onDismissHint]);
 
@@ -119,8 +121,14 @@ export function SceneCanvas({
           props={scene.props}
           lighting={scene.lighting}
           onHotspotOpen={handleHotspot}
+          onHoverProp={setHoverLabel}
         />
-        {!fill ? (
+        {hoverLabel ? (
+          <View style={styles.inspectTooltip}>
+            <Ionicons name="search-outline" size={13} color={theme.accent} />
+            <Text style={styles.inspectTooltipText}>Inspect: {hoverLabel}</Text>
+          </View>
+        ) : !fill ? (
           <View style={styles.helpOverlay}>
             <Text style={styles.help}>Drag to look · tap glowing objects</Text>
           </View>
@@ -185,6 +193,7 @@ function CanvasMount({
   props: sceneProps,
   lighting: sceneLighting,
   onHotspotOpen,
+  onHoverProp,
 }: {
   hostRef: React.MutableRefObject<HTMLDivElement | null>;
   imageUrl: string | null;
@@ -192,9 +201,12 @@ function CanvasMount({
   props?: Scene["props"];
   lighting?: Scene["lighting"];
   onHotspotOpen: (label: string) => void;
+  onHoverProp?: (label: string | null) => void;
 }) {
   const onHotspotOpenRef = useRef(onHotspotOpen);
   onHotspotOpenRef.current = onHotspotOpen;
+  const onHoverPropRef = useRef(onHoverProp);
+  onHoverPropRef.current = onHoverProp;
 
   // Stabilize rebuilds: identity keys, not parent callback identity.
   const clueKey = clues.map((c) => `${c.label}:${c.x}:${c.y}`).join("|");
@@ -219,6 +231,7 @@ function CanvasMount({
     canvas.style.width = "100%";
     canvas.style.height = "100%";
     canvas.style.touchAction = "none";
+    canvas.style.cursor = "grab";
     host.appendChild(canvas);
 
     const renderer = new THREE.WebGLRenderer({
@@ -245,8 +258,12 @@ function CanvasMount({
     let looping = false;
     let raf = 0;
     let dragging = false;
-    let animClueMarkers: THREE.Object3D[] = [];
-    let animFlickerProps: { mesh: THREE.Mesh; baseIntensity: number; phase: number }[] = [];
+    const animClueMarkers: THREE.Object3D[] = [];
+    const animFlickerProps: { mesh: THREE.Mesh; baseIntensity: number; phase: number }[] = [];
+    let dustPoints: THREE.Points | null = null;
+    // Base positions for the dust cloud — we oscillate around these instead
+    // of integrating velocity, so motes never drift out of the room.
+    let dustBase: Float32Array | null = null;
     const animStart = performance.now();
 
     const kick = () => {
@@ -288,10 +305,22 @@ function CanvasMount({
           }
         }
 
+        // Animate atmospheric dust motes — oscillate around base positions
+        if (dustPoints && dustBase) {
+          const positions = dustPoints.geometry.attributes.position.array as Float32Array;
+          for (let i = 0; i < positions.length; i += 3) {
+            const phase = i * 0.7;
+            positions[i] = dustBase[i] + Math.cos(elapsed * 0.3 + phase) * 0.8;
+            positions[i + 1] = dustBase[i + 1] + Math.sin(elapsed * 0.5 + phase) * 1.2;
+            positions[i + 2] = dustBase[i + 2] + Math.sin(elapsed * 0.25 + phase) * 0.8;
+          }
+          dustPoints.geometry.attributes.position.needsUpdate = true;
+        }
+
         applyLook(camera, lookState);
         renderer.render(scene3d, camera);
         // Keep looping while there are animated objects, or dragging, or dirty
-        if (dragging || dirty || animClueMarkers.length > 0 || animFlickerProps.length > 0) {
+        if (dragging || dirty || animClueMarkers.length > 0 || animFlickerProps.length > 0 || dustPoints) {
           dirty = false;
           raf = requestAnimationFrame(tick);
         } else {
@@ -316,6 +345,28 @@ function CanvasMount({
 
     const lighting = buildLightingRig(lightingSnapshot);
     scene3d.add(lighting.group);
+
+    // Build atmospheric dust particle cloud
+    const dustCount = 180;
+    const dustGeo = new THREE.BufferGeometry();
+    const dustPos = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount * 3; i += 3) {
+      dustPos[i] = (Math.random() - 0.5) * 80;
+      dustPos[i + 1] = (Math.random() - 0.5) * 40;
+      dustPos[i + 2] = (Math.random() - 0.5) * 80;
+    }
+    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+    dustBase = dustPos.slice();
+    const dustMat = new THREE.PointsMaterial({
+      color: 0xfef3c7,
+      size: 1.5,
+      transparent: true,
+      opacity: 0.35,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    dustPoints = new THREE.Points(dustGeo, dustMat);
+    scene3d.add(dustPoints);
 
     let skybox: THREE.Mesh | null = null;
     let cancelled = false;
@@ -404,6 +455,9 @@ function CanvasMount({
     let downX = 0;
     let downY = 0;
     let downAt = 0;
+    // Shared raycast scratch objects — hover fires on every pointermove.
+    const hoverRay = new THREE.Raycaster();
+    const hoverNdc = new THREE.Vector2();
     const onDown = (ev: PointerEvent) => {
       downX = ev.clientX;
       downY = ev.clientY;
@@ -435,8 +489,46 @@ function CanvasMount({
         }
       }
     };
+    const onMove = (ev: PointerEvent) => {
+      if (dragging) {
+        onHoverPropRef.current?.(null);
+        return;
+      }
+      // Hover only fires on precise pointers (mouse/pen); a touch
+      // pointermove is part of a drag or tap, not an inspection intent.
+      if (ev.pointerType === "touch") return;
+      const rect2 = canvas.getBoundingClientRect();
+      hoverNdc.set(
+        ((ev.clientX - rect2.left) / rect2.width) * 2 - 1,
+        -((ev.clientY - rect2.top) / rect2.height) * 2 + 1,
+      );
+      hoverRay.setFromCamera(hoverNdc, camera);
+      // Raycast only interactive objects (props + clue markers), not the skybox.
+      const hits = hoverRay.intersectObjects([...propGroups, ...animClueMarkers], true);
+      let found: string | null = null;
+      for (const hit of hits) {
+        let obj: THREE.Object3D | null = hit.object;
+        while (obj) {
+          const label = obj.userData?.clueLabel;
+          if (typeof label === "string") {
+            found = label;
+            break;
+          }
+          obj = obj.parent;
+        }
+        if (found) break;
+      }
+      onHoverPropRef.current?.(found);
+    };
+
+    const onLeave = () => {
+      onHoverPropRef.current?.(null);
+    };
+
     canvas.addEventListener("pointerdown", onDown);
     canvas.addEventListener("pointerup", onUp);
+    canvas.addEventListener("pointermove", onMove);
+    canvas.addEventListener("pointerleave", onLeave);
 
     return () => {
       cancelled = true;
@@ -446,8 +538,15 @@ function CanvasMount({
       document.removeEventListener("visibilitychange", onVisibility);
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointerup", onUp);
+      canvas.removeEventListener("pointermove", onMove);
+      canvas.removeEventListener("pointerleave", onLeave);
       controls.dispose();
       lighting.dispose();
+      if (dustPoints) {
+        scene3d.remove(dustPoints);
+        dustPoints.geometry.dispose();
+        (dustPoints.material as THREE.Material).dispose();
+      }
       for (const g of propGroups) disposeGroup(g);
       if (skybox) {
         scene3d.remove(skybox);
@@ -601,6 +700,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 2,
     pointerEvents: "none",
+  },
+  inspectTooltip: {
+    position: "absolute",
+    top: 16,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: "rgba(12, 8, 4, 0.84)",
+    borderWidth: 1,
+    borderColor: theme.accentAlpha35,
+    zIndex: 10,
+    pointerEvents: "none",
+  },
+  inspectTooltipText: {
+    color: theme.ink,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   help: {
     color: theme.inkAlpha55,

@@ -15,7 +15,10 @@ WhoWare is a daily history guessing game where you step into a 3D memory scene, 
 - **Daily episodes** — one new historical figure per day, across three difficulty tiers (iconic, field, research)
 - **3D memory scenes** — the AI-generated panorama becomes a skybox the player looks around inside; props anchored to the scene brief appear as 3D objects the player inspects
 - **Sparse play HUD** — score/guesses stay as a floating overlay; denser panels open only when naming an identity or reviewing clues. Phone-column chrome returns after solve
-- **Atmosphere** — optional ambient bed on Enter with sound (ducks under clue SFX); hard mute on Enter without
+- **Deduction board** — every guess lands as a colour-coded row with Era/Region/Field ✓/✗ tags, turning guessing from trivia roulette into Wordle-style logical narrowing
+- **Story-first solve** — the reveal overlay carries the figure's AI-written narrative summary full-screen before the result shell, and the "Did you know?" fact is a tap-to-copy pull-quote
+- **Return ritual** — one-tap "Remind me" push opt-in plus a spoiler-free "Tomorrow's room: era · region" teaser on the countdown card
+- **Atmosphere** — optional ambient bed on Enter with sound (ducks under clue SFX); hard mute on Enter without; hovering a prop shows an "Inspect" tooltip while ~180 dust motes drift through the room
 - **AI-powered hints** — Venice AI generates privacy-preserving hints that guide without spoiling
 - **Scoring by restraint** — highest scores go to players who guess with fewer memories, clues, and time
 - **On-chain verification** — score NFTs and streak tokens minted on Mantle Sepolia for tamper-proof leaderboards
@@ -160,12 +163,14 @@ Run tests from the repo root or per-package.
 ```bash
 # Backend — Convex functions, AI pipeline, AI fallback
 cd packages/backend && npm test
-# (88 tests across 12 suites: catalog, runs, daily, archive, paywall, props,
-#  analytics, scene-3d-skybox, venice, notifications, mercy, example)
+# (131 tests across 15 suites: analytics, archive, catalog, daily, example,
+#  mercy, notifications, paywall, practice, props, relationships, runs,
+#  scene-3d-skybox, scoring, venice)
 
-# Frontend — theme tokens, contract addresses, scoring-tooltip, logger
+# Frontend — hooks, theme tokens, contract addresses, scoring-tooltip, logger
 cd apps/default && npm test
-# (23 tests across 4 suites: theme, contracts, scoring-tooltip, logger)
+# (53 tests across 7 suites: theme, contracts, scoring-tooltip, logger,
+#  use-guessing, use-inco-guess, use-clue-insights)
 # Run from app dir so vitest resolves Expo's tsconfig.base.
 
 # Contracts — Hardhat

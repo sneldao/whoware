@@ -132,6 +132,30 @@ describe("daily.getNextDrop", () => {
     expect(next).not.toBeNull();
     expect(next?.dropsAt).toBe(futureDrop);
   });
+
+  test("returns a spoiler-free teaser for an upcoming episode with a figure", async () => {
+    const t = setup();
+    await seedChurchillEpisode(t);
+    // Move the seeded live episode to a future draft so it becomes "the next room"
+    const futureDrop = Date.now() + 86_400_000;
+    const episodeId = await t.run(async (ctx) => {
+      const ep = await ctx.db
+        .query("episodes")
+        .withIndex("by_slug", (q) => q.eq("slug", "demo-churchill"))
+        .first();
+      if (!ep) throw new Error("episode missing");
+      await ctx.db.patch(ep._id, { status: "draft", dropsAt: futureDrop });
+      return ep._id;
+    });
+
+    const next = await t.query(api.daily.getNextDrop, {});
+    expect(next).not.toBeNull();
+    expect(next?.episodeId).toBe(episodeId);
+    expect(next?.teaserEra).toBe("20th century");
+    expect(next?.teaserRegion).toBe("Britain");
+    // The figure's name must never leak into the teaser surface
+    expect(JSON.stringify(next)).not.toContain("Winston Churchill");
+  });
 });
 
 describe("daily.openExpired", () => {

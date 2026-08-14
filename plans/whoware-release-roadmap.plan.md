@@ -4,6 +4,21 @@
 
 ## Progress Log
 
+### 2026-08-14 — Slice 8 (P0 loops + P1 polish) landed
+Closed the structural gaps from the whoware analysis — deduction, narrative payoff, and the return ritual:
+
+- **Persistent deduction board.** `computeDetailedProximity` (scoring.ts) breaks every wrong guess into Era/Region/Field booleans; `runs.submitGuess` returns them (declared in the `returns:` validator — Convex strips undeclared fields). New `deduction-board.tsx` renders each attempt as a colour-coded row with ✓/✗ tags inside PlayChrome; `useGuessing` tracks the attempt log and resets it per episode. `computeProximity` now delegates to the detailed variant so tier logic and booleans can never diverge.
+- **Story-first solve moment.** `RevealLayer`/`EnhancedIdentityReveal` is now truly story-first: the overlay queries the cached AI bio (`venice.getFigureBio`) and lazily generates it, showing the narrative summary full-screen under the typewriter name before the column shell returns. `FigureRevealCard`'s didYouKnow block is a tap-to-copy pull-quote with haptics.
+- **Return ritual.** One-tap "Remind me"/"Alert set" toggle in the countdown card wired to the push pipeline, plus a spoiler-free "Tomorrow's room: era · region" teaser. `daily.getNextDrop` now returns `teaserEra`/`teaserRegion` derived from the upcoming episode's figure (name never leaks — regression-tested).
+- **3D immersion (P1 + early P2).** Hotspot hover tooltips via scoped raycast (props + clue markers only, touch pointers skipped, shared scratch raycaster), grab/grabbing cursor, and atmospheric dust motes that oscillate around stored base positions (drift-proof) in the render loop.
+- **Integration audit.** The sprint was shipped with several latent breakages that blocked compilation/runtime: restored deleted declarations in `look-controls.ts`, fixed two Rules-of-Hooks violations (state after early return), restored the leaderboard-name input in `GuessPanel`, exported `setIsBusy` from `useGuessing`, added optional `guessesUsed`/`hotspotsOpened` to `SolvedRun`, and corrected nonexistent theme tokens.
+- **Tests.** Added `computeDetailedProximity` unit suite (tier/boolean consistency, case-insensitive field match, empty-tag guard, delegation parity), `submitGuess` field assertions, and the teaser no-leak test. Backend: 131 tests across 15 suites; frontend: 53 tests across 7 suites. Typecheck delta vs HEAD: zero new errors (three pre-existing errors resolved).
+
+**Remaining gaps to attack next (from the analysis, P2):**
+1. Friend challenge links — unique 8-char solve token → `whoware.app/c/[token]` with spoiler-free challenger stats.
+2. Free inspection allowances — scoring rebalance.
+3. Push at the crucial moment (8pm streak-at-risk send).
+
 ### 2026-06-04 — Slice 1 (Scoring truth) landed
 Closed the four security- and fairness-critical gaps identified against the vision:
 

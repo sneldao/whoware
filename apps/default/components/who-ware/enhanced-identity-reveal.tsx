@@ -1,8 +1,10 @@
+import { api } from "@/convex/_generated/api";
 import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { useAction, useQuery } from "convex/react";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   FadeIn,
@@ -22,6 +24,12 @@ interface EnhancedIdentityRevealProps {
   era: string;
   region: string;
   tags: string[];
+  summary?: string;
+  /**
+   * Episode whose cached AI bio supplies the story-first narrative when
+   * `summary` is not provided. Skipped when absent.
+   */
+  episodeId?: string;
   imageUrl?: string;
   imageKey?: string;
   onContinue: () => void;
@@ -32,12 +40,35 @@ export function EnhancedIdentityReveal({
   era,
   region,
   tags,
+  summary,
+  episodeId,
   imageUrl,
   onContinue,
 }: EnhancedIdentityRevealProps) {
   const [displayedName, setDisplayedName] = useState("");
   const [showContent, setShowContent] = useState(false);
   const [showName, setShowName] = useState(false);
+
+  // Story-first: pull the AI bio (cached query, lazily generated action)
+  // so the full-screen reveal carries the narrative, not just the name.
+  const cachedBio = useQuery(api.venice.getFigureBio, episodeId ? { episodeId: episodeId as never } : "skip");
+  const generateBio = useAction(api.venice.generateFigureBio);
+  const [actionBio, setActionBio] = useState<{ summary?: string } | null>(null);
+  const [bioTried, setBioTried] = useState(false);
+
+  useEffect(() => {
+    if (!episodeId || summary || bioTried) return;
+    if (cachedBio === undefined) return; // wait for the cache query to resolve
+    if (cachedBio) return; // cache hit — summary flows from cachedBio
+    let cancelled = false;
+    void generateBio({ episodeId: episodeId as never })
+      .then((bio) => { if (!cancelled) setActionBio(bio ?? null); })
+      .catch(() => { /* silent — the reveal still works without a bio */ })
+      .finally(() => { if (!cancelled) setBioTried(true); });
+    return () => { cancelled = true; };
+  }, [episodeId, summary, cachedBio, bioTried, generateBio]);
+
+  const resolvedSummary = summary ?? cachedBio?.summary ?? actionBio?.summary;
 
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.9);
@@ -199,6 +230,12 @@ export function EnhancedIdentityReveal({
               <Text style={styles.contextText}>{region} · {era}</Text>
             </View>
 
+            {resolvedSummary ? (
+              <View style={styles.summaryCard}>
+                <Text style={styles.summaryText}>{resolvedSummary}</Text>
+              </View>
+            ) : null}
+
             {tags.length > 0 && (
               <View style={styles.tagRow}>
                 {tags.slice(0, 5).map((tag) => (
@@ -298,6 +335,23 @@ const styles = StyleSheet.create({
     color: theme.inkAlpha65,
     fontSize: 15,
     fontWeight: "700",
+  },
+  summaryCard: {
+    padding: 14,
+    borderRadius: 16,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(255, 240, 214, 0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 240, 214, 0.12)",
+    maxWidth: 360,
+  },
+  summaryText: {
+    color: theme.inkAlpha84,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: "600",
+    textAlign: "center",
+    fontStyle: "italic",
   },
   tagRow: {
     flexDirection: "row",

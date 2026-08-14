@@ -3,6 +3,7 @@ import { logger } from "./logger";
 
 const ONBOARDING_KEY = "whoware.onboarding.complete";
 const SOUND_KEY = "whoware.sound.enabled";
+const COLD_OPEN_KEY = "whoware.coldOpen.seen";
 
 /** Progressive in-room coaches — shown once at the moment of need. */
 export type CoachTipId = "wrongGuess" | "unlockNext" | "nameIdentity";
@@ -14,9 +15,9 @@ const COACH_KEYS: Record<CoachTipId, string> = {
 };
 
 export const COACH_COPY: Record<CoachTipId, string> = {
-  wrongGuess: "Guesses are limited — another memory might help.",
-  unlockNext: "More rooms mean more signal, and a lower score ceiling.",
-  nameIdentity: "Search or pick a figure when you're ready. Restraint scores higher.",
+  wrongGuess: "Proximity feedback will guide your next guess — check era and region!",
+  unlockNext: "Exploring more memories uncovers crucial props and era clues.",
+  nameIdentity: "Name the figure whenever you feel confident in your hypothesis.",
 };
 
 export async function hasCompletedOnboarding(): Promise<boolean> {
@@ -53,6 +54,25 @@ export async function setSoundEnabled(enabled: boolean): Promise<void> {
     await AsyncStorage.setItem(SOUND_KEY, enabled ? "true" : "false");
   } catch (e) {
     logger.warn("onboarding.setSoundEnabled", e);
+  }
+}
+
+/** Returns true if the player has already seen the Act I brand reveal. */
+export async function hasSeenColdOpen(): Promise<boolean> {
+  try {
+    const value = await AsyncStorage.getItem(COLD_OPEN_KEY);
+    return value === "true";
+  } catch (e) {
+    logger.warn("onboarding.hasSeenColdOpen", e);
+    return false;
+  }
+}
+
+export async function markColdOpenSeen(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(COLD_OPEN_KEY, "true");
+  } catch (e) {
+    logger.warn("onboarding.markColdOpenSeen", e);
   }
 }
 

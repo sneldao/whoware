@@ -1,8 +1,10 @@
 import { api } from "@/convex/_generated/api";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { theme } from "@/lib/theme";
 
@@ -48,6 +50,7 @@ export function FigureRevealCard({
   const [bio, setBio] = useState<FigureBio | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasTried, setHasTried] = useState(false);
+  const [copiedFact, setCopiedFact] = useState(false);
 
   // Use cached bio if available
   useEffect(() => {
@@ -125,6 +128,16 @@ export function FigureRevealCard({
     );
   }
 
+  async function handleCopyFact() {
+    if (!bio?.didYouKnow || copiedFact) return;
+    await Clipboard.setStringAsync(`Did you know? ${bio.didYouKnow} — WhoWare`);
+    setCopiedFact(true);
+    if (Platform.OS !== "web") {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setTimeout(() => setCopiedFact(false), 2000);
+  }
+
   return (
     <Animated.View entering={FadeInDown.duration(600).springify().damping(16)} style={styles.card}>
       <View style={styles.headerRow}>
@@ -148,13 +161,24 @@ export function FigureRevealCard({
       <BioSection label="What they changed" text={bio.whatTheyChanged} icon="trending-up-outline" />
       <BioSection label="Why this room" text={bio.whyThisRoom} icon="home-outline" />
 
-      <View style={styles.didYouKnow}>
+      <Pressable
+        onPress={handleCopyFact}
+        style={({ pressed }) => [
+          styles.didYouKnow,
+          copiedFact && styles.didYouKnowCopied,
+          pressed && styles.pressed,
+        ]}
+      >
         <View style={styles.didYouKnowHeader}>
           <Ionicons name="bulb-outline" size={14} color={theme.accent} />
           <Text style={styles.didYouKnowLabel}>Did you know?</Text>
+          <View style={styles.copyFactBadge}>
+            <Ionicons name={copiedFact ? "checkmark" : "copy-outline"} size={11} color={theme.accent} />
+            <Text style={styles.copyFactBadgeText}>{copiedFact ? "Copied" : "Copy fact"}</Text>
+          </View>
         </View>
         <Text style={styles.didYouKnowText}>{bio.didYouKnow}</Text>
-      </View>
+      </Pressable>
 
       {figureTags.length > 0 ? (
         <View style={styles.tagRow}>
@@ -303,17 +327,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.accentAlpha22,
   },
+  didYouKnowCopied: {
+    backgroundColor: "rgba(134, 239, 172, 0.12)",
+    borderColor: "rgba(134, 239, 172, 0.35)",
+  },
+  pressed: {
+    opacity: 0.82,
+  },
   didYouKnowHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
   didYouKnowLabel: {
+    flex: 1,
     color: theme.accent,
     fontSize: 10,
     fontWeight: "900",
     letterSpacing: 0.8,
     textTransform: "uppercase",
+  },
+  copyFactBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: "rgba(255, 240, 214, 0.08)",
+  },
+  copyFactBadgeText: {
+    color: theme.accent,
+    fontSize: 10,
+    fontWeight: "800",
   },
   didYouKnowText: {
     color: theme.inkAlpha84,
