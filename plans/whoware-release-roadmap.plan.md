@@ -4,6 +4,46 @@
 
 ## Progress Log
 
+### 2026-08-14 — Slice 11 (continuity, identity, tooling hardening) landed
+Tester feedback: leaving and returning felt disorienting, and the landing was
+sparse next to the promo video. Closed the continuity gap end to end and
+hardened the shipping pipeline:
+
+- **Case File recap.** Returning mid-run players get a "Where you left off"
+  overlay (memories, clues, guesses left, hints used, last proximity) over the
+  room, with a one-tap resume. Driven by return detection on first run load;
+  never fires after entering via the threshold that session.
+- **Richer threshold.** Episode plate (number · difficulty · live collapse
+  countdown), the three verbs, and a "How to play" link (the route existed but
+  was unreachable from the landing).
+- **Guess feedback persisted server-side.** The `guesses` table now carries the
+  proximity tier, era/region/field matches, and message. New scoped
+  `runs.getRunGuesses` rehydrates the deduction board after reloads.
+  Answer-leak-safe: a guess row never contains the episode's figure.
+- **Wallet-bound identity.** `walletAuth.linkWallet` (previously dead code) is
+  now wired via `useWalletIdentity`: the anonymous UUID links to the wallet on
+  first connect, and a fresh device connecting an already-linked wallet adopts
+  the existing identity (streak + history become portable). Safe-by-default:
+  adoption never fires while a local run is active.
+- **Research-tier coach.** One-shot whisper on hard days so an obscure figure
+  reads as design, not a bug. Guesses metric now opens the guess panel
+  directly (one-tap naming).
+- **Agent gate fail-closed.** `/api/agents/pipeline` + `/curator` now 401 when
+  `AGENTS_API_KEY` is unset or mismatched (previously fail-open; prod was
+  missing the key). README documents the key as required.
+- **Tooling.** `bun.lock` is now tracked (root cause of the Vercel phantom-dep
+  build failure: bun 1.3's isolated install layout on the server vs hoisted
+  local). Declared `@metamask/delegation-core` + `vitest` (were phantoms).
+  Convex codegen regenerated with an authenticated CLI. Rotated the leaked
+  Convex Auth JWT signing keypair on prod (sessions invalidated; anonymous provider
+  recreates them).
+
+### 2026-08-14 — Slice 10 (answer-leak fix deployed + verified) landed
+Slice 9 shipped to production Convex (`cheery-elk-110`) and verified live:
+`getCurrentDrop` redacted, bio/relationship/archive/episode queries gated,
+`runs.getAnswer` serving resolved runs only, `/api/agents/curator` bearer-gated.
+All probes confirmed no cleartext answer path remains on the live deployment.
+
 ### 2026-08-14 — Slice 9 (answer-leak hardening) landed
 Production audit found the live Convex deployment served today's answer in cleartext
 to every visitor. Closed every answer-revealing surface server-side:

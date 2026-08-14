@@ -2,7 +2,7 @@
 
 **Daily embodied history ritual.** Someone changed history from this room — can you name them?
 
-> **Live demo:** https://whoware-lhlw4wcza-snel.vercel.app
+> **Live demo:** https://whoware.vercel.app
 > **3D roadmap:** see [`3D-PLAN.md`](./3D-PLAN.md)
 > **On-chain vision:** see [`ONCHAIN-VISION.md`](./ONCHAIN-VISION.md)
 > **Treasury wallet:** see [`TREASURY.md`](./TREASURY.md)
@@ -11,13 +11,15 @@ WhoWare is a daily history guessing game where you step into a 3D memory scene, 
 
 ## How it works
 
-- **Immersion-first entry** — cold start lands in today's room (live panorama/3D behind Enter with/without sound), not a tutorial carousel or dashboard
-- **Daily episodes** — one new historical figure per day, across three difficulty tiers (iconic, field, research)
+- **Immersion-first entry** — cold start lands in today's room behind a case plate (episode number, difficulty tier, live "collapses in" countdown), the three verbs (Walk the memory · Name the figure · Five guesses), and Enter with/without sound
+- **Where you left off** — returning mid-run players get a dismissible Case File recap (memories, clues found, guesses left, hints used, last proximity) instead of a silent drop into the room
+- **Daily episodes** — one new historical figure per day, across three difficulty tiers (iconic, field, research); research-tier days coach first-timers so a hard figure never reads as a bug
 - **3D memory scenes** — the AI-generated panorama becomes a skybox the player looks around inside; props anchored to the scene brief appear as 3D objects the player inspects
 - **Sparse play HUD** — score/guesses stay as a floating overlay; denser panels open only when naming an identity or reviewing clues. Phone-column chrome returns after solve
-- **Deduction board** — every guess lands as a colour-coded row with Era/Region/Field ✓/✗ tags, turning guessing from trivia roulette into Wordle-style logical narrowing
+- **Deduction board** — every guess lands as a colour-coded row with Era/Region/Field ✓/✗ tags, turning guessing from trivia roulette into Wordle-style logical narrowing. Guess feedback is persisted server-side (`runs.getRunGuesses`), so the board survives reloads
 - **Story-first solve** — the reveal overlay carries the figure's AI-written narrative summary full-screen before the result shell, and the "Did you know?" fact is a tap-to-copy pull-quote
 - **Return ritual** — one-tap "Remind me" push opt-in plus a spoiler-free "Tomorrow's room: era · region" teaser on the countdown card
+- **Portable identity** — play is anonymous by default (a local investigator UUID). Connecting a wallet links the identity, and a fresh device that connects the same wallet adopts the existing identity (streak + history follow the player)
 - **Atmosphere** — optional ambient bed on Enter with sound (ducks under clue SFX); hard mute on Enter without; hovering a prop shows an "Inspect" tooltip while ~180 dust motes drift through the room
 - **AI-powered hints** — Venice AI generates privacy-preserving hints that guide without spoiling
 - **Scoring by restraint** — highest scores go to players who guess with fewer memories, clues, and time
@@ -32,8 +34,9 @@ whoware/
 │   ├── app/                                     # Routes (Expo Router)
 │   ├── components/
 │   │   ├── who-ware/                           # Game-screen UI
-│   │   │   ├── immersion-threshold.tsx         # Live-room entry gate (sound choice)
+│   │   │   ├── immersion-threshold.tsx         # Live-room entry gate (case plate, countdown, sound choice)
 │   │   │   ├── immersion-session.tsx           # Full-bleed active run (room + HUD)
+│   │   │   ├── case-file-recap.tsx             # "Where you left off" overlay for mid-run returns
 │   │   │   ├── play-chrome.tsx                 # Overlay / stacked play chrome
 │   │   │   ├── views/                          # SolvedView, ExhaustedView, HeroPanel, PlayingView, HistoryCard
 │   │   │   │   └── props.ts                    # Composite prop shapes shared across views
@@ -76,15 +79,15 @@ The 3D scene is rendered by `apps/default/components/who-ware/scene-3d/SceneCanv
 
 Cold path (web):
 
-1. **Threshold** — today's scene 0 already running full-bleed behind WhoWare + Enter with/without sound
+1. **Threshold** — today's scene 0 already running full-bleed behind the case plate (episode · difficulty · collapse countdown), WhoWare + tagline, the three verbs, and Enter with/without sound. "How to play" links to `/how-to` without leaving the cold path
 2. **Wake** — `ensureRun` + `enterScene(0)`; ambient bed starts only for with-sound; onboarding flag persisted
 3. **ImmersionSession** — same full-bleed room; whisper/coach until first clue, Name identity, or ~12s
-4. **PlayChrome overlay** — metrics + scene rail + actions; clue/guess sheet expands on demand
+4. **PlayChrome overlay** — metrics + scene rail + actions; clue/guess sheet expands on demand; tapping the Guesses metric opens the guess panel directly
 5. **Solve / exhaust** — restore the phone-column shell (`HeroPanel` + SolvedView / ExhaustedView)
 
-`lib/immersion-shell.tsx` drops the 560px web column while threshold or an active run is up. Returning mid-run players skip the threshold and land HUD-over-room with chrome unlocked.
+`lib/immersion-shell.tsx` drops the 560px web column while threshold or an active run is up. Returning mid-run players skip the threshold and land HUD-over-room with chrome unlocked, plus a one-time **Case File recap** ("Where you left off") until they resume or dismiss it.
 
-Progressive coaches (one-shot, AsyncStorage) fire at the moment of need: first wrong guess, first “Unlock next memory,” first open of Name identity. Optional full rules live at `/how-to` — never on the cold path.
+Progressive coaches (one-shot, AsyncStorage) fire at the moment of need: first wrong guess, first "Unlock next memory," first open of Name identity, and entering a research-tier day. Optional full rules live at `/how-to` — never on the cold path.
 
 Desktop shortcuts while in the room: `Esc` close sheets · `G` Name identity · `N` next memory · `1`–`9` scene rail. A wrong guess soft-pulses **Next memory** instead of auto-advancing. After solve/exhaust, the room holds ~1.4s (“Identity anchored…”) before the phone-column ritual.
 
@@ -127,6 +130,9 @@ Desktop shortcuts while in the room: `Esc` close sheets · `G` Name identity · 
 ```bash
 bun install
 ```
+
+> **Note:** the repo tracks `bun.lock` (bun is the single package manager).
+> Vercel installs from it so dependency resolution matches local exactly.
 
 ### 2. Configure environment
 
@@ -189,8 +195,15 @@ on the repo default.
 | `GET /api/archive/:episodeId?identityId=` | Access check — returns `200` if unlocked, `402 Payment Required` with metadata |
 | `GET /api/archive/:episodeId?detail=summary` | Free summary — returns `{ slug, difficulty, figureName, era, region, tags, sceneCount, blurb }` with `200`, no paywall check |
 | `GET /api/agents/card` | A2A Agent Card manifest (Google A2A spec lite) |
-| `POST /api/agents/pipeline` | Trigger autonomous episode generation pipeline |
-| `POST /api/agents/curator` | Standalone curator agent — selects next figure from catalog |
+| `POST /api/agents/pipeline` | Trigger autonomous episode generation pipeline (bearer key required — fails closed) |
+| `POST /api/agents/curator` | Standalone curator agent — selects next figure from catalog (bearer key required — fails closed) |
+
+**Answer-leak posture.** `daily.getCurrentDrop` returns scenes only — never the
+figure, answer options, or reveal payload. Identity queries (bios,
+relationships, episode detail, archive content, player history) are gated by
+`revealGating.ts`: the answer is served only once the episode is closed or the
+caller's run is solved/exhausted. Guess feedback (`runs.getRunGuesses`) is
+scoped to the caller's own run and never includes the episode's figure.
 
 ## Core principles
 

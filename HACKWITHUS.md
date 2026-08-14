@@ -23,7 +23,7 @@ WhoWare is Wordle meets an explorable history museum:
 
 ## Demo
 
-- Live app: https://whoware-lhlw4wcza-snel.vercel.app
+- Live app: https://whoware.vercel.app
 - Repo: https://github.com/<!-- fill org/repo if public -->
 
 ## How Tiun is used
