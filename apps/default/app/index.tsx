@@ -24,6 +24,7 @@ import {
 import { ExhaustedView } from "@/components/who-ware/views/exhausted-view";
 import { HeroPanel } from "@/components/who-ware/views/hero-panel";
 import { HistoryCard, LastSolveCard } from "@/components/who-ware/views/history-cards";
+import { CaseFileRecap } from "@/components/who-ware/case-file-recap";
 import {
   RevealLayer, ToastLayer, TooltipLayer, UpgradeOverlayLayer,
 } from "@/components/who-ware/views/overlays";
@@ -76,6 +77,7 @@ export default function Index() {
   const [loadHistory, setLoadHistory] = useState(false);
   const [pulseNextMemory, setPulseNextMemory] = useState(false);
   const [roomHold, setRoomHold] = useState(false);
+  const [caseFileDismissed, setCaseFileDismissed] = useState(false);
 
   const hasMoreMemoriesRef = useRef<() => boolean>(() => false);
   const sceneIndexRef = useRef({ sceneIndex: 0, setSceneIndex: (_i: number) => undefined as void });
@@ -84,6 +86,10 @@ export default function Index() {
   const wakeAtRef = useRef<number | null>(null);
   const wasActivePlayRef = useRef(false);
   const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** True when the player entered the room via the threshold this mount. */
+  const enteredThisSessionRef = useRef(false);
+  /** Captured on first loaded run: did we return to an already-active run? */
+  const returnedWithActiveRunRef = useRef<boolean | null>(null);
 
   const { setFullBleed } = useImmersionShell();
   const coach = useProgressiveCoach();
@@ -178,6 +184,18 @@ export default function Index() {
       setChromeUnlocked(true);
     }
   }, [hasEnteredMemoryEarly, runFinishedEarly]);
+
+  // Detect "came back mid-run" on first run load (never entered this mount).
+  // Drives the Case File recap so returning players get re-oriented.
+  useEffect(() => {
+    if (returnedWithActiveRunRef.current !== null) return;
+    if (session.run === undefined) return;
+    returnedWithActiveRunRef.current =
+      session.run !== null &&
+      session.run.status === "active" &&
+      (session.run.memoriesViewed ?? 0) > 0 &&
+      !enteredThisSessionRef.current;
+  }, [session.run]);
 
   // Track live play this session so solve-hold only runs after an in-session finish.
   useEffect(() => {
@@ -283,6 +301,7 @@ export default function Index() {
       const activeRun = await session.ensureRun();
       await session.enterSceneMutation({ runId: activeRun._id, sceneIndex: 0 });
       void markOnboardingComplete();
+      enteredThisSessionRef.current = true;
       wakeAtRef.current = Date.now();
       chromeUnlockedRef.current = false;
       setChromeUnlocked(false);
@@ -433,12 +452,36 @@ export default function Index() {
           isEntering={isEntering}
           onEnterWithSound={() => void handleThresholdEnter(true)}
           onEnterWithoutSound={() => void handleThresholdEnter(false)}
+          caseMeta={{
+            episodeNumber,
+            difficulty: session.episode.difficulty,
+            closesAt: session.episode.closesAt ?? null,
+          }}
+          onOpenHowTo={() => router.push("/how-to")}
         />
       </View>
     );
   }
 
   const inImmersionSurface = hasEnteredMemory && (!runFinished || roomHold);
+
+  // Case File recap — only when we loaded back into an already-active run
+  // (not after entering this session). Spoiler-safe: player-generated facts.
+  const lastGuessAttempt = guessing.guessAttempts.length > 0
+    ? guessing.guessAttempts[guessing.guessAttempts.length - 1]
+    : null;
+  const showCaseFile =
+    inImmersionSurface &&
+    !roomHold &&
+    !caseFileDismissed &&
+    returnedWithActiveRunRef.current === true;
+  const caseFileStats = [
+    { label: "Memories", value: `${memoriesViewed}/${totalMemories}` },
+    // Server count — survives reloads (discoveredClues is in-memory only).
+    { label: "Clues found", value: `${hotspotsOpened}` },
+    { label: "Guesses left", value: `${guessesLeft}`, accent: guessesLeft <= 1 },
+    { label: "Hints used", value: `${guessing.hintsUsed}` },
+  ];
 
   const sceneState = {
     scene: currentScene,
@@ -526,6 +569,16 @@ export default function Index() {
         />
         {!roomHold ? (
           <CoachWhisper message={coach.message} onDismiss={coach.dismiss} />
+        ) : null}
+        {showCaseFile ? (
+          <CaseFileRecap
+            episodeNumber={episodeNumber}
+            difficulty={session.episode.difficulty}
+            stats={caseFileStats}
+            lastProximity={lastGuessAttempt?.message ?? null}
+            onResume={() => setCaseFileDismissed(true)}
+            onDismiss={() => setCaseFileDismissed(true)}
+          />
         ) : null}
         {!roomHold && clueInsights.currentInsight ? (
           <InsightBanner

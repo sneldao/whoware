@@ -25,7 +25,7 @@ interface ResultShareCardProps {
   figureRegion?: string;
 }
 
-const DIFFICULTY_PALETTE: Record<string, { bg: string; fg: string; label: string }> = {
+export const DIFFICULTY_PALETTE: Record<string, { bg: string; fg: string; label: string }> = {
   iconic: { bg: theme.accentAlpha22, fg: theme.accent, label: "Iconic" },
   field: { bg: "rgba(134, 239, 172, 0.22)", fg: "#86EFAC", label: "Field" },
   research: { bg: "rgba(147, 197, 253, 0.22)", fg: "#93C5FD", label: "Research" },
