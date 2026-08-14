@@ -77,6 +77,53 @@ describe("catalog.createDraftEpisode", () => {
   });
 });
 
+describe("catalog.getEpisodeDetail", () => {
+  test("answer-leak guard: figureName is redacted while the episode is live", async () => {
+    const t = setup();
+    await seedCatalog(t);
+    const churchill = await t.query(api.figures.search, { query: "Churchill" }).then((rows) => rows[0]);
+
+    const episodeId = await t.run(async (ctx) => {
+      return await ctx.db.insert("episodes", {
+        slug: "live-redacted",
+        figureId: churchill._id,
+        figureName: churchill.canonicalName,
+        activeAt: Date.now(),
+        dropsAt: Date.now(),
+        status: "live",
+        difficulty: "iconic",
+        scenes: [],
+      });
+    });
+
+    const detail = await t.query(api.catalog.getEpisodeDetail, { episodeId });
+    expect(detail?.figureName).toBeUndefined();
+    expect(detail?.status).toBe("live");
+  });
+
+  test("figureName is visible while an episode is still in review", async () => {
+    const t = setup();
+    await seedCatalog(t);
+    const churchill = await t.query(api.figures.search, { query: "Churchill" }).then((rows) => rows[0]);
+
+    const episodeId = await t.run(async (ctx) => {
+      return await ctx.db.insert("episodes", {
+        slug: "review-visible",
+        figureId: churchill._id,
+        figureName: churchill.canonicalName,
+        activeAt: Date.now(),
+        dropsAt: Date.now() + 86_400_000,
+        status: "review",
+        difficulty: "iconic",
+        scenes: [],
+      });
+    });
+
+    const detail = await t.query(api.catalog.getEpisodeDetail, { episodeId });
+    expect(detail?.figureName).toBe("Winston Churchill");
+  });
+});
+
 describe("catalog.approveEpisode", () => {
   test("rejects approval when episode is not in review status", async () => {
     const t = setup();

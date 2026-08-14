@@ -44,7 +44,7 @@ async function seedEpisode(
 }
 
 describe("venice.getEpisodeFigure", () => {
-  test("returns figure metadata without canonicalName", async () => {
+  test("returns figure metadata without canonicalName or aliases", async () => {
     const t = setup();
     const figureId = await seedChurchillFigure(t);
     const episodeId = await seedEpisode(t, figureId);
@@ -54,7 +54,9 @@ describe("venice.getEpisodeFigure", () => {
     expect(figure?.era).toBe("1940s");
     expect(figure?.region).toBe("Europe");
     expect(figure?.tags).toContain("war");
-    expect(figure?.aliases).toContain("Churchill");
+    const raw = figure as Record<string, unknown>;
+    expect("canonicalName" in raw).toBe(false);
+    expect("aliases" in raw).toBe(false);
   });
 
   test("returns null for episode without figureId", async () => {
@@ -72,6 +74,90 @@ describe("venice.getEpisodeFigure", () => {
 
     const figure = await t.query(api.venice.getEpisodeFigure, { episodeId });
     expect(figure).toBeNull();
+  });
+});
+
+describe("venice.getFigureBio", () => {
+  async function seedCachedBio(t: ReturnType<typeof setup>, episodeId: Id<"episodes">) {
+    await t.run(async (ctx) => {
+      await ctx.db.insert("veniceHints", {
+        cacheKey: `bio:${episodeId}`,
+        hint: JSON.stringify({
+          summary: "He led Britain through the Second World War.",
+          whatTheyChanged: "Rhetoric as a weapon of state.",
+          whyThisRoom: "The room remembers the man.",
+          didYouKnow: "He also painted.",
+        }),
+        cachedAt: Date.now(),
+      });
+    });
+  }
+
+  test("answer-leak guard: closed episode serves the cached bio", async () => {
+    const t = setup();
+    const figureId = await seedChurchillFigure(t);
+    const episodeId = await t.run(async (ctx) => {
+      return await ctx.db.insert("episodes", {
+        slug: "bio-closed",
+        figureId,
+        figureName: "Winston Churchill",
+        activeAt: Date.now() - 86_400_000,
+        dropsAt: Date.now() - 86_400_000,
+        status: "closed",
+        difficulty: "iconic",
+        scenes: [],
+      });
+    });
+    await seedCachedBio(t, episodeId);
+
+    const bio = await t.query(api.venice.getFigureBio, { episodeId });
+    expect(bio?.summary).toContain("Second World War");
+  });
+
+  test("answer-leak guard: live episode without a resolved run returns null", async () => {
+    const t = setup();
+    const figureId = await seedChurchillFigure(t);
+    const episodeId = await seedEpisode(t, figureId);
+    await seedCachedBio(t, episodeId);
+
+    const bio = await t.query(api.venice.getFigureBio, { episodeId });
+    expect(bio).toBeNull();
+  });
+
+  test("answer-leak guard: live episode serves the bio to the caller whose run is resolved", async () => {
+    const t = setup();
+    const figureId = await seedChurchillFigure(t);
+    const episodeId = await seedEpisode(t, figureId);
+    await seedCachedBio(t, episodeId);
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("playerRuns", {
+        episodeId,
+        identityId: "player-exhausted",
+        playerName: "Exh",
+        status: "exhausted",
+        startedAt: Date.now(),
+        completedAt: Date.now(),
+        currentSceneIndex: 0,
+        memoriesViewed: 2,
+        hotspotsOpened: 0,
+        hintsUsed: 0,
+        guessesUsed: 5,
+      });
+    });
+
+    const bio = await t.query(api.venice.getFigureBio, {
+      episodeId,
+      identityId: "player-exhausted",
+    });
+    expect(bio?.summary).toContain("Second World War");
+
+    // A stranger's identity still gets nothing.
+    const hidden = await t.query(api.venice.getFigureBio, {
+      episodeId,
+      identityId: "someone-else",
+    });
+    expect(hidden).toBeNull();
   });
 });
 

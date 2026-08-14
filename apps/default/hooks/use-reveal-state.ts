@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
 /**
@@ -23,9 +25,17 @@ export interface RevealFigure {
   figureId?: Id<"figures">;
 }
 
+/** Full answer record served only to resolved runs (runs.getAnswer). */
+export interface AnswerRecord {
+  canonicalName: string;
+  era: string;
+  region: string;
+  tags: string[];
+  figureId: Id<"figures">;
+}
+
 export interface UseRevealStateParams {
   episode: { _id: Id<"episodes">; figureId?: Id<"figures">; slug: string } | null | undefined;
-  figures: Array<{ _id: Id<"figures">; canonicalName: string }>;
   isExhausted: boolean;
   identityId: string | undefined;
 }
@@ -38,13 +48,25 @@ export interface UseRevealStateReturn {
   revealDismissed: boolean;
   setRevealDismissed: (dismissed: boolean) => void;
   revealFigure: RevealFigure | null;
+  /** Server-side answer record for resolved runs (survives reloads). */
+  answerRecord: AnswerRecord | null;
 }
 
 export function useRevealState(params: UseRevealStateParams): UseRevealStateReturn {
-  const { episode, figures, isExhausted, identityId } = params;
+  const { episode, isExhausted, identityId } = params;
   const [solvedRun, setSolvedRun] = useState<SolvedRun | null>(null);
   const [solvedFigure, setSolvedFigure] = useState<RevealFigure | null>(null);
   const [revealDismissed, setRevealDismissed] = useState(false);
+
+  // The episode payload no longer carries the figure identity (leak fix),
+  // so the exhausted reveal resolves the answer from runs.getAnswer — the
+  // server only serves it once the run is solved or exhausted.
+  const answer = useQuery(
+    api.runs.getAnswer,
+    isExhausted && episode && identityId
+      ? { episodeId: episode._id, identityId }
+      : "skip",
+  );
 
   // Reset reveal state on episode or identity change.
   useEffect(() => {
@@ -53,14 +75,18 @@ export function useRevealState(params: UseRevealStateParams): UseRevealStateRetu
     setRevealDismissed(false);
   }, [episode?._id, identityId]);
 
+  const answerRecord: AnswerRecord | null = useMemo(() => {
+    if (!answer || answer.canonicalName === undefined) return null;
+    return answer;
+  }, [answer]);
+
   const revealFigure = useMemo<RevealFigure | null>(() => {
     if (solvedFigure) return solvedFigure;
-    if (isExhausted && episode && "figureId" in episode && episode.figureId) {
-      const f = figures.find((fig) => fig._id === episode.figureId);
-      if (f) return { name: f.canonicalName, figureId: f._id };
+    if (isExhausted && answerRecord) {
+      return { name: answerRecord.canonicalName, figureId: answerRecord.figureId };
     }
     return null;
-  }, [solvedFigure, isExhausted, episode, figures]);
+  }, [solvedFigure, isExhausted, answerRecord]);
 
   return {
     solvedRun,
@@ -70,5 +96,6 @@ export function useRevealState(params: UseRevealStateParams): UseRevealStateRetu
     revealDismissed,
     setRevealDismissed,
     revealFigure,
+    answerRecord,
   };
 }

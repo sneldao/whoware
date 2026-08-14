@@ -14,6 +14,8 @@ interface FigureRevealCardProps {
   figureEra?: string;
   figureRegion?: string;
   figureTags?: string[];
+  /** Caller identity — required for the bio/relationship reveal gate. */
+  identityId?: string;
 }
 
 interface FigureBio {
@@ -43,10 +45,11 @@ export function FigureRevealCard({
   figureEra,
   figureRegion,
   figureTags = [],
+  identityId,
 }: FigureRevealCardProps) {
-  const cached = useQuery(api.venice.getFigureBio, { episodeId: episodeId as never });
+  const cached = useQuery(api.venice.getFigureBio, { episodeId: episodeId as never, identityId });
   const generateBio = useAction(api.venice.generateFigureBio);
-  const relationships = useQuery(api.figures.getFigureRelationships, { episodeId: episodeId as never });
+  const relationships = useQuery(api.figures.getFigureRelationships, { episodeId: episodeId as never, identityId });
   const [bio, setBio] = useState<FigureBio | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasTried, setHasTried] = useState(false);
@@ -78,7 +81,7 @@ export function FigureRevealCard({
     setIsGenerating(true);
     setHasTried(true);
     try {
-      const result = await generateBio({ episodeId: episodeId as never });
+      const result = await generateBio({ episodeId: episodeId as never, identityId });
       if (result) setBio(result);
     } catch {
       // silent — the card shows a fallback

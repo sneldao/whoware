@@ -10,6 +10,7 @@ export interface ExhaustedViewProps {
   figureEra?: string;
   figureRegion?: string;
   figureTags?: string[];
+  identityId?: string;
   onLearnMoreArchive: () => void;
   onTomorrow: () => void;
 }
@@ -24,6 +25,7 @@ export function ExhaustedView({
   figureEra,
   figureRegion,
   figureTags,
+  identityId,
   onLearnMoreArchive,
   onTomorrow,
 }: ExhaustedViewProps) {
@@ -35,6 +37,7 @@ export function ExhaustedView({
         figureEra={figureEra}
         figureRegion={figureRegion}
         figureTags={figureTags}
+        identityId={identityId}
       />
       <View style={styles.exhaustedCard}>
         <Text style={styles.exhaustedTitle}>Case exhausted</Text>

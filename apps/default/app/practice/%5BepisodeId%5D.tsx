@@ -145,6 +145,7 @@ export default function PracticeScreen() {
             figureEra={episode.figure.era}
             figureRegion={episode.figure.region}
             figureTags={episode.figure.tags}
+            identityId={identityId ?? undefined}
           />
           <View style={styles.solvedCard}>
             <Text style={styles.solvedTitle}>Practice complete</Text>

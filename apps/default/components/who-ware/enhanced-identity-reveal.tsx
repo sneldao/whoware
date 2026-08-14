@@ -30,6 +30,8 @@ interface EnhancedIdentityRevealProps {
    * `summary` is not provided. Skipped when absent.
    */
   episodeId?: string;
+  /** Caller identity — gates the bio reveal. */
+  identityId?: string;
   imageUrl?: string;
   imageKey?: string;
   onContinue: () => void;
@@ -42,6 +44,7 @@ export function EnhancedIdentityReveal({
   tags,
   summary,
   episodeId,
+  identityId,
   imageUrl,
   onContinue,
 }: EnhancedIdentityRevealProps) {
@@ -51,7 +54,7 @@ export function EnhancedIdentityReveal({
 
   // Story-first: pull the AI bio (cached query, lazily generated action)
   // so the full-screen reveal carries the narrative, not just the name.
-  const cachedBio = useQuery(api.venice.getFigureBio, episodeId ? { episodeId: episodeId as never } : "skip");
+  const cachedBio = useQuery(api.venice.getFigureBio, episodeId ? { episodeId: episodeId as never, identityId } : "skip");
   const generateBio = useAction(api.venice.generateFigureBio);
   const [actionBio, setActionBio] = useState<{ summary?: string } | null>(null);
   const [bioTried, setBioTried] = useState(false);
@@ -61,12 +64,12 @@ export function EnhancedIdentityReveal({
     if (cachedBio === undefined) return; // wait for the cache query to resolve
     if (cachedBio) return; // cache hit — summary flows from cachedBio
     let cancelled = false;
-    void generateBio({ episodeId: episodeId as never })
+    void generateBio({ episodeId: episodeId as never, identityId })
       .then((bio) => { if (!cancelled) setActionBio(bio ?? null); })
       .catch(() => { /* silent — the reveal still works without a bio */ })
       .finally(() => { if (!cancelled) setBioTried(true); });
     return () => { cancelled = true; };
-  }, [episodeId, summary, cachedBio, bioTried, generateBio]);
+  }, [episodeId, identityId, summary, cachedBio, bioTried, generateBio]);
 
   const resolvedSummary = summary ?? cachedBio?.summary ?? actionBio?.summary;
 

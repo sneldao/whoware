@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 
 export const getGlobalStats = query({
   args: {},
@@ -248,7 +249,7 @@ export const getEpisodeBreakdowns = query({
     // Fetch episode details
     const episodeIds = Array.from(byEpisode.keys());
     const episodes = await Promise.all(
-      episodeIds.map((id) => ctx.db.get(id as any)),
+      episodeIds.map((id) => ctx.db.get(id as Id<"episodes">)),
     );
 
     const results = episodeIds
@@ -266,7 +267,9 @@ export const getEpisodeBreakdowns = query({
         return {
           episodeId: epId as any,
           slug: ep.slug,
-          figureName: ep.figureName ?? "Unknown",
+          // Answer-leak guard: correct guesses while an episode is still
+          // live would otherwise publish the figure name here.
+          figureName: ep.status === "closed" ? (ep.figureName ?? "Unknown") : "In the field",
           totalSolves: data.guesses.length,
           mostHintsUsed: maxHints,
           fastestSolveMs: minElapsed,

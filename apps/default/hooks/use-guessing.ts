@@ -10,7 +10,7 @@ import { FigureOption } from "@/components/who-ware/guess-panel";
 import { useVeniceHint, type HintTier } from "@/hooks/use-venice-hint";
 import { evaluateHintRequest } from "@/hooks/hint-gating";
 import { useGameToast } from "@/hooks/use-game-toast";
-import { useRevealState, RevealFigure, SolvedRun } from "@/hooks/use-reveal-state";
+import { useRevealState, RevealFigure, SolvedRun, AnswerRecord } from "@/hooks/use-reveal-state";
 import { useOnchainCommit } from "@/hooks/use-onchain-commit";
 import { useIncoGuess } from "@/hooks/use-inco-guess";
 import { useLocalDiscovery } from "@/hooks/use-local-discovery";
@@ -86,6 +86,8 @@ export interface UseGuessingReturn {
   toastType: "info" | "warning" | "success" | "error";
   figureOptions: FigureOption[];
   revealFigure: RevealFigure | null;
+  /** Server-side answer record for resolved runs (survives reloads). */
+  answerRecord: AnswerRecord | null;
   handleGuessNow: () => Promise<void>;
   handleOpenHotspot: (label: string) => Promise<void>;
   handleGuess: (guessText: string, figureId: string, playerName: string) => Promise<void>;
@@ -172,7 +174,6 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
   const toast = useGameToast();
   const reveal = useRevealState({
     episode,
-    figures,
     isExhausted,
     identityId: identity.identityId,
   });
@@ -476,6 +477,12 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
       }
 
       if (result.guessesRemaining <= 0) {
+        // Exhausted: the server now reveals the answer with the final
+        // wrong guess. Capture it for an immediate overlay; the
+        // getAnswer query keeps it alive across reloads.
+        if (result.answer) {
+          reveal.setSolvedFigure({ name: result.answer, figureId: result.answerFigureId });
+        }
         setStatus("The signal fades. The archive closes around the wrong name.");
         return;
       }
@@ -530,6 +537,7 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
     toastType: toast.type,
     figureOptions,
     revealFigure: reveal.revealFigure,
+    answerRecord: reveal.answerRecord,
     handleGuessNow,
     handleOpenHotspot,
     handleGuess,

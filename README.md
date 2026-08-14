@@ -163,9 +163,9 @@ Run tests from the repo root or per-package.
 ```bash
 # Backend — Convex functions, AI pipeline, AI fallback
 cd packages/backend && npm test
-# (131 tests across 15 suites: analytics, archive, catalog, daily, example,
+# (142 tests across 15 suites: analytics, archive, catalog, daily, example,
 #  mercy, notifications, paywall, practice, props, relationships, runs,
-#  scene-3d-skybox, scoring, venice)
+#  scene-3d-skybox, scoring, venice — includes the answer-leak guard suites)
 
 # Frontend — hooks, theme tokens, contract addresses, scoring-tooltip, logger
 cd apps/default && npm test

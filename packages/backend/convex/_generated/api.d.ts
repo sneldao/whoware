@@ -27,6 +27,7 @@ import type * as paywall from "../paywall.js";
 import type * as practice from "../practice.js";
 import type * as props from "../props.js";
 import type * as rateLimit from "../rateLimit.js";
+import type * as revealGating from "../revealGating.js";
 import type * as runs from "../runs.js";
 import type * as scoring from "../scoring.js";
 import type * as venice from "../venice.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   practice: typeof practice;
   props: typeof props;
   rateLimit: typeof rateLimit;
+  revealGating: typeof revealGating;
   runs: typeof runs;
   scoring: typeof scoring;
   venice: typeof venice;

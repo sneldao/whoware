@@ -201,8 +201,20 @@ http.route({
 http.route({
   path: "/api/agents/curator",
   method: "POST",
-  handler: httpAction(async (ctx) => {
-    const apiKey = process.env.VENICE_API_KEY;
+  handler: httpAction(async (ctx, request) => {
+    // Same bearer-key gate as /api/agents/pipeline: the prompt embeds the
+    // recent episode figure names server-side, and the endpoint spends our
+    // Venice quota — it must not be open to anonymous callers.
+    const apiKey = process.env.AGENTS_API_KEY;
+    const authHeader = request.headers.get("Authorization");
+    if (apiKey && authHeader !== `Bearer ${apiKey}`) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const veniceKey = process.env.VENICE_API_KEY;
     const recent = await ctx.runQuery(api.catalog.getRecentEpisodeSummary, {});
     const catalog = await ctx.runQuery(api.catalog.getFullCatalog, {});
 
@@ -225,7 +237,7 @@ http.route({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${veniceKey}`,
       },
       body: JSON.stringify({
         model: "venice-uncensored",

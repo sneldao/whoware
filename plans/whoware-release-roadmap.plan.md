@@ -4,6 +4,38 @@
 
 ## Progress Log
 
+### 2026-08-14 — Slice 9 (answer-leak hardening) landed
+Production audit found the live Convex deployment served today's answer in cleartext
+to every visitor. Closed every answer-revealing surface server-side:
+
+- **`daily.getCurrentDrop` redacted.** The public drop payload no longer carries
+  `figureId`, `figureName`, `answerOptions`, or `isActive` — any visitor could
+  previously read today's answer from devtools. Scenes only.
+- **Reveal gate (`revealGating.ts`).** New shared gate: the figure's identity
+  (bio, relationships) is served only once the episode is **closed** or the
+  caller's run is **solved/exhausted**. Applied to `venice.getFigureBio`,
+  `venice.generateFigureBio` (action), `figures.getFigureRelationships`, and
+  `catalog.getEpisodeDetail` (redacts `figureName` while live).
+- **Mercy reveal on exhaustion.** `runs.submitGuess` now returns `answer` +
+  `answerFigureId` with the final wrong guess, and new `runs.getAnswer` serves
+  the answer record to the caller's resolved run (survives reloads — also fixes
+  the latent bug where exhausted players saw no reveal after a refresh).
+- **`runs.getPlayerHistory` + `analytics.getEpisodeBreakdowns` redacted** while
+  an episode is live (active-run figure name; weekly correct guesses).
+- **`/api/agents/curator` HTTP endpoint** now requires the same bearer-key gate
+  as the pipeline endpoint (it embedded figure names server-side and was
+  anonymously callable).
+- **Frontend rewired.** `useRevealState` resolves the exhausted answer via
+  `runs.getAnswer`; `identityId` threaded through `FigureRevealCard`,
+  `EnhancedIdentityReveal`, `SolvedView`, `ExhaustedView`, and practice.
+- **Tests.** New leak-guard suites: getAnswer mercy/reload/stranger paths,
+  getPlayerHistory active vs solved, getEpisodeDetail live vs review,
+  getFigureBio closed/live/resolved-run, getFigureRelationships gating,
+  getArchiveSummary closed-only. Backend: 142 tests across 15 suites;
+  frontend: 53 tests across 7 suites. Typecheck delta vs HEAD: zero new errors
+  (four pre-existing errors resolved). **Deploy required** — the production
+  Convex deployment still runs the pre-fix code until `convex deploy` runs.
+
 ### 2026-08-14 — Slice 8 (P0 loops + P1 polish) landed
 Closed the structural gaps from the whoware analysis — deduction, narrative payoff, and the return ritual:
 

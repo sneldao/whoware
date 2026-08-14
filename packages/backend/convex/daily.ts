@@ -7,18 +7,20 @@ const episodeStatus = v.union(v.literal("staging"), v.literal("review"), v.liter
 
 const MIN_DROP_LEAD_TIME_MS = 60_000;
 
+/**
+ * Public shape for the live drop. Identity fields (figureId, figureName,
+ * answerOptions) are deliberately absent — the figureId in the old payload
+ * plus the public figures table let any visitor read today's answer from
+ * devtools. The exhausted-run answer ships only via submitGuess.
+ */
 const dailyEpisodeShape = v.object({
   _id: v.id("episodes"),
   _creationTime: v.number(),
   slug: v.string(),
-  figureId: v.optional(v.id("figures")),
-  figureName: v.optional(v.string()),
-  answerOptions: v.optional(v.array(v.string())),
   activeAt: v.optional(v.number()),
   dropsAt: v.optional(v.number()),
   closesAt: v.optional(v.number()),
   status: v.optional(episodeStatus),
-  isActive: v.optional(v.boolean()),
   difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
   competitiveMode: v.optional(v.boolean()),
   scenes: v.array(
@@ -61,12 +63,26 @@ export const getCurrentDrop = query({
   returns: v.union(dailyEpisodeShape, v.null()),
   handler: async (ctx) => {
     const now = Date.now();
-    return await ctx.db
+    const episode = await ctx.db
       .query("episodes")
       .withIndex("by_status_and_dropsAt", (q) => q.eq("status", "live"))
       .order("asc")
       .filter((q) => q.lte(q.field("dropsAt"), now))
       .first();
+    if (!episode) return null;
+    // Project onto the redacted public shape — never return the row directly.
+    return {
+      _id: episode._id,
+      _creationTime: episode._creationTime,
+      slug: episode.slug,
+      activeAt: episode.activeAt,
+      dropsAt: episode.dropsAt,
+      closesAt: episode.closesAt,
+      status: episode.status,
+      difficulty: episode.difficulty,
+      competitiveMode: episode.competitiveMode,
+      scenes: episode.scenes,
+    };
   },
 });
 

@@ -240,7 +240,9 @@ export const getEpisodeDetail = query({
       _id: episode._id,
       slug: episode.slug,
       status: episode.status,
-      figureName: episode.figureName,
+      // Answer-leak guard: the curator detail view is a public query; the
+      // figure name is redacted once the episode goes live.
+      figureName: episode.status === "live" ? undefined : episode.figureName,
       difficulty: episode.difficulty,
       scenes: episode.scenes.map((s) => ({
         title: s.title,

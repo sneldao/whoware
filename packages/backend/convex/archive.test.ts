@@ -183,6 +183,27 @@ describe("archive.getLeaderboard", () => {
   });
 });
 
+describe("archive.getArchiveSummary", () => {
+  test("returns the figure summary for a closed episode", async () => {
+    const t = setup();
+    const figureId = await seedFigure(t);
+    const episodeId = await insertEpisode(t, { slug: "closed", figureId, status: "closed" });
+
+    const summary = await t.query(api.archive.getArchiveSummary, { episodeId });
+    expect(summary?.figureName).toBe("Winston Churchill");
+    expect(summary?.slug).toBe("closed");
+  });
+
+  test("answer-leak guard: returns null while the episode is still live", async () => {
+    const t = setup();
+    const figureId = await seedFigure(t);
+    const episodeId = await insertEpisode(t, { slug: "live", figureId, status: "live" });
+
+    const summary = await t.query(api.archive.getArchiveSummary, { episodeId });
+    expect(summary).toBeNull();
+  });
+});
+
 describe("archive.getRun", () => {
   test("returns the player's historical run on a closed episode", async () => {
     const t = setup();

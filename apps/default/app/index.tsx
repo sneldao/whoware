@@ -555,7 +555,11 @@ export default function Index() {
 
   // ── Solved / exhausted — restore column shell ───────────────────
   const solvedFigure = guessing.revealFigure;
-  const revealFigureRecord = solvedFigure ? session.figures.find((f) => f._id === solvedFigure.figureId) : null;
+  // The answer record ships only to resolved runs (runs.getAnswer); fall
+  // back to the loaded figures pool for the solved-run path.
+  const revealFigureRecord =
+    guessing.answerRecord ??
+    (solvedFigure ? session.figures.find((f) => f._id === solvedFigure.figureId) : null);
 
   return (
     <View style={styles.root}>
@@ -654,6 +658,7 @@ export default function Index() {
                 figureEra: revealFigureRecord?.era,
                 figureRegion: revealFigureRecord?.region,
                 figureTags: revealFigureRecord?.tags,
+                identityId: session.identity.identityId ?? undefined,
               }}
               nextActions={{
                 onShowHistory: () => {
@@ -669,10 +674,11 @@ export default function Index() {
         {isExhausted && (
           <ExhaustedView
             episodeId={session.episode._id}
-            figureName={guessing.solvedFigure?.name ?? ""}
+            figureName={guessing.revealFigure?.name ?? ""}
             figureEra={revealFigureRecord?.era}
             figureRegion={revealFigureRecord?.region}
             figureTags={revealFigureRecord?.tags}
+            identityId={session.identity.identityId ?? undefined}
             onLearnMoreArchive={() => router.push("/archive")}
             onTomorrow={scrollToCountdown}
           />
@@ -707,11 +713,12 @@ export default function Index() {
       </ScrollView>
       <RevealLayer
         visible={(isSolved || isExhausted) && !guessing.revealDismissed && !!solvedFigure}
-        figureName={guessing.solvedFigure?.name ?? ""}
+        figureName={guessing.revealFigure?.name ?? ""}
         era={revealFigureRecord?.era ?? ""}
         region={revealFigureRecord?.region ?? ""}
         tags={revealFigureRecord?.tags ?? []}
         episodeId={session.episode._id}
+        identityId={session.identity.identityId ?? undefined}
         imageUrl={solvedSceneImageUrl}
         onContinue={() => guessing.setRevealDismissed(true)}
       />

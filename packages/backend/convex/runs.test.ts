@@ -249,7 +249,7 @@ describe("runs lifecycle", () => {
     ).rejects.toThrow(/resolved or exhausted/);
   });
 
-  test("submitGuess exhausts the run after five wrong guesses and never reveals the answer", async () => {
+  test("submitGuess exhausts the run after five wrong guesses and reveals the answer once", async () => {
     const t = setup();
     const episodeId = await seedEpisode(t);
     const ada = await t.query(api.figures.search, { query: "Ada" }).then((rows) => rows[0]);
@@ -270,11 +270,60 @@ describe("runs lifecycle", () => {
 
     expect(lastResult?.status).toBe("exhausted");
     expect(lastResult?.guessesRemaining).toBe(0);
-    expect(lastResult?.answer).toBeUndefined();
+    // Mercy reveal ships with the final wrong guess — but only then.
+    expect(lastResult?.answer).toBe("Winston Churchill");
 
     const stored = await t.query(api.runs.getActiveRun, { episodeId, identityId: "player-f" });
     expect(stored?.status).toBe("exhausted");
     expect(stored?.guessesUsed).toBe(5);
+
+    // Reloads: the exhausted player can still recover the answer.
+    const answer = await t.query(api.runs.getAnswer, { episodeId, identityId: "player-f" });
+    expect(answer?.canonicalName).toBe("Winston Churchill");
+
+    // A stranger with an active (or no) run gets nothing.
+    const stranger = await t.mutation(api.runs.startRun, {
+      episodeId,
+      identityId: "player-g",
+      playerName: "Gus",
+    });
+    expect(stranger.status).toBe("active");
+    const leaked = await t.query(api.runs.getAnswer, { episodeId, identityId: "player-g" });
+    expect(leaked).toBeNull();
+  });
+
+  test("answer-leak guard: getPlayerHistory hides the figure name while the run is active", async () => {
+    const t = setup();
+    const episodeId = await seedEpisode(t);
+    await t.mutation(api.runs.startRun, {
+      episodeId,
+      identityId: "player-h",
+      playerName: "Hank",
+    });
+
+    const history = await t.query(api.runs.getPlayerHistory, { identityId: "player-h" });
+    expect(history).toHaveLength(1);
+    // Active run — the live episode's figure name must stay hidden.
+    expect(history[0].figureName).toBeUndefined();
+    expect(history[0].status).toBe("active");
+  });
+
+  test("getPlayerHistory reveals the figure name once the run is resolved", async () => {
+    const t = setup();
+    const episodeId = await seedEpisode(t);
+    const churchill = await t.query(api.figures.search, { query: "Churchill" }).then((rows) => rows[0]);
+    const run = await t.mutation(api.runs.startRun, {
+      episodeId,
+      identityId: "player-i",
+      playerName: "Ivy",
+    });
+    await t.mutation(api.runs.enterScene, { runId: run._id, sceneIndex: 0 });
+    await t.mutation(api.runs.submitGuess, { runId: run._id, figureId: churchill._id });
+
+    const history = await t.query(api.runs.getPlayerHistory, { identityId: "player-i" });
+    expect(history).toHaveLength(1);
+    expect(history[0].status).toBe("solved");
+    expect(history[0].figureName).toBe("Winston Churchill");
   });
 
   test("submitGuess returns proximity feedback on wrong guesses", async () => {

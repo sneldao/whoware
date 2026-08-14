@@ -50,6 +50,7 @@ export function SolvedView(props: SolvedViewProps) {
         figureEra={figureReveal.figureEra}
         figureRegion={figureReveal.figureRegion}
         figureTags={figureReveal.figureTags}
+        identityId={figureReveal.identityId}
       />
 
       {/* Tab bar */}

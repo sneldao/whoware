@@ -254,6 +254,11 @@ export const getArchiveSummary = query({
     const episode = await ctx.db.get(args.episodeId);
     if (!episode) return null;
 
+    // Answer-leak guard: this query backs the public /api/archive summary
+    // route, so the figure identity is only served once the episode is
+    // closed. While live, a live episode is not yet in the archive anyway.
+    if (episode.status !== "closed") return null;
+
     const figure = episode.figureId ? await ctx.db.get(episode.figureId) : null;
 
     const figureName = figure?.canonicalName ?? episode.figureName ?? "Unknown figure";

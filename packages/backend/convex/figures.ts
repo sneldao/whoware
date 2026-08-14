@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { canRevealAnswerFor } from "./revealGating";
 
 export const MAX_SEARCH_RESULTS = 10;
 
@@ -478,11 +479,18 @@ const relationshipShape = v.object({
  * the `relatedFigures` field on the figure record or by matching era
  * and region. Also indicates whether each related figure has been
  * featured in a past episode, so the UI can show "encountered" badges.
+ *
+ * Answer-leak guard: relatedFigures are chosen precisely because they
+ * orbit the answer ("Churchill's circle: Turing, Gandhi…"), so this is
+ * gated the same way as the bio — closed episode, or the caller's run
+ * is resolved.
  */
 export const getFigureRelationships = query({
-  args: { episodeId: v.id("episodes") },
+  args: { episodeId: v.id("episodes"), identityId: v.optional(v.string()) },
   returns: v.union(v.array(relationshipShape), v.null()),
   handler: async (ctx, args) => {
+    if (!(await canRevealAnswerFor(ctx, args.episodeId, args.identityId))) return null;
+
     const episode = await ctx.db.get(args.episodeId);
     if (!episode?.figureId) return null;
 

@@ -217,6 +217,7 @@ export const submitGuess = mutation({
   returns: v.object({
     isCorrect: v.boolean(),
     answer: v.optional(v.string()),
+    answerFigureId: v.optional(v.id("figures")),
     guessedFigureName: v.string(),
     proximity: guessProximity,
     proximityMessage: v.string(),
@@ -335,9 +336,13 @@ export const submitGuess = mutation({
 
     const guessesRemaining = Math.max(0, MAX_GUESSES_PER_RUN - guessesUsed);
 
+    // The answer is revealed server-side exactly when the run ends:
+    // solved (the player earned it) or exhausted (mercy reveal, no retry).
+    const runEnded = finalStatus === "solved" || finalStatus === "exhausted";
     return {
       isCorrect,
-      answer: isCorrect && correctFigure ? correctFigure.canonicalName : undefined,
+      answer: runEnded && correctFigure ? correctFigure.canonicalName : undefined,
+      answerFigureId: runEnded && correctFigureId ? correctFigureId : undefined,
       guessedFigureName: guessedFigure.canonicalName,
       proximity,
       proximityMessage: proximityMsg,
@@ -358,6 +363,46 @@ export const getRun = query({
   returns: v.union(runPublicShape, v.null()),
   handler: async (ctx, args) => {
     return await ctx.db.get(args.runId);
+  },
+});
+
+/**
+ * The episode's answer, scoped to the caller's resolved run. Only the
+ * episode's own run may unlock it, and only once that run is solved or
+ * exhausted — before then it returns null (same gate as archive.getEpisode).
+ */
+export const getAnswer = query({
+  args: { episodeId: v.id("episodes"), identityId: v.string() },
+  returns: v.union(
+    v.object({
+      canonicalName: v.string(),
+      era: v.string(),
+      region: v.string(),
+      tags: v.array(v.string()),
+      figureId: v.id("figures"),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const identityId = validateIdentity(args.identityId);
+    const run = await ctx.db
+      .query("playerRuns")
+      .withIndex("by_episodeId_and_identityId", (q) =>
+        q.eq("episodeId", args.episodeId).eq("identityId", identityId),
+      )
+      .first();
+    if (!run || run.status === "active") return null;
+
+    const episode = await ctx.db.get(args.episodeId);
+    const figure = episode?.figureId ? await ctx.db.get(episode.figureId) : null;
+    if (!figure) return null;
+    return {
+      canonicalName: figure.canonicalName,
+      era: figure.era,
+      region: figure.region,
+      tags: figure.tags,
+      figureId: figure._id,
+    };
   },
 });
 
@@ -396,7 +441,9 @@ export const getPlayerHistory = query({
           _creationTime: run._creationTime,
           episodeId: run.episodeId,
           episodeSlug: episode?.slug ?? "unknown",
-          figureName: episode?.figureName,
+          // Answer-leak guard: an active run's figure name is still the
+          // live episode's secret. Reveal only once the run resolved.
+          figureName: run.status === "active" ? undefined : episode?.figureName,
           status: run.status,
           startedAt: run.startedAt,
           solvedAt: run.solvedAt,

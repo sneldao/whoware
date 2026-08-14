@@ -9,7 +9,7 @@ function setup() {
   return convexTest(schema, modules);
 }
 
-async function seedEpisode(t: ReturnType<typeof setup>) {
+async function seedEpisode(t: ReturnType<typeof setup>, status: "live" | "closed" = "closed") {
   await t.mutation(api.figures.seedCatalog, {});
   const churchill = await t.query(api.figures.search, { query: "Churchill" }).then((r) => r[0]);
   return await t.run(async (ctx) => {
@@ -17,9 +17,9 @@ async function seedEpisode(t: ReturnType<typeof setup>) {
       slug: "rel-churchill",
       figureId: churchill._id,
       figureName: churchill.canonicalName,
-      activeAt: Date.now(),
-      dropsAt: Date.now(),
-      status: "live",
+      activeAt: Date.now() - (status === "closed" ? 86_400_000 : 0),
+      dropsAt: Date.now() - (status === "closed" ? 86_400_000 : 0),
+      status,
       difficulty: "iconic",
       scenes: [
         {
@@ -38,7 +38,7 @@ async function seedEpisode(t: ReturnType<typeof setup>) {
 }
 
 describe("figure relationships", () => {
-  test("getFigureRelationships returns related figures for an episode with a figure", async () => {
+  test("getFigureRelationships returns related figures for a closed episode", async () => {
     const t = setup();
     const episodeId = await seedEpisode(t);
 
@@ -141,6 +141,49 @@ describe("figure relationships", () => {
 
     const relationships = await t.query(api.figures.getFigureRelationships, { episodeId });
     expect(relationships).toBeNull();
+  });
+
+  test("answer-leak guard: a live episode without a resolved run returns null", async () => {
+    const t = setup();
+    const episodeId = await seedEpisode(t, "live");
+
+    const relationships = await t.query(api.figures.getFigureRelationships, { episodeId });
+    expect(relationships).toBeNull();
+  });
+
+  test("answer-leak guard: a live episode serves the network once the caller's run is resolved", async () => {
+    const t = setup();
+    const episodeId = await seedEpisode(t, "live");
+
+    await t.run(async (ctx) => {
+      await ctx.db.insert("playerRuns", {
+        episodeId,
+        identityId: "player-solved",
+        playerName: "Solve",
+        status: "solved",
+        startedAt: Date.now(),
+        solvedAt: Date.now(),
+        currentSceneIndex: 0,
+        memoriesViewed: 1,
+        hotspotsOpened: 0,
+        hintsUsed: 0,
+        guessesUsed: 1,
+      });
+    });
+
+    // With a resolved run…
+    const revealed = await t.query(api.figures.getFigureRelationships, {
+      episodeId,
+      identityId: "player-solved",
+    });
+    expect(revealed).not.toBeNull();
+
+    // …but not with a stranger's identity.
+    const hidden = await t.query(api.figures.getFigureRelationships, {
+      episodeId,
+      identityId: "someone-else",
+    });
+    expect(hidden).toBeNull();
   });
 
   test("seedCatalog persists relatedFigures", async () => {

@@ -1,6 +1,7 @@
 import { action, internalQuery, internalMutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { canRevealAnswerFor } from "./revealGating";
 
 const VENICE_API_URL = "https://api.venice.ai/api/v1/chat/completions";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -13,6 +14,11 @@ Rules:
 - Sound like a whispered memory, not a biography.
 - Keep hints under 2 sentences.`;
 
+/**
+ * Public figure context for hint generation. Aliases are deliberately
+ * excluded — for many figures an alias IS the answer (e.g. "Churchill"),
+ * and this query is callable by any visitor pre-solve.
+ */
 export const getEpisodeFigure = query({
   args: { episodeId: v.id("episodes") },
   returns: v.union(
@@ -21,7 +27,6 @@ export const getEpisodeFigure = query({
       region: v.string(),
       tier: v.string(),
       tags: v.array(v.string()),
-      aliases: v.array(v.string()),
     }),
     v.null(),
   ),
@@ -35,7 +40,6 @@ export const getEpisodeFigure = query({
       region: figure.region,
       tier: figure.tier,
       tags: figure.tags,
-      aliases: figure.aliases,
     };
   },
 });
@@ -457,7 +461,7 @@ Rules:
 - Return ONLY the JSON, no markdown fences.`;
 
 export const generateFigureBio = action({
-  args: { episodeId: v.id("episodes") },
+  args: { episodeId: v.id("episodes"), identityId: v.optional(v.string()) },
   returns: v.union(
     v.object({
       summary: v.string(),
@@ -468,6 +472,14 @@ export const generateFigureBio = action({
     v.null(),
   ),
   handler: async (ctx, args) => {
+    // Answer-leak guard: the bio names the figure. Serve only once the
+    // episode is closed or the caller's run is resolved.
+    const allowed = await ctx.runQuery(internal.revealGating.canRevealAnswer, {
+      episodeId: args.episodeId,
+      identityId: args.identityId,
+    });
+    if (!allowed) return null;
+
     const cacheKey = `bio:${args.episodeId}`;
 
     const existing = await ctx.runQuery(internal.venice.getCachedHint, { cacheKey });
@@ -555,7 +567,7 @@ export const generateFigureBio = action({
 });
 
 export const getFigureBio = query({
-  args: { episodeId: v.id("episodes") },
+  args: { episodeId: v.id("episodes"), identityId: v.optional(v.string()) },
   returns: v.union(
     v.object({
       summary: v.string(),
@@ -566,6 +578,8 @@ export const getFigureBio = query({
     v.null(),
   ),
   handler: async (ctx, args) => {
+    // Answer-leak guard (see generateFigureBio).
+    if (!(await canRevealAnswerFor(ctx, args.episodeId, args.identityId))) return null;
     const cacheKey = `bio:${args.episodeId}`;
     const existing = await ctx.db
       .query("veniceHints")

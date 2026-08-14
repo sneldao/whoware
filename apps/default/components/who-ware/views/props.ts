@@ -169,6 +169,8 @@ export interface SolvedViewProps {
     figureEra?: string;
     figureRegion?: string;
     figureTags?: string[];
+    /** Caller identity — gates the bio/relationship reveal. */
+    identityId?: string;
   };
   nextActions: {
     onShowHistory: () => void;
