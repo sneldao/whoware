@@ -135,9 +135,11 @@ http.route({
   path: "/api/agents/pipeline",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    // Fail closed: without AGENTS_API_KEY configured the endpoint is unusable
+    // rather than open (it triggers full episode generation and spends quota).
     const authHeader = request.headers.get("Authorization");
     const apiKey = process.env.AGENTS_API_KEY;
-    if (apiKey && authHeader !== `Bearer ${apiKey}`) {
+    if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },
@@ -202,12 +204,13 @@ http.route({
   path: "/api/agents/curator",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    // Same bearer-key gate as /api/agents/pipeline: the prompt embeds the
-    // recent episode figure names server-side, and the endpoint spends our
-    // Venice quota — it must not be open to anonymous callers.
+    // Same fail-closed bearer-key gate as /api/agents/pipeline: the prompt
+    // embeds the recent episode figure names server-side, the response can
+    // reveal the next figure pick, and the endpoint spends our Venice quota
+    // — it must not be open to anonymous callers.
     const apiKey = process.env.AGENTS_API_KEY;
     const authHeader = request.headers.get("Authorization");
-    if (apiKey && authHeader !== `Bearer ${apiKey}`) {
+    if (!apiKey || authHeader !== `Bearer ${apiKey}`) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "Content-Type": "application/json" },

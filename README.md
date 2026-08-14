@@ -144,7 +144,7 @@ Required variables:
 - `REPLICATE_API_TOKEN` — Sign up at [replicate.com](https://replicate.com) for the AI fallback chain
 - `PAYWALL_TREASURY_ADDRESS` — Polygon Amoy address that receives 1 USDC payments for archive unlocks. The submission's live deployment uses a fresh wallet (`0x5Ebc0D556A4B6876673A37868D1f9120EEC63A9a`). See `TREASURY.md` for rotation.
 - `POLYGON_AMOY_RPC_URL` — Optional custom RPC URL for Polygon Amoy (defaults to public RPC)
-- `AGENTS_API_KEY` — Optional API key for `POST /api/agents/pipeline` auth (omit to skip auth)
+- `AGENTS_API_KEY` — Required bearer key for `POST /api/agents/pipeline` and `POST /api/agents/curator`. Set it on the Convex deployment; both endpoints fail closed (401) when it is missing.
 
 ### 3. Run the app
 
