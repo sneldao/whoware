@@ -50,5 +50,21 @@ export function useIdentity() {
     setState({ identityId: fresh, isLoaded: true });
   }, []);
 
-  return { identityId: state.identityId, isLoaded: state.isLoaded, reset };
+  /**
+   * Adopt an existing server-known identity (wallet-bound recovery).
+   * Used when a fresh device connects a wallet that is already linked to
+   * an identity — the local UUID is replaced so streak and history follow.
+   */
+  const adopt = useCallback(async (identityId: string) => {
+    const clean = identityId.trim();
+    if (!clean || clean.length < 8 || clean.length > 64) return;
+    try {
+      await AsyncStorage.setItem(IDENTITY_KEY, clean);
+    } catch {
+      // ignore — state still updates for this session
+    }
+    setState({ identityId: clean, isLoaded: true });
+  }, []);
+
+  return { identityId: state.identityId, isLoaded: state.isLoaded, reset, adopt };
 }

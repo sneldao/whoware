@@ -184,6 +184,15 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
   });
   const discovery = useLocalDiscovery(episode?._id, identity.identityId);
 
+  // Server-side guess feedback for this episode+identity. Used to rehydrate
+  // the deduction board after a reload (local guessAttempts resets on mount).
+  const serverGuesses = useQuery(
+    api.runs.getRunGuesses,
+    episode && identity.identityId
+      ? { episodeId: episode._id, identityId: identity.identityId }
+      : "skip",
+  );
+
   // Derived
   const hotspotsOpened = run?.hotspotsOpened ?? discovery.localHotspots.length;
 
@@ -208,6 +217,24 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
     setGuessAttempts([]);
     setHintsUsed(0);
   }, [episode?._id, identity.identityId]);
+
+  // Rehydrate guessAttempts from persisted server feedback when we have none
+  // locally (fresh mount / reload mid-run). Runs after the reset above so a
+  // same-commit reset is re-populated by the next server snapshot.
+  useEffect(() => {
+    if (!serverGuesses || serverGuesses.length === 0) return;
+    setGuessAttempts((prev) => {
+      if (prev.length > 0) return prev;
+      return serverGuesses.map((g) => ({
+        figureName: g.guess,
+        isCorrect: g.isCorrect,
+        eraMatch: g.eraMatch,
+        regionMatch: g.regionMatch,
+        fieldMatch: g.fieldMatch,
+        message: g.proximityMessage,
+      }));
+    });
+  }, [serverGuesses]);
 
   // Venice hint hook
   const { getHint, isGenerating: isHintGenerating, recordHintUsage } = useVeniceHint();

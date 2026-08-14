@@ -9,6 +9,15 @@ const sceneClue = v.object({
   y: v.number(),
 });
 
+const guessProximity = v.union(
+  v.literal("correct"),
+  v.literal("same_era"),
+  v.literal("same_region"),
+  v.literal("same_era_and_region"),
+  v.literal("same_century"),
+  v.literal("off"),
+);
+
 const scene = v.object({
   title: v.string(),
   location: v.string(),
@@ -113,6 +122,13 @@ export default defineSchema({
     playerName: v.string(),
     guess: v.string(),
     isCorrect: v.boolean(),
+    // Proximity feedback, persisted so the deduction board and recap
+    // survive reloads. Optional: rows predate this addition.
+    proximity: v.optional(guessProximity),
+    proximityMessage: v.optional(v.string()),
+    eraMatch: v.optional(v.boolean()),
+    regionMatch: v.optional(v.boolean()),
+    fieldMatch: v.optional(v.boolean()),
     scenesRevealed: v.number(),
     hotspotsOpened: v.optional(v.number()),
     guessesUsed: v.optional(v.number()),

@@ -51,10 +51,13 @@ skills-lock.json
 # throwaway codemod scripts
 scripts/
 
-# Lock files
+# Lock files — bun.lock IS committed so Vercel installs resolve exactly
+# like local (bun 1.3's isolated node_modules/.bun layout breaks phantom deps)
 *.lockb
 *.lock
+!bun.lock
 package-lock.json
+yarn.lock
 
 # Filesystem recovery
 lost+found/

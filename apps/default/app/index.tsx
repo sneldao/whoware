@@ -13,6 +13,7 @@ import { useGameSession, type UseGameSessionReturn } from "@/hooks/use-game-sess
 import { useGuessing, UseGuessingReturn } from "@/hooks/use-guessing";
 import { useSceneProgression } from "@/hooks/use-scene-progression";
 import { useSmartAccountDelegate } from "@/hooks/use-smart-account-delegate";
+import { useWalletIdentity } from "@/hooks/use-wallet-identity";
 import { useSolveMinter } from "@/hooks/use-solve-minter";
 import { useBootError } from "@/hooks/use-boot-error";
 import {
@@ -107,6 +108,18 @@ export default function Index() {
     showToast: (msg, type) => { guessingRef.current?.showToast(msg, type); },
   });
 
+  // Wallet-bound identity: link the anonymous UUID to the wallet on first
+  // connect, and adopt an existing identity when a fresh device connects a
+  // wallet that already has one (streak/history become portable).
+  useWalletIdentity({
+    identityId: session.identity.identityId,
+    identityLoaded: session.identity.isLoaded,
+    walletAddress: session.wallet.address,
+    episodeId: session.episode ? session.episode._id : session.episode,
+    adopt: session.identity.adopt,
+    notify: (msg) => guessingRef.current?.showToast(msg, "success"),
+  });
+
   const minter = useSolveMinter({
     wallet: session.wallet, episode: session.episode, streak: session.streak,
     showToast: (msg, type) => { guessingRef.current?.showToast(msg, type); },
@@ -195,7 +208,11 @@ export default function Index() {
       session.run.status === "active" &&
       (session.run.memoriesViewed ?? 0) > 0 &&
       !enteredThisSessionRef.current;
-  }, [session.run]);
+    // Warn returning players on research-tier days once, too.
+    if (returnedWithActiveRunRef.current && session.episode?.difficulty === "research") {
+      void coachOfferRef.current("researchDay");
+    }
+  }, [session.run, session.episode?.difficulty]);
 
   // Track live play this session so solve-hold only runs after an in-session finish.
   useEffect(() => {
@@ -302,6 +319,9 @@ export default function Index() {
       await session.enterSceneMutation({ runId: activeRun._id, sceneIndex: 0 });
       void markOnboardingComplete();
       enteredThisSessionRef.current = true;
+      if (session.episode.difficulty === "research") {
+        void coachOfferRef.current("researchDay");
+      }
       wakeAtRef.current = Date.now();
       chromeUnlockedRef.current = false;
       setChromeUnlocked(false);

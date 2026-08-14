@@ -325,6 +325,12 @@ export const submitGuess = mutation({
       playerName: args.playerName ? validatePlayerName(args.playerName) : run.playerName,
       guess: guessedFigure.canonicalName,
       isCorrect,
+      // Persist the feedback so the deduction board survives reloads.
+      proximity,
+      proximityMessage: proximityMsg,
+      eraMatch,
+      regionMatch,
+      fieldMatch,
       scenesRevealed: run.memoriesViewed,
       hotspotsOpened: run.hotspotsOpened,
       guessesUsed,
@@ -455,5 +461,58 @@ export const getPlayerHistory = query({
         };
       }),
     );
+  },
+});
+
+/**
+ * The caller's own guess feedback for the episode, chronological.
+ *
+ * Scoped to identityId and answer-leak-safe: a guess row never contains
+ * the episode's figure (only the player's guessed figure, its proximity
+ * tier, and match booleans), so serving these to an active run exposes
+ * nothing the player hasn't already earned. Used to rehydrate the
+ * deduction board after a reload.
+ */
+export const getRunGuesses = query({
+  args: {
+    episodeId: v.id("episodes"),
+    identityId: v.string(),
+  },
+  returns: v.array(
+    v.object({
+      guess: v.string(),
+      isCorrect: v.boolean(),
+      eraMatch: v.boolean(),
+      regionMatch: v.boolean(),
+      fieldMatch: v.boolean(),
+      proximityMessage: v.string(),
+      guessedAt: v.number(),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identityId = validateIdentity(args.identityId);
+    const run = await ctx.db
+      .query("playerRuns")
+      .withIndex("by_episodeId_and_identityId", (q) =>
+        q.eq("episodeId", args.episodeId).eq("identityId", identityId),
+      )
+      .first();
+    if (!run) return [];
+
+    const rows = await ctx.db
+      .query("guesses")
+      .withIndex("by_runId", (q) => q.eq("runId", run._id))
+      .collect();
+    return rows
+      .sort((a, b) => a.guessedAt - b.guessedAt)
+      .map((g) => ({
+        guess: g.guess,
+        isCorrect: g.isCorrect,
+        eraMatch: g.eraMatch ?? false,
+        regionMatch: g.regionMatch ?? false,
+        fieldMatch: g.fieldMatch ?? false,
+        proximityMessage: g.proximityMessage ?? "",
+        guessedAt: g.guessedAt,
+      }));
   },
 });

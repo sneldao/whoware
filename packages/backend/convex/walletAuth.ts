@@ -43,3 +43,22 @@ export const getWalletForIdentity = query({
     return link?.walletAddress ?? null;
   },
 });
+
+/**
+ * Reverse lookup: which identity (if any) is bound to this wallet?
+ * Lets a fresh device adopt the player's existing anonymous identity
+ * (streak, run history) the moment their wallet connects.
+ */
+export const getIdentityForWallet = query({
+  args: { walletAddress: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    const normalized = args.walletAddress.trim().toLowerCase();
+    if (!normalized) return null;
+    const link = await ctx.db
+      .query("walletLinks")
+      .withIndex("by_walletAddress", (q) => q.eq("walletAddress", normalized))
+      .first();
+    return link?.identityId ?? null;
+  },
+});

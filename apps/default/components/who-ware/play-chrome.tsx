@@ -219,7 +219,7 @@ export function PlayChrome({
             <TappableMetric
               label="Guesses"
               value={`${metrics.guessesLeft}/${metrics.guessCap}`}
-              onPress={metrics.onShowGuessesTooltip}
+              onPress={onToggleGuessPanel}
             />
           </View>
           {onOpenHowTo ? (
