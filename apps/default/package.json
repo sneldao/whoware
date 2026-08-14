@@ -19,6 +19,7 @@
     "@convex-dev/eslint-plugin": "^1.2.1",
     "@expo/vector-icons": "^15.0.3",
     "@inco/lightning-js": "^1.0.2",
+    "@metamask/delegation-core": "^2.2.1",
     "@metamask/smart-accounts-kit": "^1.6.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.3.10",
@@ -72,6 +73,7 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2",
-    "typescript-eslint": "^8.32.0"
+    "typescript-eslint": "^8.32.0",
+    "vitest": "^4.0.18"
   }
 }
