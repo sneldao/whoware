@@ -11,12 +11,9 @@ import Animated, {
   FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
-  withRepeat,
   withSequence,
   withSpring,
   withTiming,
-  Easing,
 } from "react-native-reanimated";
 
 interface EnhancedIdentityRevealProps {
@@ -34,6 +31,8 @@ interface EnhancedIdentityRevealProps {
   identityId?: string;
   imageUrl?: string;
   imageKey?: string;
+  /** Register: a solved run names the body; an exhausted run closes the file. */
+  variant?: "solved" | "exhausted";
   onContinue: () => void;
 }
 
@@ -46,6 +45,7 @@ export function EnhancedIdentityReveal({
   episodeId,
   identityId,
   imageUrl,
+  variant = "solved",
   onContinue,
 }: EnhancedIdentityRevealProps) {
   const [displayedName, setDisplayedName] = useState("");
@@ -75,9 +75,6 @@ export function EnhancedIdentityReveal({
 
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.9);
-  const particle1 = useSharedValue(0);
-  const particle2 = useSharedValue(0);
-  const particle3 = useSharedValue(0);
 
   // Entrance animation sequence
   useEffect(() => {
@@ -111,65 +108,11 @@ export function EnhancedIdentityReveal({
     return () => clearInterval(interval);
   }, [showName, figureName]);
 
-  // Sparkle particles
-  useEffect(() => {
-    if (!showName) return;
-    particle1.value = withDelay(200, withRepeat(
-      withSequence(
-        withTiming(1, { duration: 600, easing: Easing.out(Easing.ease) }),
-        withTiming(0, { duration: 400 }),
-      ),
-      3,
-      false,
-    ));
-    particle2.value = withDelay(400, withRepeat(
-      withSequence(
-        withTiming(1, { duration: 500, easing: Easing.out(Easing.ease) }),
-        withTiming(0, { duration: 300 }),
-      ),
-      2,
-      false,
-    ));
-    particle3.value = withDelay(600, withRepeat(
-      withSequence(
-        withTiming(1, { duration: 700, easing: Easing.out(Easing.ease) }),
-        withTiming(0, { duration: 500 }),
-      ),
-      2,
-      false,
-    ));
-  }, [showName, particle1, particle2, particle3]);
-
+  // No sparkles here. The naming moment is a verdict, not confetti — the
+  // typewriter and the room behind the scrim carry the weight.
   const containerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ scale: scale.value }],
-  }));
-
-  const particle1Style = useAnimatedStyle(() => ({
-    opacity: 1 - particle1.value,
-    transform: [
-      { translateX: -40 + particle1.value * 80 },
-      { translateY: -60 + particle1.value * 50 },
-      { scale: 0.5 + particle1.value * 0.5 },
-    ],
-  }));
-
-  const particle2Style = useAnimatedStyle(() => ({
-    opacity: 1 - particle2.value,
-    transform: [
-      { translateX: 50 - particle2.value * 70 },
-      { translateY: -30 + particle2.value * 60 },
-      { scale: 0.3 + particle2.value * 0.7 },
-    ],
-  }));
-
-  const particle3Style = useAnimatedStyle(() => ({
-    opacity: 1 - particle3.value,
-    transform: [
-      { translateX: -20 + particle3.value * 40 },
-      { translateY: -80 + particle3.value * 30 },
-      { scale: 0.6 + particle3.value * 0.4 },
-    ],
   }));
 
   return (
@@ -188,21 +131,6 @@ export function EnhancedIdentityReveal({
       />
 
       <View style={styles.content}>
-        {/* Sparkle particles */}
-        {showName ? (
-          <>
-            <Animated.View style={[styles.particle, particle1Style]}>
-              <Text style={styles.particleText}>✦</Text>
-            </Animated.View>
-            <Animated.View style={[styles.particle, particle2Style]}>
-              <Text style={styles.particleText}>✧</Text>
-            </Animated.View>
-            <Animated.View style={[styles.particle, particle3Style]}>
-              <Text style={styles.particleText}>✦</Text>
-            </Animated.View>
-          </>
-        ) : null}
-
         {/* Icon */}
         <Animated.View entering={FadeInDown.delay(200).duration(400).springify()} style={styles.iconWrapper}>
           <View style={styles.iconCircle}>
@@ -212,7 +140,9 @@ export function EnhancedIdentityReveal({
 
         {/* Narrative label */}
         <Animated.View entering={FadeIn.delay(300).duration(500)}>
-          <Text style={styles.revealLabel}>The body remembers:</Text>
+          <Text style={styles.revealLabel}>
+            {variant === "exhausted" ? "The archive closes around" : "The body remembers:"}
+          </Text>
         </Animated.View>
 
         {/* Typewriter name */}
@@ -258,7 +188,9 @@ export function EnhancedIdentityReveal({
               onPress={onContinue}
               style={({ pressed }) => [styles.continueButton, pressed && styles.pressed]}
             >
-              <Text style={styles.continueText}>View your result</Text>
+              <Text style={styles.continueText}>
+                {variant === "exhausted" ? "See what remains" : "View your result"}
+              </Text>
               <Ionicons name="arrow-forward" size={18} color={theme.inkInverted} />
             </Pressable>
           </Animated.View>
@@ -284,13 +216,6 @@ const styles = StyleSheet.create({
     padding: 32,
     maxWidth: 400,
     gap: 12,
-  },
-  particle: {
-    position: "absolute",
-  },
-  particleText: {
-    fontSize: 24,
-    color: theme.accent,
   },
   iconWrapper: {},
   iconCircle: {

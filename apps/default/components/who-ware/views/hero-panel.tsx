@@ -36,6 +36,8 @@ export interface HeroPanelProps {
   runFinished: boolean;
   currentStreak: number;
   bestStreak: number;
+  /** Banked streak freezes (insurance against one missed day). */
+  streakFreezes?: number;
   solvedToday: boolean;
   hasEnteredMemory: boolean;
   isBusy: boolean;
@@ -168,7 +170,7 @@ export function HeroPanel(props: HeroPanelProps) {
             </Pressable>
           </View>
         )}
-        <StreakBanner current={currentStreak} best={bestStreak} solvedToday={solvedToday} />
+        <StreakBanner current={currentStreak} best={bestStreak} solvedToday={solvedToday} freezesAvailable={props.streakFreezes ?? 0} />
         {!hasEnteredMemory ? (
           <View style={styles.introActions}>
             <Pressable

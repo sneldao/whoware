@@ -1,6 +1,5 @@
 import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Animated, {
@@ -8,7 +7,6 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -26,13 +24,20 @@ interface EnhancedSceneTransitionProps {
 
 type Phase = "visible" | "fading-out" | "transmitting" | "title-card" | "fading-in";
 
-const TRANSMISSION_PHRASES = [
-  "Receiving memory transmission…",
-  "Tuning the signal…",
-  "Anchoring temporal coordinates…",
-  "Resonating with the body…",
-  "Establishing neural link…",
-];
+/**
+ * Transmission copy is a deterministic function of the *destination*
+ * scene — never random. A memory's arrival line is part of its identity;
+ * every player who reaches the same room reads the same words.
+ */
+function transmissionPhrase(sceneIndex: number, location: string, era: string): string {
+  const templates = [
+    `The years reassemble: ${era}…`,
+    `Retracing ${location}…`,
+    `Something in ${location} remembers…`,
+    `The signal finds ${era}…`,
+  ];
+  return templates[Math.abs(sceneIndex) % templates.length];
+}
 
 export function EnhancedSceneTransition({
   sceneIndex,
@@ -61,8 +66,7 @@ export function EnhancedSceneTransition({
   useEffect(() => {
     if (sceneIndex === currentIndex) return;
 
-    const phrase = TRANSMISSION_PHRASES[Math.floor(Math.random() * TRANSMISSION_PHRASES.length)];
-    setTransmissionText(phrase);
+    setTransmissionText(transmissionPhrase(sceneIndex, location, era));
 
     // Start scanline animation
     scanlineOffset.value = withRepeat(
@@ -113,7 +117,8 @@ export function EnhancedSceneTransition({
       timeoutIdsRef.current.forEach(clearTimeout);
       timeoutIdsRef.current = [];
     };
-  }, [sceneIndex, currentIndex, opacity, scanlineOffset, staticGlitch]);
+    // location/era are read for the destination's transmission line.
+  }, [sceneIndex, currentIndex, opacity, scanlineOffset, staticGlitch, location, era]);
 
   const sceneStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

@@ -11,18 +11,19 @@ WhoWare is a daily history guessing game where you step into a 3D memory scene, 
 
 ## How it works
 
-- **Immersion-first entry** — cold start lands in today's room behind a case plate (episode number, difficulty tier, live "collapses in" countdown), the three verbs (Walk the memory · Name the figure · Five guesses), and Enter with/without sound
+- **Immersion-first entry** — cold start lands in today's room behind a case plate (episode number, difficulty tier, live "collapses in" countdown, streak-at-risk flame when a run is on the line), the three verbs (Walk the memory · Name the figure · Five accusations), and Enter with/without sound
 - **Where you left off** — returning mid-run players get a dismissible Case File recap (memories, clues found, guesses left, hints used, last proximity) instead of a silent drop into the room
 - **Daily episodes** — one new historical figure per day, across three difficulty tiers (iconic, field, research); research-tier days coach first-timers so a hard figure never reads as a bug
 - **3D memory scenes** — the AI-generated panorama becomes a skybox the player looks around inside; props anchored to the scene brief appear as 3D objects the player inspects
-- **Sparse play HUD** — score/guesses stay as a floating overlay; denser panels open only when naming an identity or reviewing clues. Phone-column chrome returns after solve
-- **Deduction board** — every guess lands as a colour-coded row with Era/Region/Field ✓/✗ tags, turning guessing from trivia roulette into Wordle-style logical narrowing. Guess feedback is persisted server-side (`runs.getRunGuesses`), so the board survives reloads
-- **Story-first solve** — the reveal overlay carries the figure's AI-written narrative summary full-screen before the result shell, and the "Did you know?" fact is a tap-to-copy pull-quote
+- **Live score ceiling** — the HUD shows a client-side projection of `computeScore` ticking every second ("if I name them right now, I score this"), so every memory, clue, whisper, and wrong accusation visibly bleeds the ceiling. The guess pool always contains the answer (`figures.searchForEpisode`, difficulty-scaled), and accusations are two-tap commits — no mis-tap burns a guess
+- **Sparse play HUD** — ceiling/clues/whispers/accusation pips stay as a floating overlay; denser panels open only for the accusation or the evidence log. Phone-column chrome returns after the reveal
+- **Deduction board** — every accusation lands as a colour-coded row with Era/Region/Field ✓/✗ tags *and* the room's proximity answer kept in place (the toast fades; the record stays), turning guessing from trivia roulette into Wordle-style logical narrowing. Guess feedback is persisted server-side (`runs.getRunGuesses`), so the board survives reloads
+- **The verdict lands in the room** — on solve/exhaust the room holds ("Identity anchored…" / "The signal fades…"), then the reveal plays *over the room* — typewriter name, narrative summary — with no toast pre-empting it and no confetti on a loss. Only after the player continues does the column shell return; exhausted runs get a closest-call salvage line and an honest streak-fate note (freeze absorbs one miss)
 - **Return ritual** — one-tap "Remind me" push opt-in plus a spoiler-free "Tomorrow's room: era · region" teaser on the countdown card
 - **Portable identity** — play is anonymous by default (a local investigator UUID). Connecting a wallet links the identity, and a fresh device that connects the same wallet adopts the existing identity (streak + history follow the player)
 - **Atmosphere** — optional ambient bed on Enter with sound (ducks under clue SFX); hard mute on Enter without; hovering a prop shows an "Inspect" tooltip while ~180 dust motes drift through the room
 - **AI-powered hints** — Venice AI generates privacy-preserving hints that guide without spoiling
-- **Scoring by restraint** — highest scores go to players who guess with fewer memories, clues, and time
+- **Scoring by restraint** — highest scores go to players who guess with fewer memories, clues, and time; every solve earns a detective grade (S/A/B/C/D with a rank title) that lands on the share card and in the share text alongside the score
 - **On-chain verification** — score NFTs and streak tokens minted on Mantle Sepolia for tamper-proof leaderboards
 - **x402 archive paywall** — closed episodes' rich content (scenes, hotspots, ambient text) unlocks via USDC payment on Polygon Amoy, verified on-chain. Episode summaries (figure name, era, region, difficulty, tags, scene count) are freely accessible to any visitor.
 
@@ -81,15 +82,15 @@ Cold path (web):
 
 1. **Threshold** — today's scene 0 already running full-bleed behind the case plate (episode · difficulty · collapse countdown), WhoWare + tagline, the three verbs, and Enter with/without sound. "How to play" links to `/how-to` without leaving the cold path
 2. **Wake** — `ensureRun` + `enterScene(0)`; ambient bed starts only for with-sound; onboarding flag persisted
-3. **ImmersionSession** — same full-bleed room; whisper/coach until first clue, Name identity, or ~12s
+3. **ImmersionSession** — same full-bleed room; whisper/coach until first clue, Name the figure, or ~12s; every scene change whispers the memory's title inside the room
 4. **PlayChrome overlay** — metrics + scene rail + actions; clue/guess sheet expands on demand; tapping the Guesses metric opens the guess panel directly
 5. **Solve / exhaust** — restore the phone-column shell (`HeroPanel` + SolvedView / ExhaustedView)
 
 `lib/immersion-shell.tsx` drops the 560px web column while threshold or an active run is up. Returning mid-run players skip the threshold and land HUD-over-room with chrome unlocked, plus a one-time **Case File recap** ("Where you left off") until they resume or dismiss it.
 
-Progressive coaches (one-shot, AsyncStorage) fire at the moment of need: first wrong guess, first "Unlock next memory," first open of Name identity, and entering a research-tier day. Optional full rules live at `/how-to` — never on the cold path.
+Progressive coaches (one-shot, AsyncStorage) fire at the moment of need: first wrong accusation, first "Deeper memory," first open of Name the figure, and entering a research-tier day. Optional full rules live at `/how-to` — never on the cold path.
 
-Desktop shortcuts while in the room: `Esc` close sheets · `G` Name identity · `N` next memory · `1`–`9` scene rail. A wrong guess soft-pulses **Next memory** instead of auto-advancing. After solve/exhaust, the room holds ~1.4s (“Identity anchored…”) before the phone-column ritual.
+Desktop shortcuts while in the room: `Esc` close sheets · `G` Name the figure · `N` deeper memory · `1`–`9` scene rail. A wrong accusation soft-pulses **Deeper memory** instead of auto-advancing. After solve/exhaust, the room holds for the reveal and stays up until it's dismissed.
 
 ## Smart Contracts (Mantle Sepolia)
 

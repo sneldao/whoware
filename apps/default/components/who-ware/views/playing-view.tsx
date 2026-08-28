@@ -56,11 +56,14 @@ export function PlayingView(props: PlayingViewProps) {
         extras={extras}
         metrics={{
           scoreDisplay: "—",
+          scoreIsLive: false,
           hotspotsOpened: scene.discoveredClues.length,
+          hintsUsed: 0,
           guessesLeft: guess.guessesLeft,
           guessCap: guess.guessesLeft,
           onShowScoreTooltip: () => undefined,
           onShowCluesTooltip: () => undefined,
+          onShowHintsTooltip: () => undefined,
           onShowGuessesTooltip: () => undefined,
         }}
       />

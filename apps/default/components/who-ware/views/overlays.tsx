@@ -24,20 +24,20 @@ export function TooltipLayer({ activeBadge, onDismiss }: TooltipLayerProps) {
       onDismiss={onDismiss}
       definitions={{
         score: {
-          title: "Score breakdown",
-          description: `Each solve starts at ${BASE_SCORE.toLocaleString()} points. Every memory opened reduces the ceiling by ${MEMORY_PENALTY.toLocaleString()}, each clue inspected by ${HOTSPOT_PENALTY.toLocaleString()}, each wrong guess by ${GUESS_PENALTY.toLocaleString()}, and every ${TIME_BUCKET_MS / 1_000} seconds by ${TIME_BUCKET_PENALTY}. Restraint and speed maximize your score.`,
+          title: "Your score ceiling — live",
+          description: `This is what a correct accusation right now would earn — it only falls. Every solve starts at ${BASE_SCORE.toLocaleString()} points. Each memory opened costs ${MEMORY_PENALTY.toLocaleString()}, each clue inspected ${HOTSPOT_PENALTY.toLocaleString()}, each hint ${HINT_PENALTY.toLocaleString()}, each wrong accusation ${GUESS_PENALTY.toLocaleString()}, and every ${TIME_BUCKET_MS / 1_000} seconds ${TIME_BUCKET_PENALTY}. Restraint and speed maximize your score.`,
         },
         clues: {
           title: "Clues opened",
           description: `Clues are hidden details embedded in each scene's imagery. Opening a clue reveals information about the figure but reduces your max score by ${HOTSPOT_PENALTY.toLocaleString()} points per clue.`,
         },
         hints: {
-          title: "AI hints used",
-          description: `Each Venice AI hint (memory whisper) reduces your max score by ${HINT_PENALTY.toLocaleString()} points. One hint per scene. Higher tiers cost the same but reveal more.`,
+          title: "Memory whispers used",
+          description: `Each whisper reduces your ceiling by ${HINT_PENALTY.toLocaleString()} points. One whisper per tier per scene — higher tiers cost the same but reveal more.`,
         },
         guesses: {
-          title: "Guesses remaining",
-          description: `You have ${MAX_GUESSES_PER_RUN} guesses per episode. Each wrong guess deducts ${GUESS_PENALTY.toLocaleString()} points and may lock additional content behind deeper memories. Use them wisely.`,
+          title: "Accusations remaining",
+          description: `You have ${MAX_GUESSES_PER_RUN} accusations per episode. Each wrong one costs ${GUESS_PENALTY.toLocaleString()} points from your ceiling. Spend them when the room feels right.`,
         },
         mint: {
           title: "Score minted on Mantle",
@@ -76,10 +76,12 @@ export interface RevealLayerProps {
   /** Caller identity — gates the bio reveal. */
   identityId?: string;
   imageUrl?: string;
+  /** Register: a solved run names the body; an exhausted run closes the file. */
+  variant?: "solved" | "exhausted";
   onContinue: () => void;
 }
 
-export function RevealLayer({ visible, figureName, era, region, tags, summary, episodeId, identityId, imageUrl, onContinue }: RevealLayerProps) {
+export function RevealLayer({ visible, figureName, era, region, tags, summary, episodeId, identityId, imageUrl, variant, onContinue }: RevealLayerProps) {
   if (!visible) return null;
   return (
     <EnhancedIdentityReveal
@@ -91,6 +93,7 @@ export function RevealLayer({ visible, figureName, era, region, tags, summary, e
       episodeId={episodeId}
       identityId={identityId}
       imageUrl={imageUrl}
+      variant={variant}
       onContinue={onContinue}
     />
   );

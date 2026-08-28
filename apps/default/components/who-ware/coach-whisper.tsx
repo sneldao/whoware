@@ -6,7 +6,7 @@ import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 interface CoachWhisperProps {
   message: string | null;
   onDismiss: () => void;
-  /** Bottom offset above the action dock / Name identity button. */
+  /** Bottom offset above the action dock / Name the figure button. */
   bottom?: number;
 }
 

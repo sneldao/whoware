@@ -1,4 +1,5 @@
 import { theme } from "@/lib/theme";
+import { GRADE_COLORS, gradeForScore } from "@/lib/score-projection";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -68,7 +69,8 @@ export function ResultShareCard({
 
   const memoryGrid = buildMemoryGrid(memoriesViewed, cluesOpened);
   const percentile = rank && rankedCount > 0 ? Math.max(1, Math.round((rank / rankedCount) * 100)) : null;
-  const shareText = buildShareText({ episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak });
+  const grade = gradeForScore(score);
+  const shareText = buildShareText({ episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak, score, guessesUsed, gradeTitle: grade.title, grade: grade.grade });
   const difficultyStyle = difficulty ? DIFFICULTY_PALETTE[difficulty] ?? DIFFICULTY_PALETTE.iconic : null;
   const tier = getStreakTier(streak);
   const borderGradient = getScoreTierGradient(percentile);
@@ -196,12 +198,21 @@ export function ResultShareCard({
             <View style={styles.scoreRow}>
               <Text style={styles.scoreValue}>{formatScore(score)}</Text>
               <Text style={styles.scoreSuffix}>pts</Text>
+              <View
+                style={[
+                  styles.gradeBadge,
+                  { borderColor: GRADE_COLORS[grade.grade], backgroundColor: `${GRADE_COLORS[grade.grade]}22` },
+                ]}
+              >
+                <Text style={[styles.gradeText, { color: GRADE_COLORS[grade.grade] }]}>{grade.grade}</Text>
+              </View>
               {percentile !== null ? (
                 <View style={styles.percentileBadge}>
                   <Text style={styles.percentile}>Top {percentile}%</Text>
                 </View>
               ) : null}
             </View>
+            <Text style={styles.gradeTitle}>{grade.title} — {grade.blurb}</Text>
 
             {streak > 0 ? (
               <View style={styles.streakRow}>
@@ -282,14 +293,19 @@ function buildShareText(args: {
   elapsedMs: number;
   percentile: number | null;
   streak: number;
+  score: number;
+  guessesUsed: number;
+  grade: string;
+  gradeTitle: string;
 }): string {
-  const { episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak } = args;
+  const { episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak, score, guessesUsed, grade, gradeTitle } = args;
   const percentileLine = percentile !== null ? ` (Top ${percentile}%)` : "";
   const streakLine = streak > 1 ? ` · 🔥 ${streak}-day streak` : "";
   
   return [
     `WhoWare #${episodeNumber} 🏛️`,
     `${memoryGrid.join("")}`,
+    `🎖️ ${formatScore(score)} pts · Grade ${grade} — ${gradeTitle} · ${guessesUsed}/5 accusations`,
     `⏱️ ${formatElapsed(elapsedMs)} · ${memoriesViewed} room${memoriesViewed > 1 ? "s" : ""} · ${cluesOpened} clue${cluesOpened !== 1 ? "s" : ""}${percentileLine}${streakLine}`,
     `Can you name them from the room? 🗝️ https://whoware.app`,
   ].join("\n");
@@ -431,6 +447,27 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.6,
     textTransform: "uppercase",
+  },
+  gradeBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    marginLeft: 8,
+  },
+  gradeText: {
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  gradeTitle: {
+    color: theme.inkAlpha55,
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 2,
   },
   scoreRow: {
     flexDirection: "row",

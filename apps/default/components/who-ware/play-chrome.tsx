@@ -17,12 +17,15 @@ import { GuessPanel } from "@/components/who-ware/guess-panel";
 import { IdentityHintButton } from "@/components/who-ware/identity-hint-button";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { TappableMetric } from "@/components/shared/tappable-metric";
+import { MEMORY_PENALTY } from "@/convex/scoring";
 import { theme } from "@/lib/theme";
 import type { ActionState, ExtrasState, GuessState, SceneState } from "@/components/who-ware/views/props";
 import styles from "@/app/index.styles";
 
 export interface PlayChromeMetrics {
   scoreDisplay: string;
+  /** True while the score is the live projected ceiling (pre-solve). */
+  scoreIsLive: boolean;
   hotspotsOpened: number;
   hintsUsed: number;
   guessesLeft: number;
@@ -168,7 +171,7 @@ export function PlayChrome({
           >
             <Ionicons name="finger-print" size={18} color={theme.inkOnAccent} />
             <Text style={styles.guessButtonText}>
-              {isGuessPanelOpen ? "Hide guesses" : "Name identity"}
+              {isGuessPanelOpen ? "Back to the room" : "Name the figure"}
             </Text>
           </Pressable>
           <Pressable
@@ -183,7 +186,7 @@ export function PlayChrome({
             ]}
           >
             <Text style={styles.secondaryButtonText}>
-              {moreMemoriesAvailable ? "Unlock next memory" : "All memories open"}
+              {moreMemoriesAvailable ? `Deeper memory · −${MEMORY_PENALTY.toLocaleString()}` : "Every memory open"}
             </Text>
           </Pressable>
         </View>
@@ -202,7 +205,7 @@ export function PlayChrome({
         <View style={overlayStyles.topRow}>
           <View style={overlayStyles.metrics}>
             <TappableMetric
-              label="Score"
+              label={metrics.scoreIsLive ? "Ceiling · live" : "Score"}
               value={`${metrics.scoreDisplay} pts`}
               onPress={metrics.onShowScoreTooltip}
             />
@@ -217,8 +220,8 @@ export function PlayChrome({
               onPress={metrics.onShowHintsTooltip}
             />
             <TappableMetric
-              label="Guesses"
-              value={`${metrics.guessesLeft}/${metrics.guessCap}`}
+              label="Accusations"
+              value={`${"●".repeat(metrics.guessesLeft)}${"○".repeat(Math.max(0, metrics.guessCap - metrics.guessesLeft))}`}
               onPress={onToggleGuessPanel}
             />
           </View>
@@ -248,7 +251,7 @@ export function PlayChrome({
           >
             <Ionicons name="finger-print" size={16} color={theme.inkOnAccent} />
             <Text style={overlayStyles.primaryBtnText}>
-              {isGuessPanelOpen ? "Hide guesses" : "Name identity"}
+              {isGuessPanelOpen ? "Back to the room" : "Name the figure"}
             </Text>
           </Pressable>
           <Animated.View
@@ -269,7 +272,7 @@ export function PlayChrome({
               ]}
             >
               <Text style={overlayStyles.secondaryBtnText}>
-                {moreMemoriesAvailable ? "Next memory" : "All open"}
+                {moreMemoriesAvailable ? `Deeper memory · −${MEMORY_PENALTY.toLocaleString()}` : "Every memory open"}
               </Text>
             </Pressable>
           </Animated.View>

@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { MAX_GUESSES_PER_RUN, HOTSPOT_PENALTY, HINT_PENALTY } from "@/convex/scoring";
+import { MAX_GUESSES_PER_RUN, HOTSPOT_PENALTY, HINT_PENALTY, GUESS_PENALTY } from "@/convex/scoring";
 import { FigureOption } from "@/components/who-ware/guess-panel";
 import { useVeniceHint, type HintTier } from "@/hooks/use-venice-hint";
 import { evaluateHintRequest } from "@/hooks/hint-gating";
@@ -470,8 +470,10 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
           guessesUsed: result.guessesUsed,
           elapsedMs: result.elapsedMs,
         });
+        // No toast here — the verdict belongs to the reveal, delivered
+        // over the room. A snackbar announcing the score would leak the
+        // drama before the naming sequence plays.
         const identityLabel = result.answer ?? "the figure";
-        toast.show(`✅ Solved! ${formatScore(finalScore)} pts`, "success");
         setStatus(`Identity anchored — you were ${identityLabel}. Final score: ${formatScore(finalScore)}.`);
 
         // Mint/delegation/streak orchestration (delegated to useSolveMinter)
@@ -491,10 +493,10 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         return;
       }
 
-      // Wrong guess — use proximity feedback tier instead of generic penalty text
+      // Wrong guess — proximity feedback plus the cost, stated every time.
       const isClose = result.proximity === "same_era" || result.proximity === "same_region" || result.proximity === "same_era_and_region" || result.proximity === "same_century";
       toast.show(
-        result.proximityMessage,
+        `${result.proximityMessage} · −${GUESS_PENALTY.toLocaleString()} pts`,
         isClose ? "warning" : "error",
       );
       onCoachOffer?.("wrongGuess");

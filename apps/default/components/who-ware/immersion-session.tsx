@@ -50,6 +50,7 @@ export function ImmersionSession({
   const insets = useSafeAreaInsets();
   const [whisperVisible, setWhisperVisible] = useState(false);
   const [coachVisible, setCoachVisible] = useState(false);
+  const [arrivalWhisper, setArrivalWhisper] = useState(false);
   const sceneHeight = Math.max(480, Math.round(windowHeight));
 
   useEffect(() => {
@@ -65,6 +66,18 @@ export function ImmersionSession({
       clearTimeout(coachTimer);
     };
   }, [scene.scene.title, chromeUnlocked]);
+
+  // Whisper the memory's name on every scene change, even after chrome
+  // unlocks — the room should always introduce itself before the UI does.
+  useEffect(() => {
+    setArrivalWhisper(false);
+    const showTimer = setTimeout(() => setArrivalWhisper(true), 900);
+    const hideTimer = setTimeout(() => setArrivalWhisper(false), 5000);
+    return () => {
+      clearTimeout(showTimer);
+      clearTimeout(hideTimer);
+    };
+  }, [scene.scene.title]);
 
   const coachMessage =
     Platform.OS === "web" && detectSceneQuality().mode === "three-d"
@@ -116,20 +129,24 @@ export function ImmersionSession({
         </Animated.View>
       ) : null}
 
+      {/* The room introduces itself: title first, place and time beneath. */}
+      {!solveHold && (whisperVisible && !chromeUnlocked ? true : arrivalWhisper) ? (
+        <Animated.View
+          key={scene.scene.title}
+          entering={FadeIn.duration(900)}
+          exiting={FadeOut.duration(600)}
+          style={[styles.whisper, { top: Math.max(20, insets.top + 12) }]}
+          pointerEvents="none"
+        >
+          <Text style={styles.whisperTitle}>{scene.scene.title}</Text>
+          <Text style={styles.whisperText}>
+            {scene.scene.location} · {scene.scene.era}
+          </Text>
+        </Animated.View>
+      ) : null}
+
       {!chromeUnlocked && !solveHold ? (
         <>
-          {whisperVisible ? (
-            <Animated.View
-              entering={FadeIn.duration(900)}
-              exiting={FadeOut.duration(300)}
-              style={[styles.whisper, { top: Math.max(20, insets.top + 12) }]}
-              pointerEvents="none"
-            >
-              <Text style={styles.whisperText}>
-                {scene.scene.location} · {scene.scene.era}
-              </Text>
-            </Animated.View>
-          ) : null}
 
           {coachVisible ? (
             <Animated.View
@@ -151,12 +168,12 @@ export function ImmersionSession({
           <View style={[styles.bottomBar, { bottom: Math.max(24, insets.bottom + 16) }]}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Name identity"
+              accessibilityLabel="Name the figure"
               onPress={onNameIdentity}
               style={({ pressed }) => [styles.nameButton, pressed && styles.pressed]}
             >
               <Ionicons name="finger-print" size={16} color={theme.ink} />
-              <Text style={styles.nameButtonText}>Name identity</Text>
+              <Text style={styles.nameButtonText}>Name the figure</Text>
             </Pressable>
           </View>
         </>
@@ -192,6 +209,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: "center",
+    gap: 4,
+  },
+  whisperTitle: {
+    color: theme.inkAlpha72,
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 0.4,
+    textAlign: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   whisperText: {
     color: theme.inkAlpha55,

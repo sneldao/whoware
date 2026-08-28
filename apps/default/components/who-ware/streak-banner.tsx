@@ -8,14 +8,16 @@ interface StreakBannerProps {
   best: number;
   /** True when today's episode has been solved (streak is "live"). */
   solvedToday: boolean;
+  /** Banked streak freezes — insurance against exactly one missed day. */
+  freezesAvailable?: number;
 }
 
 /**
  * Compact streak indicator for the hero. Reinforces the daily-return ritual:
  * a lit flame when the streak is alive, a dimmed ember prompting a comeback
- * when it is at risk.
+ * when it is at risk — and the freeze, so insurance is seen before it's needed.
  */
-export function StreakBanner({ current, best, solvedToday }: StreakBannerProps) {
+export function StreakBanner({ current, best, solvedToday, freezesAvailable = 0 }: StreakBannerProps) {
   const isLive = current > 0;
   const flameColor = solvedToday ? "#FB923C" : isLive ? theme.goldGradientEnd : theme.inkAlpha40;
   const headline = isLive
@@ -35,6 +37,12 @@ export function StreakBanner({ current, best, solvedToday }: StreakBannerProps) 
           {best > 0 ? `Best run ${best} ${best === 1 ? "day" : "days"}` : "Solve daily to build a run"}
         </Text>
       </View>
+      {freezesAvailable > 0 ? (
+        <View style={styles.freezeChip}>
+          <Ionicons name="snow-outline" size={11} color={theme.lightViolet} />
+          <Text style={styles.freezeText}>{freezesAvailable} freeze</Text>
+        </View>
+      ) : null}
       {current > 0 ? (
         <View style={styles.countPill}>
           <Text style={styles.countValue}>{current}</Text>
@@ -81,6 +89,23 @@ const styles = StyleSheet.create({
     color: theme.inkAlpha55,
     fontSize: 12,
     fontWeight: "700",
+  },
+  freezeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(196, 181, 253, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(196, 181, 253, 0.28)",
+  },
+  freezeText: {
+    color: theme.lightViolet,
+    fontSize: 10.5,
+    fontWeight: "800",
   },
   countPill: {
     minWidth: 34,

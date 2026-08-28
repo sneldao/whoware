@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { theme } from "@/lib/theme";
 
@@ -19,6 +20,9 @@ interface HintOverlayProps {
  */
 export function HintOverlay({ hint, isGenerating, clueLabel, activeHintTier, onDismiss }: HintOverlayProps) {
   const tierLabel = activeHintTier && activeHintTier !== "socratic" ? activeHintTier.charAt(0).toUpperCase() + activeHintTier.slice(1) : null;
+  // The séance stays sealed: attribution and privacy machinery live behind
+  // an info affordance for the curious, never in the fiction's mouth.
+  const [showInfo, setShowInfo] = useState(false);
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -29,7 +33,14 @@ export function HintOverlay({ hint, isGenerating, clueLabel, activeHintTier, onD
             <Text style={styles.tierLabel}>{tierLabel}</Text>
           </View>
         ) : null}
-        <Text style={styles.source}>Venice AI</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="About this whisper"
+          onPress={() => setShowInfo((v) => !v)}
+          hitSlop={8}
+        >
+          <Ionicons name="information-circle-outline" size={15} color="rgba(167, 139, 250, 0.55)" />
+        </Pressable>
         {onDismiss ? (
           <Pressable
             accessibilityRole="button"
@@ -52,7 +63,11 @@ export function HintOverlay({ hint, isGenerating, clueLabel, activeHintTier, onD
         <Text style={styles.hintText}>{hint}</Text>
       )}
 
-      <Text style={styles.privacyNote}>Privacy-preserving — Venice never stores your queries.</Text>
+      {showInfo ? (
+        <Text style={styles.privacyNote}>
+          Whispers are generated on request by Venice AI — privacy-preserving, never stored.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -79,11 +94,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 1,
     textTransform: "uppercase",
-  },
-  source: {
-    color: "rgba(167, 139, 250, 0.5)",
-    fontSize: 10,
-    fontWeight: "800",
   },
   tierBadge: {
     paddingHorizontal: 6,
