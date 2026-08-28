@@ -25,6 +25,8 @@ interface ImmersionThresholdProps {
     difficulty?: "iconic" | "field" | "research";
     /** Live tick of ms remaining until today's signal collapses. */
     closesAt?: number | null;
+    /** Live streak that dies if today goes unsolved — loss-framed on the plate. */
+    streakAtRisk?: number;
   } | null;
   onOpenHowTo?: () => void;
 }
@@ -55,7 +57,7 @@ function useNow(enabled: boolean): number {
 const VERBS: Array<{ icon: keyof typeof Ionicons.glyphMap; text: string }> = [
   { icon: "footsteps-outline", text: "Walk the memory" },
   { icon: "search-outline", text: "Name the figure" },
-  { icon: "dice-outline", text: "Five guesses" },
+  { icon: "dice-outline", text: "Five accusations" },
 ];
 
 /**
@@ -149,6 +151,14 @@ export function ImmersionThreshold({
                 <Ionicons name="hourglass-outline" size={12} color={theme.accent} />
                 <Text style={styles.plateCountdownText}>
                   Collapses in {formatRemaining(closesIn)}
+                </Text>
+              </View>
+            ) : null}
+            {caseMeta.streakAtRisk ? (
+              <View style={styles.plateStreak}>
+                <Ionicons name="flame" size={12} color="#FB923C" />
+                <Text style={styles.plateStreakText}>
+                  {caseMeta.streakAtRisk}-day streak on the line
                 </Text>
               </View>
             ) : null}
@@ -289,6 +299,24 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.6,
     fontVariant: ["tabular-nums"],
+  },
+  plateStreak: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderCurve: "continuous",
+    backgroundColor: "rgba(251, 146, 60, 0.14)",
+    borderWidth: 1,
+    borderColor: "rgba(251, 146, 60, 0.35)",
+  },
+  plateStreakText: {
+    color: "#FB923C",
+    fontSize: 11.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   brand: {
     color: theme.ink,

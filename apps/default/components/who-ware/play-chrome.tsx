@@ -17,12 +17,15 @@ import { GuessPanel } from "@/components/who-ware/guess-panel";
 import { IdentityHintButton } from "@/components/who-ware/identity-hint-button";
 import { Leaderboard } from "@/components/who-ware/leaderboard";
 import { TappableMetric } from "@/components/shared/tappable-metric";
+import { MEMORY_PENALTY } from "@/convex/scoring";
 import { theme } from "@/lib/theme";
 import type { ActionState, ExtrasState, GuessState, SceneState } from "@/components/who-ware/views/props";
 import styles from "@/app/index.styles";
 
 export interface PlayChromeMetrics {
   scoreDisplay: string;
+  /** True while the score is the live projected ceiling (pre-solve). */
+  scoreIsLive: boolean;
   hotspotsOpened: number;
   hintsUsed: number;
   guessesLeft: number;
@@ -73,6 +76,8 @@ export function PlayChrome({
 
   const insets = useSafeAreaInsets();
   const [cluesSheetOpen, setCluesSheetOpen] = useState(false);
+  /** The standings stay one tap away but never shout over the accusation. */
+  const [boardOpen, setBoardOpen] = useState(false);
   const showLeaderboard = isGuessPanelOpen;
   /** Dense panel only when guessing or reviewing clues — keep the room dominant. */
   const sheetExpanded = isGuessPanelOpen || cluesSheetOpen;
@@ -146,13 +151,28 @@ export function PlayChrome({
         />
       )}
       {showLeaderboard ? (
-        <ErrorBoundary label="Leaderboard">
-          <Leaderboard
-            entries={leaderboardEntries}
-            playerRank={playerRank}
-            rankedCount={rankedCount}
-          />
-        </ErrorBoundary>
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: boardOpen }}
+            onPress={() => setBoardOpen((open) => !open)}
+            style={({ pressed }) => [overlayStyles.boardToggle, pressed && overlayStyles.pressed]}
+          >
+            <Ionicons name={boardOpen ? "chevron-up" : "podium-outline"} size={12} color={theme.inkAlpha50} />
+            <Text style={overlayStyles.boardToggleText}>
+              {boardOpen ? "Hide the case board" : "Case board — today's standings"}
+            </Text>
+          </Pressable>
+          {boardOpen ? (
+            <ErrorBoundary label="Leaderboard">
+              <Leaderboard
+                entries={leaderboardEntries}
+                playerRank={playerRank}
+                rankedCount={rankedCount}
+              />
+            </ErrorBoundary>
+          ) : null}
+        </>
       ) : null}
     </>
   );
@@ -168,7 +188,7 @@ export function PlayChrome({
           >
             <Ionicons name="finger-print" size={18} color={theme.inkOnAccent} />
             <Text style={styles.guessButtonText}>
-              {isGuessPanelOpen ? "Hide guesses" : "Name identity"}
+              {isGuessPanelOpen ? "Back to the room" : "Name the figure"}
             </Text>
           </Pressable>
           <Pressable
@@ -183,7 +203,7 @@ export function PlayChrome({
             ]}
           >
             <Text style={styles.secondaryButtonText}>
-              {moreMemoriesAvailable ? "Unlock next memory" : "All memories open"}
+              {moreMemoriesAvailable ? `Deeper memory · −${MEMORY_PENALTY.toLocaleString()}` : "Every memory open"}
             </Text>
           </Pressable>
         </View>
@@ -200,25 +220,22 @@ export function PlayChrome({
         pointerEvents="box-none"
       >
         <View style={overlayStyles.topRow}>
+          {/* Three pills, three jobs: stakes, evidence, accusation. The
+              whisper count folds into the ceiling tooltip — one less voice. */}
           <View style={overlayStyles.metrics}>
             <TappableMetric
-              label="Score"
+              label={metrics.scoreIsLive ? "Ceiling · live" : "Score"}
               value={`${metrics.scoreDisplay} pts`}
               onPress={metrics.onShowScoreTooltip}
             />
             <TappableMetric
-              label="Clues"
-              value={`${metrics.hotspotsOpened}`}
+              label="Evidence"
+              value={`${metrics.hotspotsOpened}${metrics.hintsUsed > 0 ? ` · ${metrics.hintsUsed}✦` : ""}`}
               onPress={() => setCluesSheetOpen((open) => !open)}
             />
             <TappableMetric
-              label="Hints"
-              value={`${metrics.hintsUsed}`}
-              onPress={metrics.onShowHintsTooltip}
-            />
-            <TappableMetric
-              label="Guesses"
-              value={`${metrics.guessesLeft}/${metrics.guessCap}`}
+              label="Accusations"
+              value={`${"●".repeat(metrics.guessesLeft)}${"○".repeat(Math.max(0, metrics.guessCap - metrics.guessesLeft))}`}
               onPress={onToggleGuessPanel}
             />
           </View>
@@ -248,7 +265,7 @@ export function PlayChrome({
           >
             <Ionicons name="finger-print" size={16} color={theme.inkOnAccent} />
             <Text style={overlayStyles.primaryBtnText}>
-              {isGuessPanelOpen ? "Hide guesses" : "Name identity"}
+              {isGuessPanelOpen ? "Back to the room" : "Name the figure"}
             </Text>
           </Pressable>
           <Animated.View
@@ -269,7 +286,7 @@ export function PlayChrome({
               ]}
             >
               <Text style={overlayStyles.secondaryBtnText}>
-                {moreMemoriesAvailable ? "Next memory" : "All open"}
+                {moreMemoriesAvailable ? `Deeper memory · −${MEMORY_PENALTY.toLocaleString()}` : "Every memory open"}
               </Text>
             </Pressable>
           </Animated.View>
@@ -386,6 +403,24 @@ const overlayStyles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.75,
+  },
+  boardToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    backgroundColor: theme.inkAlpha04,
+    borderWidth: 1,
+    borderColor: theme.inkAlpha8,
+  },
+  boardToggleText: {
+    color: theme.inkAlpha55,
+    fontSize: 11.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   sheet: {
     maxHeight: 280,

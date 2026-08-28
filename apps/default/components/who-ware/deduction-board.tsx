@@ -30,22 +30,30 @@ export function DeductionBoard({ attempts, maxGuesses = 5 }: DeductionBoardProps
       <View style={styles.list}>
         {attempts.map((att, idx) => (
           <View key={idx} style={[styles.row, att.isCorrect && styles.rowCorrect]}>
-            <View style={styles.nameCol}>
-              <Ionicons
-                name={att.isCorrect ? "checkmark-circle" : "close-circle"}
-                size={14}
-                color={att.isCorrect ? theme.success : theme.dangerText}
-              />
-              <Text style={[styles.nameText, att.isCorrect && styles.nameTextCorrect]} numberOfLines={1}>
-                {att.figureName}
-              </Text>
-            </View>
+            <View style={styles.rowTop}>
+              <View style={styles.nameCol}>
+                <Ionicons
+                  name={att.isCorrect ? "checkmark-circle" : "close-circle"}
+                  size={14}
+                  color={att.isCorrect ? theme.success : theme.dangerText}
+                />
+                <Text style={[styles.nameText, att.isCorrect && styles.nameTextCorrect]} numberOfLines={1}>
+                  {att.figureName}
+                </Text>
+              </View>
 
-            <View style={styles.badgesCol}>
-              <Badge label="Era" match={att.eraMatch} />
-              <Badge label="Region" match={att.regionMatch} />
-              <Badge label="Field" match={att.fieldMatch} />
+              <View style={styles.badgesCol}>
+                <Badge label="Era" match={att.eraMatch} />
+                <Badge label="Region" match={att.regionMatch} />
+                <Badge label="Field" match={att.fieldMatch} />
+              </View>
             </View>
+            {/* The room's answer, kept — the toast fades, the record stays. */}
+            {att.message && !att.isCorrect ? (
+              <Text style={styles.proximityLine} numberOfLines={2}>
+                {att.message}
+              </Text>
+            ) : null}
           </View>
         ))}
       </View>
@@ -99,13 +107,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   row: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    gap: 4,
     paddingVertical: 6,
     paddingHorizontal: 8,
     borderRadius: 10,
     backgroundColor: "rgba(255, 240, 214, 0.04)",
+  },
+  rowTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  proximityLine: {
+    color: theme.inkAlpha50,
+    fontSize: 11,
+    fontWeight: "600",
+    lineHeight: 15,
+    paddingLeft: 20,
   },
   rowCorrect: {
     backgroundColor: "rgba(134, 239, 172, 0.12)",

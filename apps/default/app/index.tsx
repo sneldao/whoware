@@ -8,6 +8,7 @@ import { SITE_URL } from "@/lib/site";
 import { theme } from "@/lib/theme";
 import { detectSceneQuality } from "@/lib/scene-quality";
 import { getSoundEnabled, markOnboardingComplete, setSoundEnabled } from "@/lib/onboarding";
+import { projectScore } from "@/lib/score-projection";
 import { useImmersionShell } from "@/lib/immersion-shell";
 import { useGameSession, type UseGameSessionReturn } from "@/hooks/use-game-session";
 import { useGuessing, UseGuessingReturn } from "@/hooks/use-guessing";
@@ -52,7 +53,7 @@ function playingNextStep(guessesLeft: number): string {
   const lookHint = quality.mode === "three-d"
     ? "Drag to look, tap a glow for a clue"
     : "Tap a glowing fragment for a clue";
-  return `${lookHint}, unlock another memory, or Name identity (${guessesLeft} left).`;
+  return `${lookHint}, open a deeper memory, or name the figure (${guessesLeft} ${guessesLeft === 1 ? "accusation" : "accusations"} left).`;
 }
 
 function LoadingScreen({ message }: { message: string }) {
@@ -78,6 +79,8 @@ export default function Index() {
   const [loadHistory, setLoadHistory] = useState(false);
   const [pulseNextMemory, setPulseNextMemory] = useState(false);
   const [roomHold, setRoomHold] = useState(false);
+  /** True once the post-solve beat elapsed and the reveal may overlay the room. */
+  const [revealReady, setRevealReady] = useState(false);
   const [caseFileDismissed, setCaseFileDismissed] = useState(false);
 
   const hasMoreMemoriesRef = useRef<() => boolean>(() => false);
@@ -221,13 +224,28 @@ export default function Index() {
     }
   }, [hasEnteredMemoryEarly, runFinishedEarly]);
 
-  // Brief hold in the room after solve/exhaust before column chrome.
+  // Hold the room from the in-session finish until the reveal — shown over
+  // the room, not the results page — has played and been dismissed. The
+  // verdict lands where the mystery lived. Returning players (no active
+  // play this session) skip the hold and land in the column shell.
   useEffect(() => {
-    if (!runFinishedEarly || !wasActivePlayRef.current) return;
+    if (!runFinishedEarly) {
+      // Episode rollover or fresh state — never leave the room held.
+      setRoomHold(false);
+      setRevealReady(false);
+      return;
+    }
+    if (!wasActivePlayRef.current) return;
     setRoomHold(true);
-    const t = setTimeout(() => setRoomHold(false), SOLVE_HOLD_MS);
+    const t = setTimeout(() => setRevealReady(true), SOLVE_HOLD_MS);
     return () => clearTimeout(t);
   }, [runFinishedEarly]);
+
+  useEffect(() => {
+    if (!guessing.revealDismissed) return;
+    setRevealReady(false);
+    setRoomHold(false);
+  }, [guessing.revealDismissed]);
 
   // Full-bleed on web for threshold + active run + solve hold; column after.
   useEffect(() => {
@@ -302,6 +320,16 @@ export default function Index() {
     };
   }, [hasEnteredMemoryEarly, runFinishedEarly]);
 
+  // Live score projection — tick once a second while a run is active so the
+  // HUD ceiling visibly bleeds (the server's score only exists after solve).
+  const runIsActive = session.run?.status === "active";
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (!runIsActive) return;
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [runIsActive]);
+
   const handleThresholdEnter = useCallback(async (withSound: boolean) => {
     if (!session.episode || isEntering) return;
     setIsEntering(true);
@@ -328,7 +356,9 @@ export default function Index() {
       const left = Math.max(0, MAX_GUESSES_PER_RUN - (activeRun.guessesUsed ?? 0));
       guessing.setStatus(playingNextStep(left));
     } catch {
-      // keep threshold; user can retry
+      // Keep the threshold up, but never fail silently — the player needs
+      // to know the room resisted and that retrying is safe.
+      guessing.showToast("The room resisted — check your connection and try again.", "error");
     } finally {
       setIsEntering(false);
     }
@@ -339,6 +369,7 @@ export default function Index() {
     session.enterSceneMutation,
     session.gameSounds,
     guessing.setStatus,
+    guessing.showToast,
   ]);
 
   const handleShareResult = useCallback(async () => {
@@ -423,7 +454,22 @@ export default function Index() {
     );
   }
   if (waitingForBoot) return <LoadingScreen message="Opening today's archive…" />;
-  if (session.episode === null) return <LoadingScreen message="Preparing the first episode…" />;
+  if (session.episode === null) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color={theme.accent} />
+        <Text style={styles.loadingText}>Preparing the first episode…</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace("/")}
+          style={({ pressed }) => [styles.actionButton, styles.guessButton, pressed && styles.pressed]}
+        >
+          <Ionicons name="refresh" size={18} color={theme.inkOnAccent} />
+          <Text style={styles.guessButtonText}>Check again</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   const guessCap = MAX_GUESSES_PER_RUN;
   const hasEnteredMemory = (session.run?.memoriesViewed ?? 0) > 0;
@@ -449,7 +495,9 @@ export default function Index() {
     ? (session.nextDrop?.dropsAt ?? null)
     : (session.episode.closesAt ?? session.nextDrop?.dropsAt ?? null);
   const countdownLabel = session.episode.closesAt && !isSolved && !isExhausted
-    ? "Today's signal collapses in"
+    ? session.streak.current > 0
+      ? `Your ${session.streak.current}-day streak collapses in`
+      : "Today's signal collapses in"
     : isSolved
       ? "Next body opens in"
       : "Next drop opens in";
@@ -476,14 +524,59 @@ export default function Index() {
             episodeNumber,
             difficulty: session.episode.difficulty,
             closesAt: session.episode.closesAt ?? null,
+            streakAtRisk: session.streak.current > 0 ? session.streak.current : undefined,
           }}
           onOpenHowTo={() => router.push("/how-to")}
+        />
+        <ToastLayer
+          visible={guessing.toastVisible}
+          message={guessing.toastMessage}
+          type={guessing.toastType}
+          onDismiss={() => setToastDismissed(true)}
         />
       </View>
     );
   }
 
   const inImmersionSurface = hasEnteredMemory && (!runFinished || roomHold);
+
+  // Reveal data (computed before the immersion branch so the verdict can
+  // overlay the room). The answer record ships only to resolved runs
+  // (runs.getAnswer); fall back to the loaded figures pool otherwise.
+  const solvedFigure = guessing.revealFigure;
+  const revealFigureRecord =
+    guessing.answerRecord ??
+    (solvedFigure ? session.figures.find((f) => f._id === solvedFigure.figureId) : null);
+
+  // A toast currently speaking — gates coach whispers and insight banners
+  // so the room never talks over itself.
+  const toastActive = guessing.toastVisible && !toastDismissed;
+
+  // Salvage for the exhausted case — the closest call, stated plainly.
+  // A near-miss is the strongest "tomorrow I'll get it" fuel there is.
+  const closestCall = (() => {
+    const wrong = guessing.guessAttempts.filter((a) => !a.isCorrect);
+    const contemporary = wrong.find((a) => a.eraMatch && a.regionMatch);
+    if (contemporary) return `Closest call: ${contemporary.figureName} — right era, right region.`;
+    const partial =
+      wrong.find((a) => a.eraMatch) ?? wrong.find((a) => a.regionMatch) ?? wrong.find((a) => a.fieldMatch);
+    if (!partial) return null;
+    const what = partial.eraMatch ? "right era" : partial.regionMatch ? "right region" : "right field";
+    return `Closest call: ${partial.figureName} — ${what}.`;
+  })();
+
+  // The streak's fate, honestly: a banked freeze absorbs exactly one missed
+  // day, so "solve tomorrow" is a real promise — not empty comfort.
+  const todayIndex = Math.floor(Date.now() / 86_400_000);
+  const streakAliveToday =
+    session.streak.current > 0 && session.streak.lastSolvedDay >= todayIndex - 1;
+  const exhaustedStreakNote = !isExhausted
+    ? null
+    : streakAliveToday
+      ? session.streak.freezesAvailable > 0
+        ? "Your streak freeze absorbs this miss — solve tomorrow to keep the flame."
+        : `This case ends your ${session.streak.current}-day streak. Tomorrow, a new run begins.`
+      : null;
 
   // Case File recap — only when we loaded back into an already-active run
   // (not after entering this session). Spoiler-safe: player-generated facts.
@@ -554,8 +647,50 @@ export default function Index() {
     isPushBusy: session.pushNotifications.isBusy,
     onTogglePush: session.pushNotifications.toggleNotifications,
   };
+  // Live ceiling: the score a correct accusation *right now* would earn,
+  // mirroring the server's computeScore. Solved runs show the real score.
+  const liveScore = session.run?.score != null
+    ? session.run.score
+    : session.run?.status === "active"
+      ? projectScore({
+          memoriesViewed,
+          hotspotsOpened,
+          hintsUsed: Math.max(guessing.hintsUsed, session.run.hintsUsed ?? 0),
+          wrongGuesses: guessesUsed,
+          startedAt: session.run.startedAt,
+          now: nowMs,
+        })
+      : null;
+  // The ceiling tooltip carries live stakes: now, floor, whispers heard.
+  const scoreDetail = session.run?.status === "active" && liveScore != null
+    ? [
+        `Right now a correct accusation earns ${formatScore(liveScore)}.`,
+        moreMemoriesAvailable
+          ? `Open every remaining memory and it falls to ${formatScore(
+              projectScore({
+                memoriesViewed: totalMemories,
+                hotspotsOpened,
+                hintsUsed: Math.max(guessing.hintsUsed, session.run.hintsUsed ?? 0),
+                wrongGuesses: guessesUsed,
+                startedAt: session.run.startedAt,
+                now: nowMs,
+              }),
+            )}.`
+          : null,
+        guessing.hintsUsed > 0 ? `Whispers heard: ${guessing.hintsUsed}.` : null,
+      ].filter(Boolean).join(" ")
+    : undefined;
+
+  // Personal best — the result surface flexes harder when it's a record.
+  const priorBest = (session.playerHistory ?? [])
+    .filter((r) => r.episodeSlug !== session.episode.slug && r.status === "solved" && r.score != null)
+    .reduce<number | null>((best, r) => (best == null || (r.score as number) > best ? (r.score as number) : best), null);
+  const isPersonalBest =
+    isSolved && session.run?.score != null && priorBest != null && session.run.score > priorBest;
+
   const metricsState = {
-    scoreDisplay: session.run?.score != null ? formatScore(session.run.score) : "—",
+    scoreDisplay: liveScore != null ? formatScore(liveScore) : "—",
+    scoreIsLive: session.run?.score == null && session.run?.status === "active",
     hotspotsOpened,
     hintsUsed: guessing.hintsUsed,
     guessesLeft,
@@ -577,7 +712,7 @@ export default function Index() {
           guess={guessState}
           extras={extrasState}
           metrics={metricsState}
-          solveHold={roomHold}
+          solveHold={roomHold && !revealReady}
           solveHoldLabel={isSolved ? "Identity anchored…" : "The signal fades…"}
           onNameIdentity={() => {
             unlockChrome();
@@ -587,7 +722,8 @@ export default function Index() {
           }}
           onOpenHowTo={() => router.push("/how-to")}
         />
-        {!roomHold ? (
+        {/* One voice at a time: while a toast speaks, coach and insight wait. */}
+        {!roomHold && !toastActive ? (
           <CoachWhisper message={coach.message} onDismiss={coach.dismiss} />
         ) : null}
         {showCaseFile ? (
@@ -600,15 +736,28 @@ export default function Index() {
             onDismiss={() => setCaseFileDismissed(true)}
           />
         ) : null}
-        {!roomHold && clueInsights.currentInsight ? (
+        {!roomHold && !toastActive && clueInsights.currentInsight ? (
           <InsightBanner
             insight={clueInsights.currentInsight}
             onDismiss={clueInsights.dismissInsight}
           />
         ) : null}
-        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} />
+        {/* The verdict lands inside the room it solved — before any chrome. */}
+        <RevealLayer
+          visible={revealReady && !guessing.revealDismissed && !!solvedFigure}
+          figureName={guessing.revealFigure?.name ?? ""}
+          era={revealFigureRecord?.era ?? ""}
+          region={revealFigureRecord?.region ?? ""}
+          tags={revealFigureRecord?.tags ?? []}
+          episodeId={session.episode._id}
+          identityId={session.identity.identityId ?? undefined}
+          imageUrl={solvedSceneImageUrl}
+          variant={isExhausted ? "exhausted" : "solved"}
+          onContinue={() => guessing.setRevealDismissed(true)}
+        />
+        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} scoreDetail={scoreDetail} />
         <ToastLayer
-          visible={guessing.toastVisible && !toastDismissed && !roomHold}
+          visible={toastActive && !roomHold}
           message={guessing.toastMessage}
           type={guessing.toastType}
           onDismiss={() => setToastDismissed(true)}
@@ -627,13 +776,6 @@ export default function Index() {
   }
 
   // ── Solved / exhausted — restore column shell ───────────────────
-  const solvedFigure = guessing.revealFigure;
-  // The answer record ships only to resolved runs (runs.getAnswer); fall
-  // back to the loaded figures pool for the solved-run path.
-  const revealFigureRecord =
-    guessing.answerRecord ??
-    (solvedFigure ? session.figures.find((f) => f._id === solvedFigure.figureId) : null);
-
   return (
     <View style={styles.root}>
       <ScrollView
@@ -671,6 +813,7 @@ export default function Index() {
           runFinished={runFinished}
           currentStreak={session.streak.current}
           bestStreak={session.streak.best}
+          streakFreezes={session.streak.freezesAvailable}
           solvedToday={solvedToday}
           hasEnteredMemory={hasEnteredMemory}
           isBusy={guessing.isBusy}
@@ -712,6 +855,7 @@ export default function Index() {
                 difficulty: session.episode.difficulty,
                 figureEra: revealFigureRecord?.era,
                 figureRegion: revealFigureRecord?.region,
+                isPersonalBest,
               }}
               onchain={{
                 isSmartAccountUpgraded: session.wallet.smartAccount.isUpgraded,
@@ -752,6 +896,8 @@ export default function Index() {
             figureRegion={revealFigureRecord?.region}
             figureTags={revealFigureRecord?.tags}
             identityId={session.identity.identityId ?? undefined}
+            nearMiss={closestCall}
+            streakNote={exhaustedStreakNote}
             onLearnMoreArchive={() => router.push("/archive")}
             onTomorrow={scrollToCountdown}
           />
@@ -776,9 +922,9 @@ export default function Index() {
             formatScore={formatScore}
           />
         )}
-        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} />
+        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} scoreDetail={scoreDetail} />
         <ToastLayer
-          visible={guessing.toastVisible && !toastDismissed}
+          visible={toastActive}
           message={guessing.toastMessage}
           type={guessing.toastType}
           onDismiss={() => setToastDismissed(true)}
@@ -793,6 +939,7 @@ export default function Index() {
         episodeId={session.episode._id}
         identityId={session.identity.identityId ?? undefined}
         imageUrl={solvedSceneImageUrl}
+        variant={isExhausted ? "exhausted" : "solved"}
         onContinue={() => guessing.setRevealDismissed(true)}
       />
       <ErrorBoundary label="UpgradeOverlay">

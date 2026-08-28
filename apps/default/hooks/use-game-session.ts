@@ -33,7 +33,7 @@ export interface UseGameSessionReturn {
   episode: ReturnType<typeof useQuery<typeof api.daily.getCurrentDrop>>;
   nextDrop: ReturnType<typeof useQuery<typeof api.daily.getNextDrop>>;
   run: ReturnType<typeof useQuery<typeof api.runs.getActiveRun>>;
-  figures: NonNullable<ReturnType<typeof useQuery<typeof api.figures.search>>>;
+  figures: NonNullable<ReturnType<typeof useQuery<typeof api.figures.searchForEpisode>>>;
   archiveCount: number;
   playerHistory: ReturnType<typeof useQuery<typeof api.runs.getPlayerHistory>>;
   leaderboardSnapshot: ReturnType<typeof useQuery<typeof api.episodes.leaderboard>>;
@@ -86,9 +86,13 @@ export function useGameSession(options: GameSessionOptions = {}): UseGameSession
       ? { episodeId: episode._id, identityId: identity.identityId }
       : "skip",
   );
+  // Guess-pool options come from searchForEpisode (not plain search): the
+  // pool is scaled by episode difficulty and *always contains the correct
+  // figure* — a plain search can return a pool without the answer, which
+  // makes the run silently unwinnable.
   const figures = useQuery(
-    api.figures.search,
-    loadFigures ? { query: "", limit: 10 } : "skip",
+    api.figures.searchForEpisode,
+    loadFigures && episode ? { query: "", episodeId: episode._id } : "skip",
   ) ?? [];
   const archiveCount = useQuery(api.archive.countClosed) ?? 0;
 

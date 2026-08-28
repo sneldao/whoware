@@ -97,6 +97,7 @@ export function SolvedView(props: SolvedViewProps) {
             difficulty={result.difficulty}
             figureEra={result.figureEra}
             figureRegion={result.figureRegion}
+            isPersonalBest={result.isPersonalBest}
           />
         </>
       )}
@@ -117,6 +118,7 @@ export function SolvedView(props: SolvedViewProps) {
             difficulty={result.difficulty}
             figureEra={result.figureEra}
             figureRegion={result.figureRegion}
+            isPersonalBest={result.isPersonalBest}
           />
           <View style={styles.onChainRow}>
             {isSmartAccountUpgraded && (

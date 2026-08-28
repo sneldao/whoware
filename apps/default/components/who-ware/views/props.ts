@@ -142,6 +142,8 @@ export interface ResultShareData {
   difficulty: string;
   figureEra?: string;
   figureRegion?: string;
+  /** True when this score beats every prior solved episode for this player. */
+  isPersonalBest?: boolean;
 }
 
 export interface OnchainBadges {

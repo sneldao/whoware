@@ -34,7 +34,7 @@ export function ClueLedger({ clues, totalCluesAvailable }: ClueLedgerProps) {
       >
         <View style={styles.headerLeft}>
           <Ionicons name="search" size={16} color={theme.accent} />
-          <Text style={styles.title}>Clues discovered</Text>
+          <Text style={styles.title}>Evidence log</Text>
         </View>
         <View style={styles.headerRight}>
           <Text style={styles.count}>

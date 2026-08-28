@@ -137,7 +137,8 @@ export function SceneCanvas({
           <View style={styles.fillClue}>
             <ClueDetailPanel
               clue={activeClue}
-              hintLabel="Ask the memory (AI hint)"
+              exhibitIndex={scene.clues.findIndex((c) => c.label === activeClue.label)}
+              hintLabel="Ask the memory"
               onGenerateHint={onGenerateHint}
               activeHint={activeHint}
               activeHintTier={activeHintTier}
@@ -155,7 +156,8 @@ export function SceneCanvas({
         activeClue ? (
           <ClueDetailPanel
             clue={activeClue}
-            hintLabel="Ask the memory (AI hint)"
+            exhibitIndex={scene.clues.findIndex((c) => c.label === activeClue.label)}
+            hintLabel="Ask the memory"
             onGenerateHint={onGenerateHint}
             activeHint={activeHint}
             activeHintTier={activeHintTier}

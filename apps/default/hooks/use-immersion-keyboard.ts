@@ -22,7 +22,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 /**
  * Desktop immersion shortcuts (web only):
- * Esc close sheets · G Name identity · N next memory · 1–9 scene rail
+ * Esc close sheets · G Name the figure · N deeper memory · 1–9 scene rail
  */
 export function useImmersionKeyboard(handlers: ImmersionKeyboardHandlers): void {
   const {

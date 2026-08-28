@@ -453,12 +453,95 @@ function playSolveMotif(era: string): void {
   }
 }
 
+/**
+ * Warm miss — the accusation was close (right era/region/century). A soft
+ * perfect fifth rises: the room almost agrees. The player should *hear*
+ * "warmer" before they read a word.
+ */
+function playWarmMiss(): void {
+  if (soundMuted) return;
+  duckAmbient(600);
+  const ctx = getCtx();
+  if (!ctx) return;
+  try {
+    const fifth = [330, 495]; // E4 → D5-ish, a rising perfect fifth
+    fifth.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const vol = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      vol.gain.value = 0.07;
+      vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16 * (i + 1) + 0.15);
+      osc.connect(vol);
+      vol.connect(ctx.destination);
+      osc.start(ctx.currentTime + 0.14 * i);
+      osc.stop(ctx.currentTime + 0.16 * (i + 1) + 0.15);
+    });
+  } catch (e) {
+    logger.warn("useGameSounds.warmMiss", e);
+  }
+}
+
+/** Cold miss — the accusation landed nowhere. The old sawtooth, pitched down. */
+function playColdMiss(): void {
+  if (soundMuted) return;
+  duckAmbient(560);
+  const ctx = getCtx();
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const vol = ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.value = 174;
+    // Sink a quarter-tone over the decay — the room closes, audibly.
+    osc.frequency.exponentialRampToValueAtTime(155, ctx.currentTime + 0.32);
+    vol.gain.value = 0.055;
+    vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.34);
+    osc.connect(vol);
+    vol.connect(ctx.destination);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.34);
+  } catch (e) {
+    logger.warn("useGameSounds.coldMiss", e);
+  }
+}
+
+/** Exhausted knell — the last accusation spent. One low toll, long decay. */
+function playExhaustKnell(): void {
+  if (soundMuted) return;
+  duckAmbient(1500);
+  const ctx = getCtx();
+  if (!ctx) return;
+  try {
+    [110, 73.4].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const vol = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      vol.gain.value = i === 0 ? 0.12 : 0.07;
+      vol.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.3);
+      osc.connect(vol);
+      vol.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.09);
+      osc.stop(ctx.currentTime + 1.35);
+    });
+  } catch (e) {
+    logger.warn("useGameSounds.exhaustKnell", e);
+  }
+}
+
 export interface GameSounds {
   playClueFound: ToneFn;
   playClueFoundAt: (xPercent: number) => void;
   playCorrectGuess: ToneFn;
   playSolveMotif: (era: string) => void;
   playWrongGuess: ToneFn;
+  /** Close accusation (right era/region/century) — rising fifth. */
+  playWarmMiss: ToneFn;
+  /** Cold accusation — low, sinking sawtooth. */
+  playColdMiss: ToneFn;
+  /** Final accusation spent — low toll with a long decay. */
+  playExhaustKnell: ToneFn;
   playSceneEnter: ToneFn;
   startAmbient: (era?: string) => void;
   stopAmbient: () => void;
@@ -511,6 +594,9 @@ export function useGameSounds(): GameSounds {
       },
       playSolveMotif,
       playWrongGuess: createTone(220, 0.3, "sawtooth", 0.06),
+      playWarmMiss,
+      playColdMiss,
+      playExhaustKnell,
       playSceneEnter: createTone(440, 0.2, "triangle", 0.06),
       startAmbient: startAmbientBed,
       stopAmbient: stopAmbientBed,
@@ -523,6 +609,9 @@ export function useGameSounds(): GameSounds {
     playCorrectGuess: useCallback(() => soundsRef.current?.playCorrectGuess(), []),
     playSolveMotif: useCallback((era: string) => soundsRef.current?.playSolveMotif(era), []),
     playWrongGuess: useCallback(() => soundsRef.current?.playWrongGuess(), []),
+    playWarmMiss: useCallback(() => soundsRef.current?.playWarmMiss(), []),
+    playColdMiss: useCallback(() => soundsRef.current?.playColdMiss(), []),
+    playExhaustKnell: useCallback(() => soundsRef.current?.playExhaustKnell(), []),
     playSceneEnter: useCallback(() => soundsRef.current?.playSceneEnter(), []),
     startAmbient: useCallback((era?: string) => soundsRef.current?.startAmbient(era), []),
     stopAmbient: useCallback(() => soundsRef.current?.stopAmbient(), []),
