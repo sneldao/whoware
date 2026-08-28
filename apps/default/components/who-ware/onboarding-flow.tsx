@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, FadeInRight, SlideInRight, SlideOutLeft } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, SlideInRight, SlideOutLeft } from "react-native-reanimated";
 
 const mysteryFigure = require("../../../../assets/images/whoware-mystery-figure.png");
 
@@ -33,16 +33,17 @@ const STEPS = [
     demo: "clue",
   },
   {
-    title: "Guess the identity\nwhen you're ready.",
-    narration: "When you think you know who they are, make your guess. Fewer memories viewed means a higher score.",
-    icon: "help-circle" as const,
+    title: "Name the figure\nwhen you're ready.",
+    narration: "Five accusations, each one final. A wrong one costs 600 from your ceiling — the room tells you how close you landed.",
+    icon: "finger-print" as const,
     demo: "guess",
   },
   {
-    title: "Build your streak.\nOwn your score.",
-    narration: "Solve daily to build your streak. Your score lives on-chain as a soul-bound token — tamper-proof, earned, yours.",
+    title: "Build your streak.\nOwn your grade.",
+    narration: "Solve daily to build your streak — one banked freeze forgives a missed day. Every solve earns a detective grade, S to D.",
     icon: "flame" as const,
     demo: "streak",
+    footnote: "Desktop: G name the figure · N deeper memory · 1–9 jump scenes · Esc close",
   },
 ];
 
@@ -102,6 +103,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
           <Text style={styles.title}>{current.title}</Text>
           <Text style={styles.narration}>{current.narration}</Text>
+          {"footnote" in current && current.footnote && Platform.OS === "web" ? (
+            <Text style={styles.footnote}>{current.footnote}</Text>
+          ) : null}
 
           <StepDemo demo={current.demo} interacted={interacted} onInteract={() => setInteracted(true)} />
         </Animated.View>
@@ -307,6 +311,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontWeight: "700",
+  },
+  footnote: {
+    marginTop: 10,
+    color: theme.inkAlpha40,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+    fontVariant: ["tabular-nums"],
   },
   demoBox: {
     marginTop: 8,
