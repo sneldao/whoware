@@ -11,13 +11,15 @@ import { theme } from "@/lib/theme";
 export interface TooltipLayerProps {
   activeBadge: string | null;
   onDismiss: () => void;
+  /** Live line appended to the score definition (current ceiling, floor, whispers). */
+  scoreDetail?: string;
 }
 
 /**
  * Top-level tooltip layer with the score breakdown whose numbers are
  * interpolated from the scoring constants — never re-typed as prose.
  */
-export function TooltipLayer({ activeBadge, onDismiss }: TooltipLayerProps) {
+export function TooltipLayer({ activeBadge, onDismiss, scoreDetail }: TooltipLayerProps) {
   return (
     <TooltipOverlay
       activeBadge={activeBadge}
@@ -25,7 +27,7 @@ export function TooltipLayer({ activeBadge, onDismiss }: TooltipLayerProps) {
       definitions={{
         score: {
           title: "Your score ceiling — live",
-          description: `This is what a correct accusation right now would earn — it only falls. Every solve starts at ${BASE_SCORE.toLocaleString()} points. Each memory opened costs ${MEMORY_PENALTY.toLocaleString()}, each clue inspected ${HOTSPOT_PENALTY.toLocaleString()}, each hint ${HINT_PENALTY.toLocaleString()}, each wrong accusation ${GUESS_PENALTY.toLocaleString()}, and every ${TIME_BUCKET_MS / 1_000} seconds ${TIME_BUCKET_PENALTY}. Restraint and speed maximize your score.`,
+          description: `This is what a correct accusation right now would earn — it only falls. Every solve starts at ${BASE_SCORE.toLocaleString()} points. Each memory opened costs ${MEMORY_PENALTY.toLocaleString()}, each clue inspected ${HOTSPOT_PENALTY.toLocaleString()}, each whisper ${HINT_PENALTY.toLocaleString()}, each wrong accusation ${GUESS_PENALTY.toLocaleString()}, and every ${TIME_BUCKET_MS / 1_000} seconds ${TIME_BUCKET_PENALTY}.${scoreDetail ? ` ${scoreDetail}` : ""}`,
         },
         clues: {
           title: "Clues opened",

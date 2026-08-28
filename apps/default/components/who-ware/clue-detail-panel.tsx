@@ -1,9 +1,15 @@
 import { theme } from "@/lib/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 import { HintOverlay } from "@/components/who-ware/hint-overlay";
-import { VeniceAiBadge } from "@/components/who-ware/venice-ai-badge";
 import { HINT_PENALTY } from "@/convex/scoring";
 
 export interface ClueDetail {
@@ -15,6 +21,8 @@ type HintTier = "socratic" | "era" | "proximity";
 
 interface ClueDetailPanelProps {
   clue: ClueDetail;
+  /** The clue's anchor order within its scene — presented as an exhibit number. */
+  exhibitIndex?: number;
   hintLabel: string;
   /** Generate a hint for this clue. tier escalates the nudge (socratic → era → proximity). */
   onGenerateHint?: (clueLabel: string, tier: HintTier) => void;
@@ -42,6 +50,7 @@ const TIER_CONFIG: Record<HintTier, { label: string; cost: string }> = {
 /** Shared clue payoff UI used by both panorama and 3D scene paths. */
 export function ClueDetailPanel({
   clue,
+  exhibitIndex,
   hintLabel,
   onGenerateHint,
   activeHint,
@@ -55,13 +64,33 @@ export function ClueDetailPanel({
   const anyTierGenerated = hintUsedForScene ?? false;
   const tierGenerated = (t: HintTier) => hasHintTier?.(t) ?? false;
 
+  // Declassification beat: a censor bar lifts off the detail, left to right,
+  // each time a different clue opens.
+  const redaction = useSharedValue(1);
+  useEffect(() => {
+    redaction.value = 1;
+    redaction.value = withTiming(0, { duration: 420, easing: Easing.out(Easing.cubic) });
+  }, [clue.label, redaction]);
+  const redactionStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleX: redaction.value }],
+  }));
+
   return (
     <View style={styles.cluePanel}>
+      {exhibitIndex != null && exhibitIndex >= 0 ? (
+        <View style={styles.exhibitChip}>
+          <Ionicons name="bookmark-outline" size={10} color={theme.accent} />
+          <Text style={styles.exhibitText}>Exhibit {String(exhibitIndex + 1).padStart(2, "0")}</Text>
+        </View>
+      ) : null}
       <View style={styles.clueHeader}>
         <Ionicons name="search" size={18} color={theme.parchment} />
         <Text style={styles.clueTitle}>{clue.label}</Text>
       </View>
-      <Text style={styles.clueText}>{clue.detail}</Text>
+      <View style={styles.clueBody}>
+        <Text style={styles.clueText}>{clue.detail}</Text>
+        <Animated.View style={[styles.redactionBar, redactionStyle]} pointerEvents="none" />
+      </View>
 
       {/* Hint generation / tier escalation */}
       {onGenerateHint ? (
@@ -165,16 +194,13 @@ export function ClueDetailPanel({
       ) : null}
 
       {activeHint || isHintGenerating ? (
-        <>
-          {activeHint ? <VeniceAiBadge type="hint" compact /> : null}
-          <HintOverlay
-            hint={activeHint ?? null}
-            isGenerating={isHintGenerating ?? false}
-            clueLabel={clue.label}
-            activeHintTier={activeHintTier ?? null}
-            onDismiss={onDismissHint}
-          />
-        </>
+        <HintOverlay
+          hint={activeHint ?? null}
+          isGenerating={isHintGenerating ?? false}
+          clueLabel={clue.label}
+          activeHintTier={activeHintTier ?? null}
+          onDismiss={onDismissHint}
+        />
       ) : null}
     </View>
   );
@@ -189,6 +215,36 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(120, 53, 15, 0.44)",
     borderWidth: 1,
     borderColor: "rgba(248, 231, 201, 0.16)",
+  },
+  exhibitChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderCurve: "continuous",
+    backgroundColor: theme.accentAlpha12,
+    borderWidth: 1,
+    borderColor: theme.accentAlpha24,
+  },
+  exhibitText: {
+    color: theme.accent,
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  clueBody: {
+    position: "relative",
+    overflow: "hidden",
+    borderRadius: 6,
+  },
+  redactionBar: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.pureBlack,
+    transformOrigin: "right",
   },
   clueHeader: {
     flexDirection: "row",

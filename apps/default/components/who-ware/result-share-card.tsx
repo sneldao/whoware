@@ -24,6 +24,8 @@ interface ResultShareCardProps {
   difficulty?: "iconic" | "field" | "research";
   figureEra?: string;
   figureRegion?: string;
+  /** True when this score beats every prior solved episode — flex badge. */
+  isPersonalBest?: boolean;
 }
 
 export const DIFFICULTY_PALETTE: Record<string, { bg: string; fg: string; label: string }> = {
@@ -61,6 +63,7 @@ export function ResultShareCard({
   difficulty,
   figureEra,
   figureRegion,
+  isPersonalBest = false,
 }: ResultShareCardProps) {
   const cardRef = useRef<View>(null);
   const [isSharing, setIsSharing] = useState(false);
@@ -70,7 +73,7 @@ export function ResultShareCard({
   const memoryGrid = buildMemoryGrid(memoriesViewed, cluesOpened);
   const percentile = rank && rankedCount > 0 ? Math.max(1, Math.round((rank / rankedCount) * 100)) : null;
   const grade = gradeForScore(score);
-  const shareText = buildShareText({ episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak, score, guessesUsed, gradeTitle: grade.title, grade: grade.grade });
+  const shareText = buildShareText({ episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak, score, guessesUsed, gradeTitle: grade.title, grade: grade.grade, isPersonalBest });
   const difficultyStyle = difficulty ? DIFFICULTY_PALETTE[difficulty] ?? DIFFICULTY_PALETTE.iconic : null;
   const tier = getStreakTier(streak);
   const borderGradient = getScoreTierGradient(percentile);
@@ -211,8 +214,16 @@ export function ResultShareCard({
                   <Text style={styles.percentile}>Top {percentile}%</Text>
                 </View>
               ) : null}
+              {isPersonalBest ? (
+                <View style={styles.pbBadge}>
+                  <Ionicons name="trophy" size={10} color={theme.inkOnAccent} />
+                  <Text style={styles.pbText}>PB</Text>
+                </View>
+              ) : null}
             </View>
-            <Text style={styles.gradeTitle}>{grade.title} — {grade.blurb}</Text>
+            <Text style={styles.gradeTitle}>
+              {isPersonalBest ? "Personal best — " : ""}{grade.title} — {grade.blurb}
+            </Text>
 
             {streak > 0 ? (
               <View style={styles.streakRow}>
@@ -297,15 +308,17 @@ function buildShareText(args: {
   guessesUsed: number;
   grade: string;
   gradeTitle: string;
+  isPersonalBest?: boolean;
 }): string {
-  const { episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak, score, guessesUsed, grade, gradeTitle } = args;
+  const { episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak, score, guessesUsed, grade, gradeTitle, isPersonalBest } = args;
   const percentileLine = percentile !== null ? ` (Top ${percentile}%)` : "";
   const streakLine = streak > 1 ? ` · 🔥 ${streak}-day streak` : "";
+  const pbLine = isPersonalBest ? " · 🏆 personal best" : "";
   
   return [
     `WhoWare #${episodeNumber} 🏛️`,
     `${memoryGrid.join("")}`,
-    `🎖️ ${formatScore(score)} pts · Grade ${grade} — ${gradeTitle} · ${guessesUsed}/5 accusations`,
+    `🎖️ ${formatScore(score)} pts · Grade ${grade} — ${gradeTitle} · ${guessesUsed}/5 accusations${pbLine}`,
     `⏱️ ${formatElapsed(elapsedMs)} · ${memoriesViewed} room${memoriesViewed > 1 ? "s" : ""} · ${cluesOpened} clue${cluesOpened !== 1 ? "s" : ""}${percentileLine}${streakLine}`,
     `Can you name them from the room? 🗝️ https://whoware.app`,
   ].join("\n");
@@ -468,6 +481,23 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginTop: 2,
+  },
+  pbBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 9,
+    borderCurve: "continuous",
+    backgroundColor: theme.accent,
+    marginLeft: 8,
+  },
+  pbText: {
+    color: theme.inkOnAccent,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.4,
   },
   scoreRow: {
     flexDirection: "row",

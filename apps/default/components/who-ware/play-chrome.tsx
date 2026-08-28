@@ -76,6 +76,8 @@ export function PlayChrome({
 
   const insets = useSafeAreaInsets();
   const [cluesSheetOpen, setCluesSheetOpen] = useState(false);
+  /** The standings stay one tap away but never shout over the accusation. */
+  const [boardOpen, setBoardOpen] = useState(false);
   const showLeaderboard = isGuessPanelOpen;
   /** Dense panel only when guessing or reviewing clues — keep the room dominant. */
   const sheetExpanded = isGuessPanelOpen || cluesSheetOpen;
@@ -149,13 +151,28 @@ export function PlayChrome({
         />
       )}
       {showLeaderboard ? (
-        <ErrorBoundary label="Leaderboard">
-          <Leaderboard
-            entries={leaderboardEntries}
-            playerRank={playerRank}
-            rankedCount={rankedCount}
-          />
-        </ErrorBoundary>
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: boardOpen }}
+            onPress={() => setBoardOpen((open) => !open)}
+            style={({ pressed }) => [overlayStyles.boardToggle, pressed && overlayStyles.pressed]}
+          >
+            <Ionicons name={boardOpen ? "chevron-up" : "podium-outline"} size={12} color={theme.inkAlpha50} />
+            <Text style={overlayStyles.boardToggleText}>
+              {boardOpen ? "Hide the case board" : "Case board — today's standings"}
+            </Text>
+          </Pressable>
+          {boardOpen ? (
+            <ErrorBoundary label="Leaderboard">
+              <Leaderboard
+                entries={leaderboardEntries}
+                playerRank={playerRank}
+                rankedCount={rankedCount}
+              />
+            </ErrorBoundary>
+          ) : null}
+        </>
       ) : null}
     </>
   );
@@ -203,6 +220,8 @@ export function PlayChrome({
         pointerEvents="box-none"
       >
         <View style={overlayStyles.topRow}>
+          {/* Three pills, three jobs: stakes, evidence, accusation. The
+              whisper count folds into the ceiling tooltip — one less voice. */}
           <View style={overlayStyles.metrics}>
             <TappableMetric
               label={metrics.scoreIsLive ? "Ceiling · live" : "Score"}
@@ -210,14 +229,9 @@ export function PlayChrome({
               onPress={metrics.onShowScoreTooltip}
             />
             <TappableMetric
-              label="Clues"
-              value={`${metrics.hotspotsOpened}`}
+              label="Evidence"
+              value={`${metrics.hotspotsOpened}${metrics.hintsUsed > 0 ? ` · ${metrics.hintsUsed}✦` : ""}`}
               onPress={() => setCluesSheetOpen((open) => !open)}
-            />
-            <TappableMetric
-              label="Hints"
-              value={`${metrics.hintsUsed}`}
-              onPress={metrics.onShowHintsTooltip}
             />
             <TappableMetric
               label="Accusations"
@@ -389,6 +403,24 @@ const overlayStyles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.75,
+  },
+  boardToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderCurve: "continuous",
+    backgroundColor: theme.inkAlpha04,
+    borderWidth: 1,
+    borderColor: theme.inkAlpha8,
+  },
+  boardToggleText: {
+    color: theme.inkAlpha55,
+    fontSize: 11.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
   sheet: {
     maxHeight: 280,

@@ -235,6 +235,7 @@ export function PanoramaScene({
           <View style={styles.fillClue}>
             <ClueDetailPanel
               clue={activeClue}
+              exhibitIndex={scene.clues.findIndex((c) => c.label === activeClue.label)}
               hintLabel="Ask the memory"
               onGenerateHint={onGenerateHint}
               activeHint={activeHint}
@@ -267,6 +268,7 @@ export function PanoramaScene({
           {activeClue ? (
             <ClueDetailPanel
               clue={activeClue}
+              exhibitIndex={scene.clues.findIndex((c) => c.label === activeClue.label)}
               hintLabel="Ask the memory"
               onGenerateHint={onGenerateHint}
               activeHint={activeHint}

@@ -454,7 +454,22 @@ export default function Index() {
     );
   }
   if (waitingForBoot) return <LoadingScreen message="Opening today's archive…" />;
-  if (session.episode === null) return <LoadingScreen message="Preparing the first episode…" />;
+  if (session.episode === null) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator color={theme.accent} />
+        <Text style={styles.loadingText}>Preparing the first episode…</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace("/")}
+          style={({ pressed }) => [styles.actionButton, styles.guessButton, pressed && styles.pressed]}
+        >
+          <Ionicons name="refresh" size={18} color={theme.inkOnAccent} />
+          <Text style={styles.guessButtonText}>Check again</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   const guessCap = MAX_GUESSES_PER_RUN;
   const hasEnteredMemory = (session.run?.memoriesViewed ?? 0) > 0;
@@ -532,6 +547,10 @@ export default function Index() {
   const revealFigureRecord =
     guessing.answerRecord ??
     (solvedFigure ? session.figures.find((f) => f._id === solvedFigure.figureId) : null);
+
+  // A toast currently speaking — gates coach whispers and insight banners
+  // so the room never talks over itself.
+  const toastActive = guessing.toastVisible && !toastDismissed;
 
   // Salvage for the exhausted case — the closest call, stated plainly.
   // A near-miss is the strongest "tomorrow I'll get it" fuel there is.
@@ -642,6 +661,33 @@ export default function Index() {
           now: nowMs,
         })
       : null;
+  // The ceiling tooltip carries live stakes: now, floor, whispers heard.
+  const scoreDetail = session.run?.status === "active" && liveScore != null
+    ? [
+        `Right now a correct accusation earns ${formatScore(liveScore)}.`,
+        moreMemoriesAvailable
+          ? `Open every remaining memory and it falls to ${formatScore(
+              projectScore({
+                memoriesViewed: totalMemories,
+                hotspotsOpened,
+                hintsUsed: Math.max(guessing.hintsUsed, session.run.hintsUsed ?? 0),
+                wrongGuesses: guessesUsed,
+                startedAt: session.run.startedAt,
+                now: nowMs,
+              }),
+            )}.`
+          : null,
+        guessing.hintsUsed > 0 ? `Whispers heard: ${guessing.hintsUsed}.` : null,
+      ].filter(Boolean).join(" ")
+    : undefined;
+
+  // Personal best — the result surface flexes harder when it's a record.
+  const priorBest = (session.playerHistory ?? [])
+    .filter((r) => r.episodeSlug !== session.episode.slug && r.status === "solved" && r.score != null)
+    .reduce<number | null>((best, r) => (best == null || (r.score as number) > best ? (r.score as number) : best), null);
+  const isPersonalBest =
+    isSolved && session.run?.score != null && priorBest != null && session.run.score > priorBest;
+
   const metricsState = {
     scoreDisplay: liveScore != null ? formatScore(liveScore) : "—",
     scoreIsLive: session.run?.score == null && session.run?.status === "active",
@@ -676,7 +722,8 @@ export default function Index() {
           }}
           onOpenHowTo={() => router.push("/how-to")}
         />
-        {!roomHold ? (
+        {/* One voice at a time: while a toast speaks, coach and insight wait. */}
+        {!roomHold && !toastActive ? (
           <CoachWhisper message={coach.message} onDismiss={coach.dismiss} />
         ) : null}
         {showCaseFile ? (
@@ -689,7 +736,7 @@ export default function Index() {
             onDismiss={() => setCaseFileDismissed(true)}
           />
         ) : null}
-        {!roomHold && clueInsights.currentInsight ? (
+        {!roomHold && !toastActive && clueInsights.currentInsight ? (
           <InsightBanner
             insight={clueInsights.currentInsight}
             onDismiss={clueInsights.dismissInsight}
@@ -708,9 +755,9 @@ export default function Index() {
           variant={isExhausted ? "exhausted" : "solved"}
           onContinue={() => guessing.setRevealDismissed(true)}
         />
-        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} />
+        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} scoreDetail={scoreDetail} />
         <ToastLayer
-          visible={guessing.toastVisible && !toastDismissed && !roomHold}
+          visible={toastActive && !roomHold}
           message={guessing.toastMessage}
           type={guessing.toastType}
           onDismiss={() => setToastDismissed(true)}
@@ -808,6 +855,7 @@ export default function Index() {
                 difficulty: session.episode.difficulty,
                 figureEra: revealFigureRecord?.era,
                 figureRegion: revealFigureRecord?.region,
+                isPersonalBest,
               }}
               onchain={{
                 isSmartAccountUpgraded: session.wallet.smartAccount.isUpgraded,
@@ -874,9 +922,9 @@ export default function Index() {
             formatScore={formatScore}
           />
         )}
-        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} />
+        <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} scoreDetail={scoreDetail} />
         <ToastLayer
-          visible={guessing.toastVisible && !toastDismissed}
+          visible={toastActive}
           message={guessing.toastMessage}
           type={guessing.toastType}
           onDismiss={() => setToastDismissed(true)}

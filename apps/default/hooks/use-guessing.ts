@@ -500,12 +500,20 @@ export function useGuessing(params: UseGuessingParams): UseGuessingReturn {
         isClose ? "warning" : "error",
       );
       onCoachOffer?.("wrongGuess");
-      gameSounds.playWrongGuess();
+      // Proximity is audible before it's read: warm fifths for close
+      // accusations, a sinking saw for cold ones.
+      if (isClose) {
+        gameSounds.playWarmMiss();
+      } else {
+        gameSounds.playColdMiss();
+      }
       if (Platform.OS !== "web") {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
 
       if (result.guessesRemaining <= 0) {
+        // The last accusation spent — toll the knell under the fade.
+        gameSounds.playExhaustKnell();
         // Exhausted: the server now reveals the answer with the final
         // wrong guess. Capture it for an immediate overlay; the
         // getAnswer query keeps it alive across reloads.
