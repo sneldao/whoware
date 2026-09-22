@@ -5,11 +5,16 @@
  * back to the static 2D panorama. Web-only at this stage; native keeps the
  * 2D path until expo-three / expo-gl performance is verified.
  *
+ * v0.2: default renderer is the 2D panorama for every client. 3D becomes a
+ * premium web opt-in — players who want the immersive room can flip a
+ * toggle on the entry gate. This keeps the cold path fast and predictable
+ * on phones (where daily games live) and on low-end laptops, without
+ * removing the 3D renderer code.
+ *
  * Single source of truth for "what does this client support". Used by
  * MemoryScene to pick its renderer branch.
  *
  * Hooks for the future:
- * - User explicit override (settings panel)
  * - FPS-based adaptive downgrade (Phase 5)
  * - Per-scene quality hint (Phase 2)
  */
@@ -19,12 +24,11 @@ import { logger } from "./logger";
 export type SceneMode = "three-d" | "panorama";
 
 export type SceneQualityReason =
-  | "ok"
+  | "default-2d"
   | "no-window"
   | "no-webgl2"
   | "no-webgl"
   | "low-power-gpu"
-  | "user-opted-out"
   | "mobile-platform"
   | "explicit-three-d-override"
   | "explicit-panorama-override";
@@ -94,16 +98,15 @@ function isLowPowerGpu(renderer: string): boolean {
  * Returns the renderer mode for this client. Pure function over current
  * environment — no side effects, safe to call inside React render.
  *
- * Phase 1: defaults to "three-d" on WebGL2-capable clients. Falls back
- * to "panorama" on missing WebGL2, low-power GPUs, explicit user
- * override, or non-web platforms.
- *
+ * v0.2: default is "panorama" for every client. 3D is an opt-in:
  * Resolution order (first match wins):
- * 1. User stored override ("three-d" / "panorama")
- * 2. Server is not web → "panorama"
+ * 1. Stored user override ("three-d" / "panorama") — wins regardless of
+ *    capability, so the toggle on the threshold can switch modes at will.
+ * 2. Stored "three-d" override but no WebGL2 support → falls back to
+ *    "panorama" (with attempted3D=true so telemetry can flag the miss).
  * 3. No WebGL2 support → "panorama"
  * 4. Low-power GPU detected → "panorama"
- * 5. Default → "three-d"
+ * 5. Default → "panorama" (was: "three-d")
  */
 export function detectSceneQuality(): SceneQualityResult {
   if (typeof window === "undefined") {
@@ -112,22 +115,17 @@ export function detectSceneQuality(): SceneQualityResult {
 
   const override = readStoredOverride();
   if (override === "three-d") {
+    if (!detectWebGL2()) {
+      return { mode: "panorama", reason: "no-webgl2", attempted3D: true };
+    }
+    const renderer = readGpuRenderer();
+    if (isLowPowerGpu(renderer)) {
+      return { mode: "panorama", reason: "low-power-gpu", attempted3D: true };
+    }
     return { mode: "three-d", reason: "explicit-three-d-override", attempted3D: false };
   }
-  if (override === "panorama") {
-    return { mode: "panorama", reason: "explicit-panorama-override", attempted3D: false };
-  }
 
-  if (!detectWebGL2()) {
-    return { mode: "panorama", reason: "no-webgl2", attempted3D: false };
-  }
-
-  const renderer = readGpuRenderer();
-  if (isLowPowerGpu(renderer)) {
-    return { mode: "panorama", reason: "low-power-gpu", attempted3D: false };
-  }
-
-  return { mode: "three-d", reason: "ok", attempted3D: false };
+  return { mode: "panorama", reason: "default-2d", attempted3D: false };
 }
 
 /** Persist a user-chosen renderer override. Called from a future settings UI. */

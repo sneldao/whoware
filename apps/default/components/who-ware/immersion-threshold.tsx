@@ -8,9 +8,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
+import {
+  clearStoredSceneMode,
+  detectSceneQuality,
+  setStoredSceneMode,
+} from "@/lib/scene-quality";
 
 interface ImmersionThresholdProps {
   /** Today's first scene — live room behind the enter gate. */
@@ -80,6 +85,22 @@ export function ImmersionThreshold({
   const hasLiveScene = !!scene;
   const now = useNow(!!caseMeta?.closesAt);
   const insets = useSafeAreaInsets();
+  // Web-only premium toggle: opt into the 3D room. Defaults to off on web.
+  const [threeDEnabled, setThreeDEnabled] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+    setThreeDEnabled(detectSceneQuality().mode === "three-d");
+  }, []);
+  const toggle3D = () => {
+    if (Platform.OS !== "web") return;
+    if (threeDEnabled) {
+      clearStoredSceneMode();
+      setThreeDEnabled(false);
+    } else {
+      setStoredSceneMode("three-d");
+      setThreeDEnabled(true);
+    }
+  };
   const closesIn = caseMeta?.closesAt != null ? caseMeta.closesAt - now : null;
   const difficultyStyle = caseMeta?.difficulty
     ? DIFFICULTY_PALETTE[caseMeta.difficulty] ?? DIFFICULTY_PALETTE.iconic
@@ -169,16 +190,16 @@ export function ImmersionThreshold({
         <Text style={styles.line}>Someone changed history{"\n"}from this room.</Text>
       </Animated.View>
 
-      {/* Sound toggle — top-right corner. Not a fork; the Enter button is. */}
+      {/* Top-right toggles. Sound + (web-only) 3D room opt-in. */}
       <Animated.View
         entering={FadeInUp.duration(500).delay(400)}
-        style={[styles.soundWrap, { top: Math.max(14, insets.top + 8) }]}
+        style={[styles.topRightWrap, { top: Math.max(14, insets.top + 8) }]}
       >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={soundEnabled ? "Mute sound" : "Unmute sound"}
           onPress={onToggleSound}
-          style={({ pressed }) => [styles.soundToggle, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.toggleChip, pressed && styles.pressed]}
           hitSlop={8}
         >
           <Ionicons
@@ -187,6 +208,23 @@ export function ImmersionThreshold({
             color={theme.inkAlpha72}
           />
         </Pressable>
+        {Platform.OS === "web" ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={threeDEnabled ? "Use 2D room" : "Use 3D room"}
+            onPress={toggle3D}
+            style={({ pressed }) => [
+              styles.toggleChip,
+              styles.toggleChip3D,
+              threeDEnabled && styles.toggleChip3DOn,
+              pressed && styles.pressed,
+            ]}
+            hitSlop={8}
+          >
+            <Ionicons name="cube-outline" size={16} color={threeDEnabled ? theme.accent : theme.inkAlpha55} />
+            <Text style={[styles.toggleChipLabel, threeDEnabled && styles.toggleChipLabelOn]}>3D</Text>
+          </Pressable>
+        ) : null}
       </Animated.View>
 
       <Animated.View entering={FadeInUp.duration(700).delay(280)} style={styles.actions}>
@@ -348,19 +386,40 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     gap: 12,
   },
-  soundWrap: {
+  topRightWrap: {
     position: "absolute",
     right: 14,
+    flexDirection: "row",
+    gap: 8,
   },
-  soundToggle: {
-    width: 40,
+  toggleChip: {
+    minWidth: 40,
     height: 40,
+    paddingHorizontal: 10,
     borderRadius: 14,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     backgroundColor: "rgba(8, 5, 2, 0.55)",
     borderWidth: 1,
     borderColor: "rgba(255, 240, 214, 0.12)",
+  },
+  toggleChip3D: {
+    minWidth: 0,
+  },
+  toggleChip3DOn: {
+    borderColor: theme.accentAlpha35,
+    backgroundColor: theme.accentAlpha12,
+  },
+  toggleChipLabel: {
+    color: theme.inkAlpha55,
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+  },
+  toggleChipLabelOn: {
+    color: theme.accent,
   },
   primary: {
     minHeight: 54,
