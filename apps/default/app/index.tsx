@@ -74,6 +74,8 @@ export default function Index() {
   const [toastDismissed, setToastDismissed] = useState(false);
   const [isEntering, setIsEntering] = useState(false);
   const [chromeUnlocked, setChromeUnlocked] = useState(false);
+  /** Sound preference shown on the cold-path toggle. Default ON if unset. */
+  const [thresholdSoundEnabled, setThresholdSoundEnabled] = useState(true);
   const [loadFigures, setLoadFigures] = useState(false);
   const [loadLeaderboard, setLoadLeaderboard] = useState(false);
   const [loadHistory, setLoadHistory] = useState(false);
@@ -172,6 +174,25 @@ export default function Index() {
   }, []);
 
   useEffect(() => { if (guessing.toastVisible) setToastDismissed(false); }, [guessing.toastVisible]);
+
+  // Hydrate the cold-path sound toggle from the persisted preference.
+  useEffect(() => {
+    let active = true;
+    void getSoundEnabled()
+      .then((enabled) => {
+        if (active && enabled === false) setThresholdSoundEnabled(false);
+      })
+      .catch(() => {
+        /* default ON already */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const toggleThresholdSound = useCallback(() => {
+    setThresholdSoundEnabled((prev) => !prev);
+  }, []);
 
   useEffect(() => {
     if (guessing.isGuessPanelOpen || (session.run?.memoriesViewed ?? 0) === 0) {
@@ -518,8 +539,9 @@ export default function Index() {
           imageKey={firstScene.imageKey}
           imageUrl={firstScene.imageUrl}
           isEntering={isEntering}
-          onEnterWithSound={() => void handleThresholdEnter(true)}
-          onEnterWithoutSound={() => void handleThresholdEnter(false)}
+          soundEnabled={thresholdSoundEnabled}
+          onToggleSound={() => void toggleThresholdSound()}
+          onEnter={() => void handleThresholdEnter(thresholdSoundEnabled)}
           caseMeta={{
             episodeNumber,
             difficulty: session.episode.difficulty,

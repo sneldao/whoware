@@ -9,6 +9,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 
 interface ImmersionThresholdProps {
@@ -17,8 +18,11 @@ interface ImmersionThresholdProps {
   imageKey?: string;
   imageUrl?: string;
   isEntering: boolean;
-  onEnterWithSound: () => void;
-  onEnterWithoutSound: () => void;
+  /** Current sound preference. The toggle in the top-right mutates this. */
+  soundEnabled: boolean;
+  onToggleSound: () => void;
+  /** Single entry callback — sound toggle is already reflected in soundEnabled. */
+  onEnter: () => void;
   /** Spoiler-free case metadata for the episode plate. */
   caseMeta?: {
     episodeNumber: number;
@@ -54,23 +58,19 @@ function useNow(enabled: boolean): number {
   return now;
 }
 
-const VERBS: Array<{ icon: keyof typeof Ionicons.glyphMap; text: string }> = [
-  { icon: "footsteps-outline", text: "Walk the memory" },
-  { icon: "search-outline", text: "Name the figure" },
-  { icon: "dice-outline", text: "Five accusations" },
-];
-
 /**
- * Place-first entry gate. Live room already running; brand + sound choice over it.
- * No wallet, streak, score, or rules chrome.
+ * Place-first entry gate. Live room already running; brand + single Enter over it.
+ * Sound is a top-right toggle, not a fork in the entry path. No wallet, score,
+ * or rules chrome — those are reachable from inside the room.
  */
 export function ImmersionThreshold({
   scene,
   imageKey,
   imageUrl,
   isEntering,
-  onEnterWithSound,
-  onEnterWithoutSound,
+  soundEnabled,
+  onToggleSound,
+  onEnter,
   caseMeta,
   onOpenHowTo,
 }: ImmersionThresholdProps) {
@@ -79,6 +79,7 @@ export function ImmersionThreshold({
   const backdrop = getSceneImageSource(imageKey ?? scene?.imageKey, 0, imageUrl ?? scene?.imageUrl);
   const hasLiveScene = !!scene;
   const now = useNow(!!caseMeta?.closesAt);
+  const insets = useSafeAreaInsets();
   const closesIn = caseMeta?.closesAt != null ? caseMeta.closesAt - now : null;
   const difficultyStyle = caseMeta?.difficulty
     ? DIFFICULTY_PALETTE[caseMeta.difficulty] ?? DIFFICULTY_PALETTE.iconic
@@ -166,14 +167,26 @@ export function ImmersionThreshold({
         ) : null}
         <Text style={styles.brand}>WhoWare</Text>
         <Text style={styles.line}>Someone changed history{"\n"}from this room.</Text>
-        <View style={styles.verbs}>
-          {VERBS.map((verb) => (
-            <View key={verb.text} style={styles.verb}>
-              <Ionicons name={verb.icon} size={13} color={theme.accentAlpha90} />
-              <Text style={styles.verbText}>{verb.text}</Text>
-            </View>
-          ))}
-        </View>
+      </Animated.View>
+
+      {/* Sound toggle — top-right corner. Not a fork; the Enter button is. */}
+      <Animated.View
+        entering={FadeInUp.duration(500).delay(400)}
+        style={[styles.soundWrap, { top: Math.max(14, insets.top + 8) }]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={soundEnabled ? "Mute sound" : "Unmute sound"}
+          onPress={onToggleSound}
+          style={({ pressed }) => [styles.soundToggle, pressed && styles.pressed]}
+          hitSlop={8}
+        >
+          <Ionicons
+            name={soundEnabled ? "volume-high-outline" : "volume-mute-outline"}
+            size={18}
+            color={theme.inkAlpha72}
+          />
+        </Pressable>
       </Animated.View>
 
       <Animated.View entering={FadeInUp.duration(700).delay(280)} style={styles.actions}>
@@ -186,19 +199,11 @@ export function ImmersionThreshold({
           <>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Enter with sound"
-              onPress={onEnterWithSound}
+              accessibilityLabel="Enter the room"
+              onPress={onEnter}
               style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
             >
-              <Text style={styles.primaryText}>Enter with sound</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Enter without sound"
-              onPress={onEnterWithoutSound}
-              style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}
-            >
-              <Text style={styles.secondaryText}>Enter without sound</Text>
+              <Text style={styles.primaryText}>Enter</Text>
             </Pressable>
             {onOpenHowTo ? (
               <Pressable
@@ -338,34 +343,24 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
   },
-  verbs: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 4,
-  },
-  verb: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderCurve: "continuous",
-    backgroundColor: "rgba(8, 5, 2, 0.45)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 247, 237, 0.16)",
-  },
-  verbText: {
-    color: theme.inkAlpha84,
-    fontSize: 12.5,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
   actions: {
     paddingHorizontal: 28,
     paddingBottom: 48,
     gap: 12,
+  },
+  soundWrap: {
+    position: "absolute",
+    right: 14,
+  },
+  soundToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(8, 5, 2, 0.55)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 240, 214, 0.12)",
   },
   primary: {
     minHeight: 54,
@@ -379,21 +374,6 @@ const styles = StyleSheet.create({
     color: theme.inkOnAccent,
     fontSize: 16,
     fontWeight: "900",
-  },
-  secondary: {
-    minHeight: 48,
-    borderRadius: 18,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    borderColor: theme.inkAlpha20,
-    backgroundColor: "rgba(8, 5, 2, 0.55)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryText: {
-    color: theme.inkAlpha78,
-    fontSize: 15,
-    fontWeight: "800",
   },
   tertiary: {
     minHeight: 40,
