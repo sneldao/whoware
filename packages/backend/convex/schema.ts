@@ -72,6 +72,10 @@ export default defineSchema({
     slug: v.string(),
     figureId: v.optional(v.id("figures")),
     figureName: v.optional(v.string()),
+    /** v0.4 — the figure who actually speaks in the room. When present and
+     * different from figureId, the puzzle is to name the *target*
+     * (figureId) — the room-figure speaks about them in relational voice. */
+    roomFigureId: v.optional(v.id("figures")),
     activeAt: v.number(),
     dropsAt: v.optional(v.number()),
     closesAt: v.optional(v.number()),

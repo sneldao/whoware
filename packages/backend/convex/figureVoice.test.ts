@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   bucketEra,
   pickObjectKind,
+  pickPronoun,
+  pickRelationalLabel,
   pickRole,
   quoteForClue,
 } from "./figureVoice";
@@ -240,5 +242,120 @@ describe("quoteForClue", () => {
     expect(q).toBeTruthy();
     // Warrior voice should not be excessively long
     expect(q.split(".").length).toBeLessThanOrEqual(4);
+  });
+});
+
+describe("v0.4 — pickPronoun", () => {
+  test("Hypatia is she", () => expect(pickPronoun("Hypatia of Alexandria")).toBe("she"));
+  test("Marcus Aurelius is he", () => expect(pickPronoun("Marcus Aurelius")).toBe("he"));
+  test("Joan of Arc is she", () => expect(pickPronoun("Joan of Arc")).toBe("she"));
+  test("Ada Lovelace is she", () => expect(pickPronoun("Ada Lovelace")).toBe("she"));
+  test("Frida Kahlo is she", () => expect(pickPronoun("Frida Kahlo")).toBe("she"));
+  test("Unknown names default to they", () => expect(pickPronoun("Xylo the Strange")).toBe("they"));
+  test("Title prefixes are stripped before lookup", () => {
+    expect(pickPronoun("Queen Victoria")).toBe("she");
+    expect(pickPronoun("Pope Julius II")).toBe("he");
+    expect(pickPronoun("Saint Teresa")).toBe("she");
+  });
+});
+
+describe("v0.4 — pickRelationalLabel", () => {
+  test("teacher-tags produce student-leaning labels", () => {
+    const label = pickRelationalLabel(["teacher", "rhetorician"]);
+    expect(["my student", "the one I taught", "the one I trained"]).toContain(label);
+  });
+  test("student-tags produce teacher-leaning labels", () => {
+    const label = pickRelationalLabel(["student", "philosopher"]);
+    expect(["my teacher", "my mentor", "the one who taught me"]).toContain(label);
+  });
+  test("rival tags produce my rival", () => {
+    expect(pickRelationalLabel(["rival"])).toBe("my rival");
+  });
+  test("empty / unrelated tags produce neutral labels", () => {
+    const label = pickRelationalLabel(["astronomer"]);
+    expect([
+      "the one I worked beside",
+      "the person I learned from",
+      "the one I followed",
+      "the one I kept company with",
+    ]).toContain(label);
+  });
+});
+
+describe("v0.4 — quoteForClue in relational mode", () => {
+  const speaker = {
+    canonicalName: "Synesius of Cyrene",
+    era: "4th century",
+    region: "Cyrene",
+    tags: ["philosopher", "student"],
+  };
+  const scene = { title: "The Observatory", location: "Alexandria", era: "4th century" };
+
+  test("targetFigure triggers relational voice", () => {
+    const q = quoteForClue({
+      figure: speaker,
+      targetFigure: { canonicalName: "Hypatia" },
+      scene,
+      clue: { label: "A bronze astrolabe", detail: "Greek inscriptions." },
+    });
+    // Should use she-pronoun for Hypatia (female target)
+    expect(q.toLowerCase()).toContain("she");
+    // Should NOT use self-pronoun for "I learned" (which would be self-mode)
+    expect(q).not.toMatch(/^I /);
+  });
+
+  test("same name as figure falls back to self-voice", () => {
+    const q = quoteForClue({
+      figure: speaker,
+      targetFigure: { canonicalName: speaker.canonicalName },
+      scene,
+      clue: { label: "A bronze astrolabe", detail: "Greek inscriptions." },
+    });
+    // Self-mode starts with "I"
+    expect(q).toMatch(/^I /);
+  });
+
+  test("target pronoun is consistent across the quote (no they/her drift)", () => {
+    const q = quoteForClue({
+      figure: speaker,
+      targetFigure: { canonicalName: "Hypatia" },
+      scene,
+      clue: { label: "A worn journal", detail: "Old leather." },
+    });
+    // No "them" should leak through (the engine normalizes).
+    expect(q.toLowerCase()).not.toContain("them");
+    expect(q.toLowerCase()).not.toContain("their");
+  });
+
+  test("he-target pronoun for male figures", () => {
+    const q = quoteForClue({
+      figure: { ...speaker, tags: ["rhetorician"] },
+      targetFigure: { canonicalName: "Marcus Aurelius" },
+      scene,
+      clue: { label: "A bronze helm", detail: "Laurel-wreathed." },
+    });
+    expect(q.toLowerCase()).toContain("he ");
+  });
+
+  test("relational follow phrases use pronoun, not 'them/their/they'", () => {
+    const q = quoteForClue({
+      figure: speaker,
+      targetFigure: { canonicalName: "Hypatia" },
+      scene,
+      clue: { label: "A bronze astrolabe", detail: "Greek inscriptions." },
+    });
+    // After normalizePronouns, no stray neutral pronouns referencing the target
+    const occurrences = (q.toLowerCase().match(/\bthey\b/g) || []).length;
+    expect(occurrences).toBe(0);
+  });
+
+  test("is deterministic in relational mode too", () => {
+    const args = {
+      figure: speaker,
+      targetFigure: { canonicalName: "Hypatia" },
+      scene,
+      clue: { label: "A bronze astrolabe", detail: "Greek inscriptions." },
+    };
+    expect(quoteForClue(args)).toBe(quoteForClue(args));
   });
 });

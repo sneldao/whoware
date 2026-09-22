@@ -33,6 +33,14 @@ interface EnhancedIdentityRevealProps {
   imageKey?: string;
   /** Register: a solved run names the body; an exhausted run closes the file. */
   variant?: "solved" | "exhausted";
+  /** v0.4 — Witness Chamber acknowledgment line. When present, renders
+   * above the reveal label as the room-figure's beat before the
+   * typewriter names the target. Example: "Synesius of Cyrene nods
+   * slowly." — then "Hypatia" types out. */
+  acknowledgment?: string;
+  /** v0.4 — name of the room-figure when this is a Witness Chamber.
+   * Used by the avatar/icon decoration. */
+  roomFigureName?: string;
   onContinue: () => void;
 }
 
@@ -46,6 +54,8 @@ export function EnhancedIdentityReveal({
   identityId,
   imageUrl,
   variant = "solved",
+  acknowledgment,
+  roomFigureName,
   onContinue,
 }: EnhancedIdentityRevealProps) {
   const [displayedName, setDisplayedName] = useState("");
@@ -134,14 +144,26 @@ export function EnhancedIdentityReveal({
         {/* Icon */}
         <Animated.View entering={FadeInDown.delay(200).duration(400).springify()} style={styles.iconWrapper}>
           <View style={styles.iconCircle}>
-            <Ionicons name="eye" size={28} color={theme.accent} />
+            <Ionicons name={roomFigureName ? "people-outline" : "eye"} size={28} color={theme.accent} />
           </View>
         </Animated.View>
+
+        {/* v0.4 — Witness Chamber acknowledgment. The room-figure's beat
+            before the typewriter names the target. */}
+        {acknowledgment ? (
+          <Animated.View entering={FadeIn.delay(150).duration(500)}>
+            <Text style={styles.acknowledgment}>{acknowledgment}</Text>
+          </Animated.View>
+        ) : null}
 
         {/* Narrative label */}
         <Animated.View entering={FadeIn.delay(300).duration(500)}>
           <Text style={styles.revealLabel}>
-            {variant === "exhausted" ? "The archive closes around" : "The body remembers:"}
+            {variant === "exhausted"
+              ? "The archive closes around"
+              : roomFigureName
+                ? "The absent one, named:"
+                : "The body remembers:"}
           </Text>
         </Animated.View>
 
@@ -235,6 +257,15 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 1.2,
     textTransform: "uppercase",
+  },
+  acknowledgment: {
+    color: theme.accent,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+    textAlign: "center",
+    fontStyle: "italic",
+    paddingHorizontal: 16,
   },
   figureName: {
     color: theme.ink,

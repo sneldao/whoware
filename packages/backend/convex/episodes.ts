@@ -49,6 +49,9 @@ const publicEpisodeShape = v.object({
   activeAt: v.number(),
   difficulty: v.union(v.literal("iconic"), v.literal("field"), v.literal("research")),
   scenes: v.array(sceneReturnValidator),
+  /** v0.4 — the figure who speaks. When present and different from the
+   * puzzle target, the room is a Witness Chamber. */
+  roomFigureId: v.optional(v.id("figures")),
 });
 
 export const getActive = query({
@@ -72,6 +75,7 @@ export const getActive = query({
       activeAt: episode.activeAt,
       difficulty: episode.difficulty,
       scenes: episode.scenes,
+      roomFigureId: episode.roomFigureId,
     };
   },
 });

@@ -80,11 +80,29 @@ export interface RevealLayerProps {
   imageUrl?: string;
   /** Register: a solved run names the body; an exhausted run closes the file. */
   variant?: "solved" | "exhausted";
+  /** v0.4 — when present and different from figureName, this is the
+   * Witness Chamber room-figure. The reveal shows their acknowledgment
+   * beat before the typewriter names the target. */
+  roomFigureName?: string;
   onContinue: () => void;
 }
 
-export function RevealLayer({ visible, figureName, era, region, tags, summary, episodeId, identityId, imageUrl, variant, onContinue }: RevealLayerProps) {
+export function RevealLayer({
+  visible,
+  figureName,
+  era,
+  region,
+  tags,
+  summary,
+  episodeId,
+  identityId,
+  imageUrl,
+  variant,
+  roomFigureName,
+  onContinue,
+}: RevealLayerProps) {
   if (!visible) return null;
+  const isWitnessChamber = !!roomFigureName && roomFigureName !== figureName;
   return (
     <EnhancedIdentityReveal
       figureName={figureName}
@@ -96,6 +114,10 @@ export function RevealLayer({ visible, figureName, era, region, tags, summary, e
       identityId={identityId}
       imageUrl={imageUrl}
       variant={variant}
+      roomFigureName={isWitnessChamber ? roomFigureName : undefined}
+      acknowledgment={
+        isWitnessChamber ? `${roomFigureName} nods slowly.` : undefined
+      }
       onContinue={onContinue}
     />
   );

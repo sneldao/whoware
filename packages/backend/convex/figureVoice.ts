@@ -385,26 +385,407 @@ export interface FigureVoiceInput {
     label: string;
     detail: string;
   };
+  /**
+   * v0.4 — the absent figure (puzzle target) when the room-figure is
+   * someone else. When present, the engine switches to relational mode:
+   * the room-figure speaks *about* the target, never naming them
+   * directly. Pronouns derived from `targetFigure.canonicalName`.
+   */
+  targetFigure?: {
+    canonicalName: string;
+    era?: string;
+    region?: string;
+    tags?: string[];
+  };
+}
+
+// ── v0.4 — pronoun bank + relational role labels ────────────
+
+const FEMALE_FIRST_NAMES = new Set([
+  "ada", "agnes", "alexandra", "alice", "anne", "aretha", "artemisia",
+  "audrey", "aung", "aurelia", "beatrice", "benazir", "bridget",
+  "catherine", "caterina", "cecilia", "charlotte", "claire", "claude",
+  "cleopatra", "cristina", "dolores", "dorothy", "edith", "eleanor",
+  "elena", "elizabeth", "ellen", "elsie", "emily", "emma", "fatima",
+  "florence", "frida", "georgia", "gertrude", "golda", "grazia",
+  "harriet", "hatshepsut", "hedy", "helen", "hildegard", "hypatia",
+  "isabel", "jane", "jeanne", "jenny", "jesse", "joan", "johanna", "juliana",
+  "julie", "katrina", "lavinia", "lise", "louisa", "louise", "ludmila",
+  "margaret", "marguerite", "maria", "marian", "marie", "martha",
+  "mary", "matilda", "maura", "meave", "murasaki", "nancy", "nasrin",
+  "nawal", "nettie", "nikki", "olympe", "paula", "pocahontas",
+  "portia", "queen", "rachael", "rachel", "ramabai", "rebecca",
+  "renata", "rosalind", "rosalyn", "rosie", "roxelana", "saint",
+  "sarah", "serena", "shirley", "simone", "sojourner", "sonia",
+  "sophia", "sophie", "susan", "tamara", "teresa", "tessa", "valentina",
+  "vera", "victoria", "virginia", "wilhelmina", "willa", "winifred",
+  "xochitl", "yv",
+]);
+
+const MALE_FIRST_NAMES = new Set([
+  "abraham", "achilles", "adolf", "alan", "albert", "alexander",
+  "alexis", "alfred", "alphonsus", "ambrose", "amos", "andrew", "anne",
+  "anthony", "anton", "antonio", "archimedes", "aristotle", "arnold",
+  "arthur", "august", "augustine", "augustus", "aurelius", "austin",
+  "barnaby", "barry", "bartolommeo", "ben", "benjamin", "bernard",
+  "bill", "bob", "bobby", "bram", "byron", "caesar", "carl", "charles",
+  "chen", "chester", "christopher", "claude", "clemens", "confucius",
+  "cornelius", "curie", "dale", "dante", "darwin", "david", "democritus",
+  "dennis", "diogenes", "donald", "donatello", "duke", "earl", "edgar",
+  "edison", "edmund", "eduardo", "edward", "eli", "elias", "elijah",
+  "emerson", "emile", "emmanuel", "epictetus", "erasmus", "eric",
+  "ernest", "ettore", "euclid", "ezra", "fidel", "firdaus", "francis",
+  "frank", "franklin", "frederick", "friedrich", "gabriel", "gandhi",
+  "garrick", "george", "gerald", "gilbert", "giordano", "giorgio",
+  "giuseppe", "glenn", "gottfried", "goethe", "gregor", "gregory",
+  "guillaume", "gustav", "guy", "hamilton", "hannibal", "harold",
+  "harry", "heinrich", "helmut", "henri", "henry", "herbert", "herman",
+  "hermann", "hieronymus", "hirohito", "homer", "honore", "howard",
+  "hugh", "humphrey", "ibn", "ignaz", "immanuel", "isaac", "isaiah",
+  "ishihara", "ivan", "jack", "jacob", "jacques", "james", "james",
+  "jared", "jasper", "jean", "jefferson", "jerome", "jesse", "jesus",
+  "jimi", "jimmy", "joaquin", "johann", "john", "jonathan", "joseph",
+  "joshua", "juan", "julius", "karl", "keith", "ken", "kenneth",
+  "kurt", "kyle", "langston", "lars", "laurent", "lawrence", "leon",
+  "leonard", "leonardo", "leopold", "lewis", "liam", "lloyd", "logan",
+  "louis", "luca", "lucas", "ludwig", "luigi", "luther", "madison",
+  "magnus", "mahatma", "malcolm", "marc", "marcel", "marco", "marcus",
+  "mark", "marquis", "martin", "marvin", "mason", "matt", "matthew",
+  "maurice", "max", "maximilian", "mendel", "michelangelo", "michel",
+  "mike", "miles", "milton", "moliere", "morris", "muhammad", "napoleon",
+  "nathan", "nathaniel", "neil", "nicholas", "nicolaus", "niels",
+  "nikita", "nikola", "noah", "nobel", "noel", "oliver", "omar",
+  "orhan", "orville", "oscar", "osman", "otto", "owen", "pablo",
+  "pascal", "patrick", "paul", "pavel", "peter", "philip", "philipp",
+  "plato", "pollock", "pope", "pyrrhus", "rainer", "ralph", "raphael",
+  "raymond", "rene", "richard", "robert", "roberto", "roger", "roland",
+  "roman", "romeo", "ronald", "rudolf", "russell", "samuel", "santi",
+  "santiago", "scipio", "scott", "seneca", "sergei", "sigmund",
+  "silvester", "simon", "solomon", "spinoza", "stanley", "stephen",
+  "steve", "stevens", "stuart", "sundiata", "sven", "tchaikovsky",
+  "terrence", "theodore", "theseus", "thomas", "tiberius", "timothy",
+  "tolstoy", "tomas", "tony", "travis", "trotsky", "truman",
+  "ulysses", "valentin", "vance", "vasco", "victor", "vincent",
+  "virgil", "vladimir", "voltaire", "wagner", "wallace", "walt",
+  "walter", "warren", "washington", "wayne", "wernher", "werner",
+  "wesley", "wilbur", "wiley", "will", "william", "winston", "wolfe",
+  "woods", "wright", "xavier", "yves", "zachary", "zeno", "zhuang",
+]);
+
+export type Pronoun = "she" | "he" | "they";
+
+export function pickPronoun(canonicalName: string): Pronoun {
+  // First-name extraction: drop titles ("Saint", "Queen", "Pope", "King"),
+  // drop suffixes ("of Alexandria", "the Great"), take the first word.
+  const cleaned = canonicalName
+    .replace(/^(Saint|Sister|Brother|Pope|Queen|King|Emperor|Empress|Lord|Lady|Sir|Dame|Duke|Duchess|Prince|Princess|Pharaoh|Baron|Baroness|Count|Countess)\s+/i, "")
+    .trim();
+  const firstName = cleaned.split(/\s+/)[0]?.toLowerCase() ?? "";
+  if (FEMALE_FIRST_NAMES.has(firstName)) return "she";
+  if (MALE_FIRST_NAMES.has(firstName)) return "he";
+  return "they";
+}
+
+export type RelationalLabel =
+  | "my teacher"
+  | "my mentor"
+  | "my master"
+  | "my rival"
+  | "the one I followed"
+  | "the one who taught me"
+  | "the person I learned from"
+  | "the one I worked beside";
+
+const STUDENTISH_TAGS = ["student", "follower", "disciple", "apprentice", "protege"];
+const MENTOR_TAGS = ["teacher", "tutor", "mentor", "professor", "rhetorician", "instructor"];
+const RIVAL_TAGS = ["rival", "opponent", "antagonist", "adversary"];
+
+export function pickRelationalLabel(roomFigureTags: string[]): RelationalLabel {
+  const bank: RelationalLabel[] = [];
+  // Speaker tags determine how they refer to the target.
+  // If speaker is the mentor, target is "my student".
+  if (roomFigureTags.some((t) => MENTOR_TAGS.includes(t))) {
+    bank.push("my student", "the one I taught", "the one I trained");
+  }
+  // If speaker is the student, target is "my teacher".
+  if (roomFigureTags.some((t) => STUDENTISH_TAGS.includes(t))) {
+    bank.push("my teacher", "my mentor", "the one who taught me");
+  }
+  if (roomFigureTags.some((t) => RIVAL_TAGS.includes(t))) {
+    bank.push("my rival");
+  }
+  if (bank.length === 0) {
+    bank.push("the one I worked beside", "the person I learned from", "the one I followed", "the one I kept company with");
+  }
+  return bank[0];
+}
+
+// ── v0.4 — relational verbs (target is the subject) ──────────
+
+const RELATIONAL_KIND_VERB: Record<ObjectKind, string[]> = {
+  instrument: ["gave me", "taught me on", "left to me", "left me to study"],
+  weapon: ["gave me", "asked me to carry", "fought beside me with", "taught me to wield"],
+  document: ["wrote for me", "left with me", "asked me to keep", "signed and gave me"],
+  garment: ["gave me", "left me", "made for me", "stitched for me"],
+  building: ["built", "lived in", "worked in", "prayed in"],
+  portrait: ["sat for", "refused to sit for", "painted of", "kept hidden after"],
+  letter: ["wrote me", "sent me", "left for me", "dictated to me"],
+  jewelry: ["gave me", "wore always", "gave me to wear", "left to me"],
+  tool: ["taught me to use", "lent me", "worked beside me with", "showed me how to use"],
+  food: ["shared with me", "brought to my table", "taught me to cook", "ate with me"],
+  plant: ["grew beside me", "planted for me", "cultivated in the garden", "tended"],
+  animal: ["gave me to keep", "trained with me", "kept beside me", "brought home"],
+  book: ["made me read", "gave me", "wrote about", "lent me"],
+  vessel: ["gave me", "shared with me", "poured for me", "kept beside me"],
+  music: ["played for me", "taught me", "composed for", "played when I came in"],
+  generic: ["gave me", "left behind", "trusted me with", "set down beside me"],
+};
+
+// Relational follows use placeholders for the target's pronouns so they
+// can be substituted at composition time. {S} = subject ("she"/"he"/"they"),
+// {O} = object ("her"/"him"/"them"), {P} = possessive ("her"/"his"/"their").
+const RELATIONAL_KIND_FOLLOW: Record<ObjectKind, string[]> = {
+  instrument: [
+    "I still don't know all it taught {O}",
+    "I never saw it leave {P} side",
+    "{S} said it had answers I hadn't earned yet",
+    "the work it did outlived {O}",
+  ],
+  weapon: [
+    "until the day {S} fell",
+    "before the cause was lost",
+    "and I learned what {S} meant",
+    "until {S} trusted me with it",
+  ],
+  document: [
+    "and I keep it still",
+    "though the words have aged",
+    "and reread it when I'm uncertain",
+    "which I copied twice in my own hand",
+  ],
+  garment: [
+    "the day I knew I had to follow {O}",
+    "and I never forgot the smell of the cloth",
+    "and I think of {O} every time I wear it",
+    "the day everything changed for me",
+  ],
+  building: [
+    "and worked there until the end",
+    "and I was there the night it fell quiet",
+    "and the rooms still hold {P} name",
+    "and I learned what {S} meant by work",
+  ],
+  portrait: [
+    "and tried to be patient with the painter",
+    "and the painter caught something I hadn't yet seen",
+    "which {S} kept on the wall facing {P} desk",
+    "and I never saw {O} look at it directly",
+  ],
+  letter: [
+    "and I kept it for years before I read it twice",
+    "and I answered three days later",
+    "which I read aloud to myself the night it arrived",
+    "which I carry folded in the same place {S} did",
+  ],
+  jewelry: [
+    "and I never took it off",
+    "from the day {S} gave it me",
+    "until the day {S} came back for it",
+    "which I sleep in still",
+  ],
+  tool: [
+    "and I use it the way {S} showed me",
+    "every day, until I could do without watching my hands",
+    "until I forgot which of us taught the other",
+    "and the work kept its own memory of {O}",
+  ],
+  food: [
+    "and we spoke about everything that mattered",
+    "and I never ate so well as at {P} table",
+    "which I learned to make from {O}",
+    "and I was glad of the company more than the dish",
+  ],
+  plant: [
+    "and watched it grow for years after",
+    "and I water it still",
+    "and the garden remembers {O}",
+    "and I learned what {S} meant by patience",
+  ],
+  animal: [
+    "and it learned to trust me the way it trusted {O}",
+    "and I rode beside {O} when I could",
+    "and the creature never let me out of sight",
+    "and I was the only one who could calm it after {S} left",
+  ],
+  book: [
+    "and I disagreed with half of it then, more later",
+    "which I still reach for in the same hour of trouble",
+    "and the margins are full of {P} handwriting",
+    "and I keep my own copy on the same shelf {S} did",
+  ],
+  vessel: [
+    "and the taste is the same",
+    "and I washed it the way {S} showed me",
+    "and I broke my own cup trying to pour like {O}",
+    "which I keep beside the one I use every day",
+  ],
+  music: [
+    "and the room fell silent when {S} finished",
+    "until I could play {P} pieces from memory",
+    "and the audience never knew what {S} had shown them",
+    "and I played {P} song for years afterward",
+  ],
+  generic: [
+    "and I think of {O} when I see it",
+    "and I have not let it go since",
+    "and I keep it where {S} would have left it",
+    "and I am still learning what {S} meant to teach me",
+  ],
+};
+
+/** Substitute pronoun placeholders in a relational follow phrase. */
+function substituteRelationalFollow(phrase: string, pronoun: Pronoun): string {
+  const subj = pronoun;
+  const obj = pronoun === "she" ? "her" : pronoun === "he" ? "him" : "them";
+  const poss = pronoun === "she" ? "her" : pronoun === "he" ? "his" : "their";
+  return phrase
+    .replace(/\{S\}/g, subj)
+    .replace(/\{O\}/g, obj)
+    .replace(/\{P\}/g, poss);
+}
+
+/**
+  Sweep the rendered quote to replace stray neutral pronouns ("they" /
+  "them" / "their") with the target's actual pronoun. Patterns
+  occasionally hardcode "they" when they mean the target; this
+  normalization rescues those mismatches.
+  */
+function normalizePronouns(text: string, pronoun: Pronoun): string {
+  if (pronoun === "they") return text; // already neutral
+  const obj = pronoun === "she" ? "her" : "him";
+  const poss = pronoun === "she" ? "her" : "his";
+  return text
+    .replace(/\bthey\b/gi, pronoun)
+    .replace(/\bthem\b/gi, obj)
+    .replace(/\btheir\b/gi, poss);
+}
+
+// ── v0.4 — relational patterns ────────────────────────────────
+
+const RELATIONAL_PATTERNS: Record<VoiceRole, Array<(slots: RelationalSlots) => string>> = {
+  scholar: [
+    ({ subj, thing, verb, follow, memEra, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. That was ${memEra}, in ${place}.`,
+    ({ subj, thing, verb, follow, memEra, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}; ${follow}. I came back to it later, when I could read what they meant.`,
+    ({ subj, thing, verb, memEra, place }) =>
+      `${capitalize(subj)} ${verb} ${thing} — ${memEra}, in ${place}. The work was the point; the person only showed me where to start.`,
+  ],
+  warrior: [
+    ({ subj, thing, verb, follow, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. ${capitalize(place)} was where I learned what they meant.`,
+    ({ subj, thing, verb, follow }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. I never said it back to them.`,
+    ({ subj, thing, verb }) =>
+      `${capitalize(subj)} ${verb} ${thing}. That's all there is to say about it.`,
+  ],
+  artist: [
+    ({ subj, thing, verb, follow, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. I worked in ${place} because they had.`,
+    ({ subj, thing, verb, follow }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. The work kept me; they had shown me what the work was for.`,
+    ({ subj, thing, verb, memEra, place }) =>
+      `${capitalize(subj)} ${verb} ${thing} ${memEra}, in ${place}. I think of them every time I touch the medium.`,
+  ],
+  ruler: [
+    ({ subj, thing, verb, follow, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}; ${follow}. ${capitalize(place)} was their office before it was mine.`,
+    ({ subj, thing, verb, follow }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. The office remembers them longer than people do.`,
+    ({ subj, thing, verb, place }) =>
+      `${capitalize(subj)} ${verb} ${thing} when ${place} was theirs. I learned the room before I learned the work.`,
+  ],
+  religious: [
+    ({ subj, thing, verb, follow, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. The work in ${place} was the vocation before it was mine.`,
+    ({ subj, thing, verb, memEra, place }) =>
+      `${capitalize(subj)} ${verb} ${thing} ${memEra}, in ${place}. I do not separate the calling from the days they showed me.`,
+    ({ subj, thing, verb, follow }) =>
+      `${capitalize(subj)} ${verb} ${thing}; ${follow}. The instrument is small; the work they began is not.`,
+  ],
+  commoner: [
+    ({ subj, thing, verb, follow, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. I was nobody from ${place}; they noticed me anyway.`,
+    ({ subj, thing, verb, memEra, place }) =>
+      `${capitalize(subj)} ${verb} ${thing} ${memEra}, in ${place}. I didn't know it would be the work of my life.`,
+    ({ subj, thing, verb, follow }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. That was my life. I made it from what they left me.`,
+  ],
+  explorer: [
+    ({ subj, thing, verb, follow, place }) =>
+      `${capitalize(subj)} ${verb} ${thing} when ${place} was still unknown to us. ${capitalize(follow.charAt(0))}${follow.slice(1)}.`,
+    ({ subj, thing, verb, memEra, place }) =>
+      `${capitalize(subj)} ${verb} ${thing} ${memEra}. ${capitalize(place)} was the destination; ${thing} was the proof they had been there.`,
+    ({ subj, thing, verb, follow, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. The map of ${place} was their real work; everything else was the journey.`,
+  ],
+  writer: [
+    ({ subj, thing, verb, follow, place }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. I kept the desk in ${place}; they had kept it before me.`,
+    ({ subj, thing, verb, memEra, place }) =>
+      `${capitalize(subj)} ${verb} ${thing} ${memEra}, in ${place}. The page was the only honest thing in the house when they were alive.`,
+    ({ subj, thing, verb, follow }) =>
+      `${capitalize(subj)} ${verb} ${thing}, ${follow}. Readers will make of it what they made of them.`,
+  ],
+};
+
+interface RelationalSlots {
+  subj: Pronoun;       // "she" / "he" / "they"
+  thing: string;       // kind-specific noun
+  verb: string;        // relational verb phrase
+  follow: string;      // relational follow
+  memEra: string;
+  place: string;
 }
 
 export function quoteForClue(input: FigureVoiceInput): string {
-  const { figure, scene, clue } = input;
+  const { figure, scene, clue, targetFigure } = input;
   const role = pickRole(figure.tags);
   const objectKind = pickObjectKind(clue.label);
   const eraBucket = bucketEra(figure.era || scene.era);
   const place = pickPlaceRef(figure.region, scene.location);
   const memEra = pick(MEM_PHRASES[eraBucket]);
   const thing = pick(KIND_NOUN[objectKind]);
-  const relation = pick(KIND_RELATION[objectKind]);
-  const follow = pick(KIND_FOLLOW[objectKind]);
 
-  // Role-specific pattern choice — index by hash of clue label so the
-  // same clue always gets the same pattern. Different patterns per
-  // clue label = variation across the figure's voice across scenes.
-  const patterns = PATTERNS[role];
+  // v0.4 — relational mode when a targetFigure is supplied AND it's
+  // different from the speaking figure. Otherwise, self-voice mode
+  // (v0.3 behavior).
+  const isRelational =
+    !!targetFigure &&
+    targetFigure.canonicalName.trim().toLowerCase() !== figure.canonicalName.trim().toLowerCase();
+
+  const patterns = isRelational ? RELATIONAL_PATTERNS[role] : PATTERNS[role];
   const hash = simpleHash(clue.label);
   const pattern = patterns[hash % patterns.length];
 
+  if (isRelational) {
+    const pronoun = pickPronoun(targetFigure!.canonicalName);
+    const verb = pick(RELATIONAL_KIND_VERB[objectKind]);
+    const followRaw = pick(RELATIONAL_KIND_FOLLOW[objectKind]);
+    const follow = substituteRelationalFollow(followRaw, pronoun);
+    const quote = pattern({
+      subj: pronoun,
+      thing,
+      verb,
+      follow,
+      memEra,
+      place,
+    });
+    return normalizePronouns(quote.trim(), pronoun);
+  }
+
+  const relation = pick(KIND_RELATION[objectKind]);
+  const follow = pick(KIND_FOLLOW[objectKind]);
   const quote = pattern({
     I: "I",
     thing,

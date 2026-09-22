@@ -111,6 +111,19 @@ export const stageFigure = mutation({
   },
 });
 
+/** Look up a figure by canonical name. Returns null if not found. */
+async function resolveFigureIdByName(
+  ctx: { db: { query: (t: string) => any } },
+  name: string,
+): Promise<string | undefined> {
+  const row = await ctx.db
+    .query("figures")
+    .withIndex("by_canonicalName", (q: any) => q.eq("canonicalName", name))
+    .first();
+  return row?._id;
+}
+});
+
 export const createDraftEpisode = mutation({
   args: {
     figureId: v.id("figures"),
@@ -122,10 +135,20 @@ export const createDraftEpisode = mutation({
     const figure = await ctx.db.get(args.figureId);
     if (!figure) throw new Error("Figure not found");
 
+    // v0.4 — Witness Chamber: pick a room-figure from relatedFigures if
+    // available. The room-figure is who speaks in the room; the target
+    // (figureId) is who the player is trying to name.
+    const firstRelatedId = figure.relatedFigures?.[0];
+    const roomFigureId =
+      firstRelatedId && firstRelatedId !== args.figureId
+        ? await resolveFigureIdByName(ctx, firstRelatedId)
+        : undefined;
+
     const episodeId = await ctx.db.insert("episodes", {
       slug: args.slug,
       figureId: args.figureId,
       figureName: figure.canonicalName,
+      roomFigureId,
       activeAt: Date.now(),
       dropsAt: Date.now() + 86_400_000,
       status: "staging",

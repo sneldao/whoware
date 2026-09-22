@@ -41,6 +41,18 @@ export const backfillFigureQuotes = migrations.define({
     const figure = ep.figureId ? await ctx.db.get(ep.figureId) : null;
     if (!figure) return;
 
+    // v0.4 — when the episode has a roomFigureId different from the
+    // target, the room-figure speaks about the target (relational voice).
+    // Without this, quotes render in self-voice, which contradicts the
+    // Witness Chamber reveal.
+    const roomFigure = ep.roomFigureId ? await ctx.db.get(ep.roomFigureId) : null;
+    const speakerFigure =
+      roomFigure && roomFigure._id !== ep.figureId ? roomFigure : figure;
+    const targetForVoice =
+      roomFigure && roomFigure._id !== ep.figureId
+        ? figure
+        : undefined;
+
     let episodeTouched = false;
     const updatedScenes = ep.scenes.map((scene) => {
       let sceneTouched = false;
@@ -52,11 +64,14 @@ export const backfillFigureQuotes = migrations.define({
           ...clue,
           figureQuote: quoteForClue({
             figure: {
-              canonicalName: figure.canonicalName,
-              era: figure.era,
-              region: figure.region,
-              tags: figure.tags,
+              canonicalName: speakerFigure.canonicalName,
+              era: speakerFigure.era,
+              region: speakerFigure.region,
+              tags: speakerFigure.tags,
             },
+            targetFigure: targetForVoice
+              ? { canonicalName: targetForVoice.canonicalName }
+              : undefined,
             scene: {
               title: scene.title,
               location: scene.location,
@@ -124,6 +139,64 @@ export const runBackfillFigureQuotes = mutation({
     let batches = 1;
     while (!status.isDone && !status.error && batches < 200) {
       status = await migrations.runOne(ctx, internal.migrations.backfillFigureQuotes);
+      batches++;
+    }
+    return { ...status, batchesRan: batches };
+  },
+});
+
+/**
+ * v0.4 — backfill `roomFigureId` on every episode.
+ *
+ * For each episode, picks the first related figure from the target's
+ * `relatedFigures` list and stores its id as the room-figure. Episodes
+ * without a relatedFigure (or whose related figure is the same as the
+ * target) get `roomFigureId: null` and behave like v0.3.
+ *
+ * Idempotent: episodes that already have a roomFigureId are skipped.
+ *
+ *   npx convex run --prod migrations:runBackfillRoomFigures '{"dryRun": true}'
+ *   npx convex run --prod migrations:runBackfillRoomFigures
+ */
+export const backfillRoomFigures = migrations.define({
+  table: "episodes",
+  migrateOne: async (ctx, doc) => {
+    const ep = doc as DataModel["episodes"]["documentType"];
+    if (ep.roomFigureId) return;
+    if (!ep.figureId) return;
+    const target = await ctx.db.get(ep.figureId);
+    if (!target) return;
+
+    const firstRelatedName = target.relatedFigures?.[0];
+    if (!firstRelatedName || firstRelatedName === target.canonicalName) return;
+
+    const roomRow = await ctx.db
+      .query("figures")
+      .withIndex("by_canonicalName", (q: any) => q.eq("canonicalName", firstRelatedName))
+      .first();
+    if (!roomRow) return;
+    if (roomRow._id === ep.figureId) return;
+
+    return { roomFigureId: roomRow._id };
+  },
+});
+
+export const runBackfillRoomFigures = mutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun ?? false;
+    if (dryRun) {
+      return await migrations.runOne(ctx, internal.migrations.backfillRoomFigures, {
+        dryRun: true,
+        reset: true,
+      });
+    }
+    let status = await migrations.runOne(ctx, internal.migrations.backfillRoomFigures, {
+      reset: true,
+    });
+    let batches = 1;
+    while (!status.isDone && !status.error && batches < 200) {
+      status = await migrations.runOne(ctx, internal.migrations.backfillRoomFigures);
       batches++;
     }
     return { ...status, batchesRan: batches };

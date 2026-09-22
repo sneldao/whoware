@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 
 import { commitGuessOnChain } from "@/lib/wallet";
 import { SITE_URL } from "@/lib/site";
@@ -207,6 +210,20 @@ export default function Index() {
   }, [guessing.isGuessPanelOpen, guessing.discoveredClues.length, session.run?.status]);
 
   const hasEnteredMemoryEarly = (session.run?.memoriesViewed ?? 0) > 0;
+
+  // v0.4 — Witness Chamber: look up the room-figure by id when present.
+  const roomFigure = useQuery(
+    api.figures.get,
+    (session.episode as { roomFigureId?: Id<"figures"> } | null)?.roomFigureId
+      ? { figureId: (session.episode as { roomFigureId: Id<"figures"> }).roomFigureId }
+      : "skip",
+  );
+  const roomFigureName =
+    roomFigure &&
+    (session.episode as { roomFigureId?: Id<"figures"> } | null)?.roomFigureId !==
+      (session.episode as { figureId?: Id<"figures"> }).figureId
+      ? roomFigure.canonicalName
+      : undefined;
   const runFinishedEarly =
     session.run?.status === "solved" || session.run?.status === "exhausted";
   const guessesLeftEarly = Math.max(
@@ -775,6 +792,7 @@ export default function Index() {
           identityId={session.identity.identityId ?? undefined}
           imageUrl={solvedSceneImageUrl}
           variant={isExhausted ? "exhausted" : "solved"}
+          roomFigureName={roomFigureName}
           onContinue={() => guessing.setRevealDismissed(true)}
         />
         <TooltipLayer activeBadge={session.tooltip.activeBadge} onDismiss={session.tooltip.hide} scoreDetail={scoreDetail} />
@@ -962,6 +980,7 @@ export default function Index() {
         identityId={session.identity.identityId ?? undefined}
         imageUrl={solvedSceneImageUrl}
         variant={isExhausted ? "exhausted" : "solved"}
+        roomFigureName={roomFigureName}
         onContinue={() => guessing.setRevealDismissed(true)}
       />
       <ErrorBoundary label="UpgradeOverlay">
