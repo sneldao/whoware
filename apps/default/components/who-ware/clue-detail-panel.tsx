@@ -15,6 +15,8 @@ import { HINT_PENALTY } from "@/convex/scoring";
 export interface ClueDetail {
   label: string;
   detail: string;
+  /** v0.3 — first-person quote from the figure reacting to this object. */
+  figureQuote?: string;
 }
 
 type HintTier = "socratic" | "era" | "proximity";
@@ -91,6 +93,17 @@ export function ClueDetailPanel({
         <Text style={styles.clueText}>{clue.detail}</Text>
         <Animated.View style={[styles.redactionBar, redactionStyle]} pointerEvents="none" />
       </View>
+
+      {/* v0.3 — the figure's voice. Quote renders only when present so
+          pre-v0.3 episodes (no backfill yet) still look right. */}
+      {clue.figureQuote ? (
+        <View style={styles.quoteBlock}>
+          <View style={styles.quoteMark}>
+            <Ionicons name="chatbubble-ellipses-outline" size={12} color={theme.accent} />
+          </View>
+          <Text style={styles.quoteText}>{clue.figureQuote}</Text>
+        </View>
+      ) : null}
 
       {/* Hint generation / tier escalation */}
       {onGenerateHint ? (
@@ -260,6 +273,34 @@ const styles = StyleSheet.create({
     color: theme.inkAlpha78,
     fontSize: 15,
     lineHeight: 22,
+  },
+  quoteBlock: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 12,
+    borderRadius: 14,
+    borderCurve: "continuous",
+    backgroundColor: theme.accentAlpha12,
+    borderWidth: 1,
+    borderColor: theme.accentAlpha22,
+  },
+  quoteMark: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.accentAlpha18,
+    marginTop: 1,
+  },
+  quoteText: {
+    flex: 1,
+    color: theme.parchment,
+    fontSize: 14,
+    lineHeight: 21,
+    fontStyle: "italic",
+    fontWeight: "600",
   },
   hintSection: {
     paddingVertical: 4,

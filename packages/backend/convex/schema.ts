@@ -7,6 +7,8 @@ const sceneClue = v.object({
   detail: v.string(),
   x: v.number(),
   y: v.number(),
+  /** v0.3 — first-person quote from the figure reacting to this object. */
+  figureQuote: v.optional(v.string()),
 });
 
 const guessProximity = v.union(

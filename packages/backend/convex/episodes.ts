@@ -7,6 +7,7 @@ const sceneClueValidator = v.object({
   detail: v.string(),
   x: v.number(),
   y: v.number(),
+  figureQuote: v.optional(v.string()),
 });
 
 const sceneReturnValidator = v.object({
