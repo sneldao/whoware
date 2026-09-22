@@ -202,3 +202,85 @@ export const runBackfillRoomFigures = mutation({
     return { ...status, batchesRan: batches };
   },
 });
+
+/**
+ * v0.4 — regenerate quotes for Witness Chamber episodes.
+ *
+ * Episodes whose `roomFigureId` differs from `figureId` should render
+ * quotes in relational voice. The earlier backfill wrote self-voice
+ * quotes because it ran before roomFigureId existed. This migration
+ * walks those episodes and rewrites the figureQuote on every clue
+ * using the room-figure speaker + target relational mode.
+ *
+ * Idempotent: re-running regenerates the same quotes (deterministic
+ * engine).
+ *
+ *   npx convex run --prod migrations:runBackfillWitnessChamberQuotes '{"dryRun": true}'
+ *   npx convex run --prod migrations:runBackfillWitnessChamberQuotes
+ */
+export const backfillWitnessChamberQuotes = migrations.define({
+  table: "episodes",
+  migrateOne: async (ctx, doc) => {
+    const ep = doc as DataModel["episodes"]["documentType"];
+    if (!ep.figureId || !ep.roomFigureId) return;
+    if (ep.roomFigureId === ep.figureId) return;
+
+    const roomFigure = await ctx.db.get(ep.roomFigureId);
+    const target = await ctx.db.get(ep.figureId);
+    if (!roomFigure || !target) return;
+
+    let touched = false;
+    const updatedScenes = ep.scenes.map((scene) => {
+      let sceneTouched = false;
+      const updatedClues = scene.clues.map((clue) => {
+        // Always rewrite for Witness Chamber episodes — the engine is
+        // deterministic so idempotent rewrites land on the same text.
+        sceneTouched = true;
+        touched = true;
+        return {
+          ...clue,
+          figureQuote: quoteForClue({
+            figure: {
+              canonicalName: roomFigure.canonicalName,
+              era: roomFigure.era,
+              region: roomFigure.region,
+              tags: roomFigure.tags,
+            },
+            targetFigure: { canonicalName: target.canonicalName },
+            scene: {
+              title: scene.title,
+              location: scene.location,
+              era: scene.era,
+            },
+            clue: { label: clue.label, detail: clue.detail },
+          }),
+        };
+      });
+      return sceneTouched ? { ...scene, clues: updatedClues } : scene;
+    });
+    if (!touched) return;
+    return { scenes: updatedScenes };
+  },
+});
+
+export const runBackfillWitnessChamberQuotes = mutation({
+  args: { dryRun: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const dryRun = args.dryRun ?? false;
+    if (dryRun) {
+      return await migrations.runOne(ctx, internal.migrations.backfillWitnessChamberQuotes, {
+        dryRun: true,
+        reset: true,
+      });
+    }
+    let status = await migrations.runOne(ctx, internal.migrations.backfillWitnessChamberQuotes, {
+      reset: true,
+    });
+    let batches = 1;
+    while (!status.isDone && !status.error && batches < 200) {
+      status = await migrations.runOne(ctx, internal.migrations.backfillWitnessChamberQuotes);
+      batches++;
+    }
+    return { ...status, batchesRan: batches };
+  },
+});
