@@ -3,7 +3,7 @@ import { EnhancedIdentityReveal } from "@/components/who-ware/enhanced-identity-
 import { SmartAccountUpgradeOverlay } from "@/components/who-ware/smart-account-upgrade-overlay";
 import { TooltipOverlay } from "@/components/curator/tooltip";
 import {
-  BASE_SCORE, GUESS_PENALTY, HINT_PENALTY, HOTSPOT_PENALTY, MAX_GUESSES_PER_RUN,
+  BASE_SCORE, GUESS_PENALTY, HINT_PENALTY, HOTSPOT_PENALTY, MAX_GUESSES_PER_RUN, MAX_HINTS_PER_RUN,
   MEMORY_PENALTY, TIME_BUCKET_MS, TIME_BUCKET_PENALTY,
 } from "@/convex/scoring";
 import { theme } from "@/lib/theme";
@@ -27,19 +27,19 @@ export function TooltipLayer({ activeBadge, onDismiss, scoreDetail }: TooltipLay
       definitions={{
         score: {
           title: "Your score ceiling — live",
-          description: `This is what a correct accusation right now would earn — it only falls. Every solve starts at ${BASE_SCORE.toLocaleString()} points. Each memory opened costs ${MEMORY_PENALTY.toLocaleString()}, each clue inspected ${HOTSPOT_PENALTY.toLocaleString()}, each whisper ${HINT_PENALTY.toLocaleString()}, each wrong accusation ${GUESS_PENALTY.toLocaleString()}, and every ${TIME_BUCKET_MS / 1_000} seconds ${TIME_BUCKET_PENALTY}.${scoreDetail ? ` ${scoreDetail}` : ""}`,
+          description: `This is what a correct guess right now would earn — it only falls. Every solve starts at ${BASE_SCORE.toLocaleString()} points. Each scene opened costs ${MEMORY_PENALTY.toLocaleString()}, each clue inspected ${HOTSPOT_PENALTY.toLocaleString()}, each hint ${HINT_PENALTY.toLocaleString()}, each wrong guess ${GUESS_PENALTY.toLocaleString()}, and every ${TIME_BUCKET_MS / 1_000} seconds ${TIME_BUCKET_PENALTY}.${scoreDetail ? ` ${scoreDetail}` : ""}`,
         },
         clues: {
           title: "Clues opened",
           description: `Clues are hidden details embedded in each scene's imagery. Opening a clue reveals information about the figure but reduces your max score by ${HOTSPOT_PENALTY.toLocaleString()} points per clue.`,
         },
         hints: {
-          title: "Memory whispers used",
-          description: `Each whisper reduces your ceiling by ${HINT_PENALTY.toLocaleString()} points. One whisper per tier per scene — higher tiers cost the same but reveal more.`,
+          title: "Hints used",
+          description: `Each hint reduces your ceiling by ${HINT_PENALTY.toLocaleString()} points. You have ${MAX_HINTS_PER_RUN} hints across the whole run, so spend them where they matter.`,
         },
         guesses: {
-          title: "Accusations remaining",
-          description: `You have ${MAX_GUESSES_PER_RUN} accusations per episode. Each wrong one costs ${GUESS_PENALTY.toLocaleString()} points from your ceiling. Spend them when the room feels right.`,
+          title: "Guesses left",
+          description: `You have ${MAX_GUESSES_PER_RUN} guesses per episode. Each wrong one costs ${GUESS_PENALTY.toLocaleString()} points from your ceiling. Spend them when the room feels right.`,
         },
         mint: {
           title: "Score minted on Mantle",

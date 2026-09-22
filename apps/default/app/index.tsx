@@ -53,7 +53,7 @@ function playingNextStep(guessesLeft: number): string {
   const lookHint = quality.mode === "three-d"
     ? "Drag to look, tap a glow for a clue"
     : "Tap a glowing fragment for a clue";
-  return `${lookHint}, open a deeper memory, or name the figure (${guessesLeft} ${guessesLeft === 1 ? "accusation" : "accusations"} left).`;
+  return `${lookHint}, open the next scene, or guess (${guessesLeft} ${guessesLeft === 1 ? "guess" : "guesses"} left).`;
 }
 
 function LoadingScreen({ message }: { message: string }) {
@@ -686,7 +686,7 @@ export default function Index() {
   // The ceiling tooltip carries live stakes: now, floor, whispers heard.
   const scoreDetail = session.run?.status === "active" && liveScore != null
     ? [
-        `Right now a correct accusation earns ${formatScore(liveScore)}.`,
+        `Right now a correct guess earns ${formatScore(liveScore)}.`,
         moreMemoriesAvailable
           ? `Open every remaining memory and it falls to ${formatScore(
               projectScore({

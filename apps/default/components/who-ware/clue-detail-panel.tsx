@@ -42,7 +42,7 @@ interface ClueDetailPanelProps {
 const TIER_ORDER: HintTier[] = ["socratic", "era", "proximity"];
 
 const TIER_CONFIG: Record<HintTier, { label: string; cost: string }> = {
-  socratic: { label: "Whisper", cost: `−${HINT_PENALTY} pts` },
+  socratic: { label: "Hint", cost: `−${HINT_PENALTY} pts` },
   era: { label: "Era nudge", cost: `−${HINT_PENALTY} pts` },
   proximity: { label: "Proximity", cost: `−${HINT_PENALTY} pts` },
 };
@@ -80,7 +80,7 @@ export function ClueDetailPanel({
       {exhibitIndex != null && exhibitIndex >= 0 ? (
         <View style={styles.exhibitChip}>
           <Ionicons name="bookmark-outline" size={10} color={theme.accent} />
-          <Text style={styles.exhibitText}>Exhibit {String(exhibitIndex + 1).padStart(2, "0")}</Text>
+          <Text style={styles.exhibitText}>Clue {String(exhibitIndex + 1).padStart(2, "0")}</Text>
         </View>
       ) : null}
       <View style={styles.clueHeader}>
@@ -186,7 +186,7 @@ export function ClueDetailPanel({
                   ? "Probing memory…"
                   : canRequestHint
                     ? `${hintLabel} · ${TIER_CONFIG.socratic.cost}`
-                    : "Open this clue to unlock the whisper"}
+                    : "Open this clue to unlock the hint"}
               </Text>
             </Pressable>
           )}

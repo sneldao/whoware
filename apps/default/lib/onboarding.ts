@@ -17,9 +17,9 @@ const COACH_KEYS: Record<CoachTipId, string> = {
 
 export const COACH_COPY: Record<CoachTipId, string> = {
   wrongGuess: "Proximity feedback will guide your next guess — check era and region!",
-  unlockNext: "Exploring more memories uncovers crucial props and era clues.",
-  nameIdentity: "Name the figure whenever you feel confident in your hypothesis.",
-  researchDay: "Today's figure is research tier — an obscure one. Open memories and spend clues; deduction matters more than recognition.",
+  unlockNext: "Opening more scenes uncovers crucial props and era clues.",
+  nameIdentity: "Guess whenever you feel confident in your hypothesis.",
+  researchDay: "Today's figure is research tier — an obscure one. Open more scenes and inspect clues; deduction matters more than recognition.",
 };
 
 export async function hasCompletedOnboarding(): Promise<boolean> {

@@ -168,12 +168,12 @@ export function ImmersionSession({
           <View style={[styles.bottomBar, { bottom: Math.max(24, insets.bottom + 16) }]}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Name the figure"
+              accessibilityLabel="Guess"
               onPress={onNameIdentity}
               style={({ pressed }) => [styles.nameButton, pressed && styles.pressed]}
             >
               <Ionicons name="finger-print" size={16} color={theme.ink} />
-              <Text style={styles.nameButtonText}>Name the figure</Text>
+              <Text style={styles.nameButtonText}>Guess</Text>
             </Pressable>
           </View>
         </>

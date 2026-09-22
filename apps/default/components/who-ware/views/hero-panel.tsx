@@ -181,7 +181,7 @@ export function HeroPanel(props: HeroPanelProps) {
             >
               <Ionicons name="finger-print" size={18} color={theme.ink} />
               <Text style={styles.secondaryIntroButtonText}>
-                {isGuessPanelOpen ? "Hide guess" : "Guess without a memory"}
+                {isGuessPanelOpen ? "Hide guess" : "Guess now"}
               </Text>
             </Pressable>
             <Pressable
@@ -191,7 +191,7 @@ export function HeroPanel(props: HeroPanelProps) {
               style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, isBusy && styles.disabledButton]}
             >
               <Text style={styles.primaryButtonText}>
-                {isBusy ? "Entering memory…" : "Enter first memory"}
+                {isBusy ? "Opening scene…" : "Open first scene"}
               </Text>
               <Ionicons name="arrow-forward" size={18} color={theme.inkOnAccent} />
             </Pressable>

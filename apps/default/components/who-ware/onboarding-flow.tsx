@@ -21,7 +21,7 @@ const STEPS = [
     demo: null,
   },
   {
-    title: "Step into panoramic\nmemories.",
+    title: "Step into the\nscene.",
     narration: "Explore atmospheric scenes from their life. The environment holds secrets — look closely at every detail.",
     icon: "globe" as const,
     demo: "panorama",
@@ -33,8 +33,8 @@ const STEPS = [
     demo: "clue",
   },
   {
-    title: "Name the figure\nwhen you're ready.",
-    narration: "Five accusations, each one final. A wrong one costs 600 from your ceiling — the room tells you how close you landed.",
+    title: "Guess when\nyou're ready.",
+    narration: "Eight guesses, each one final. A wrong one costs 600 from your ceiling — the room tells you how close you landed.",
     icon: "finger-print" as const,
     demo: "guess",
   },
@@ -43,7 +43,7 @@ const STEPS = [
     narration: "Solve daily to build your streak — one banked freeze forgives a missed day. Every solve earns a detective grade, S to D.",
     icon: "flame" as const,
     demo: "streak",
-    footnote: "Desktop: G name the figure · N deeper memory · 1–9 jump scenes · Esc close",
+    footnote: "Desktop: G guess · N next scene · 1–9 jump scenes · Esc close",
   },
 ];
 

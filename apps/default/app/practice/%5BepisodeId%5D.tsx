@@ -220,7 +220,7 @@ export default function PracticeScreen() {
             >
               <Ionicons name="finger-print" size={16} color={theme.inkOnAccent} />
               <Text style={styles.guessButtonText}>
-                {showGuessPanel ? "Back to the room" : "Name the figure"}
+                {showGuessPanel ? "Back to the room" : "Guess"}
               </Text>
             </Pressable>
           </View>

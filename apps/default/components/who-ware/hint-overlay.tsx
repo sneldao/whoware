@@ -27,7 +27,7 @@ export function HintOverlay({ hint, isGenerating, clueLabel, activeHintTier, onD
     <View style={styles.container}>
       <View style={styles.header}>
         <Ionicons name="sparkles" size={14} color={theme.violet} />
-        <Text style={styles.label}>Memory whisper</Text>
+        <Text style={styles.label}>Hint</Text>
         {tierLabel ? (
           <View style={styles.tierBadge}>
             <Text style={styles.tierLabel}>{tierLabel}</Text>
@@ -35,7 +35,7 @@ export function HintOverlay({ hint, isGenerating, clueLabel, activeHintTier, onD
         ) : null}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="About this whisper"
+          accessibilityLabel="About this hint"
           onPress={() => setShowInfo((v) => !v)}
           hitSlop={8}
         >

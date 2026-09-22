@@ -19,10 +19,10 @@ interface GuessPanelProps {
 }
 
 /**
- * The accusation panel. Naming a figure is the game's one irreversible
+ * The guess panel. Naming a figure is the game's one irreversible
  * commitment, so a name row never submits on first touch: the first tap
  * *arms* the row (with the cost of being wrong stated in place), the
- * second tap commits the accusation.
+ * second tap commits the guess.
  */
 export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlayerNameChange, onSubmit }: GuessPanelProps) {
   const [query, setQuery] = useState("");
@@ -60,20 +60,20 @@ export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlaye
   }
 
   const noMatches = query.trim().length > 0 && filteredOptions.length === 0;
-  // Practice rooms pass a large guessesLeft — accusations carry no cost there.
+  // Practice rooms pass a large guessesLeft — guesses carry no cost there.
   const isPractice = guessesLeft > MAX_GUESSES_PER_RUN;
 
   return (
     <View style={styles.panel}>
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.eyebrow}>The accusation</Text>
+          <Text style={styles.eyebrow}>The guess</Text>
           <Text style={styles.title}>
             {isSolved
               ? "Identity anchored"
               : isPractice
-                ? "Practice room — accusations are free"
-                : `${guessesLeft} ${guessesLeft === 1 ? "accusation" : "accusations"} left`}
+                ? "Practice room — guesses are free"
+                : `${guessesLeft} ${guessesLeft === 1 ? "guess" : "guesses"} left`}
           </Text>
           {!isSolved ? (
             <Text style={styles.hintLine}>
@@ -103,7 +103,7 @@ export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlaye
             <Pressable
               key={figure.figureId}
               accessibilityRole="button"
-              accessibilityLabel={armed ? `Confirm accusation: ${figure.displayName}` : `Accuse ${figure.displayName}`}
+              accessibilityLabel={armed ? `Confirm guess: ${figure.displayName}` : `Guess ${figure.displayName}`}
               disabled={!canAccuse}
               onPress={() => handlePress(figure)}
               style={({ pressed }) => [
@@ -115,11 +115,11 @@ export function GuessPanel({ figures, guessesLeft, isSolved, playerName, onPlaye
             >
               {armed ? (
                 <View style={styles.armCol}>
-                  <Text style={styles.armTitle}>Accuse {figure.displayName}?</Text>
+                  <Text style={styles.armTitle}>Guess {figure.displayName}?</Text>
                   <Text style={styles.armSub}>
                     {isPractice
                       ? "No score at stake — tap again to commit."
-                      : `A wrong accusation costs ${GUESS_PENALTY.toLocaleString()} pts — tap again to commit.`}
+                      : `A wrong guess costs ${GUESS_PENALTY.toLocaleString()} pts — tap again to commit.`}
                   </Text>
                 </View>
               ) : (

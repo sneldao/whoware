@@ -188,7 +188,7 @@ export function PlayChrome({
           >
             <Ionicons name="finger-print" size={18} color={theme.inkOnAccent} />
             <Text style={styles.guessButtonText}>
-              {isGuessPanelOpen ? "Back to the room" : "Name the figure"}
+              {isGuessPanelOpen ? "Back to the room" : "Guess"}
             </Text>
           </Pressable>
           <Pressable
@@ -203,7 +203,7 @@ export function PlayChrome({
             ]}
           >
             <Text style={styles.secondaryButtonText}>
-              {moreMemoriesAvailable ? `Deeper memory · −${MEMORY_PENALTY.toLocaleString()}` : "Every memory open"}
+              {moreMemoriesAvailable ? `Next scene · −${MEMORY_PENALTY.toLocaleString()}` : "Every scene open"}
             </Text>
           </Pressable>
         </View>
@@ -234,7 +234,7 @@ export function PlayChrome({
               onPress={() => setCluesSheetOpen((open) => !open)}
             />
             <TappableMetric
-              label="Accusations"
+              label="Guesses"
               value={`${"●".repeat(metrics.guessesLeft)}${"○".repeat(Math.max(0, metrics.guessCap - metrics.guessesLeft))}`}
               onPress={onToggleGuessPanel}
             />
@@ -265,7 +265,7 @@ export function PlayChrome({
           >
             <Ionicons name="finger-print" size={16} color={theme.inkOnAccent} />
             <Text style={overlayStyles.primaryBtnText}>
-              {isGuessPanelOpen ? "Back to the room" : "Name the figure"}
+              {isGuessPanelOpen ? "Back to the room" : "Guess"}
             </Text>
           </Pressable>
           <Animated.View
@@ -286,7 +286,7 @@ export function PlayChrome({
               ]}
             >
               <Text style={overlayStyles.secondaryBtnText}>
-                {moreMemoriesAvailable ? `Deeper memory · −${MEMORY_PENALTY.toLocaleString()}` : "Every memory open"}
+                {moreMemoriesAvailable ? `Next scene · −${MEMORY_PENALTY.toLocaleString()}` : "Every scene open"}
               </Text>
             </Pressable>
           </Animated.View>

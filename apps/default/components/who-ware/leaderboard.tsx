@@ -85,10 +85,10 @@ function formatRunMeta(entry: {
   const hotspotsOpened = entry.hotspotsOpened ?? 0;
   const guessesUsed = entry.guessesUsed ?? 1;
   const elapsedMs = entry.elapsedMs ?? 0;
-  const memoryLabel = entry.scenesRevealed === 1 ? "memory" : "memories";
+  const sceneLabel = entry.scenesRevealed === 1 ? "scene" : "scenes";
   const clueLabel = hotspotsOpened === 1 ? "clue" : "clues";
   const guessLabel = guessesUsed === 1 ? "guess" : "guesses";
-  return `${entry.scenesRevealed} ${memoryLabel} · ${hotspotsOpened} ${clueLabel} · ${guessesUsed} ${guessLabel} · ${formatElapsed(elapsedMs)}`;
+  return `${entry.scenesRevealed} ${sceneLabel} · ${hotspotsOpened} ${clueLabel} · ${guessesUsed} ${guessLabel} · ${formatElapsed(elapsedMs)}`;
 }
 
 function formatElapsed(elapsedMs: number): string {

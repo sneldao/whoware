@@ -48,7 +48,7 @@ export function IdentityHintButton({
         <Ionicons name="lock-closed" size={14} color={theme.inkAlpha40} />
         <Text style={styles.lockedText}>
           Identity nudge unlocks after {3 - scenesRevealed > 0 ? 3 - scenesRevealed : 0} more{" "}
-          {scenesRevealed === 2 ? "memory" : "memories"}
+          {scenesRevealed === 2 ? "scene" : "scenes"}
         </Text>
       </View>
     );
@@ -106,7 +106,7 @@ export function IdentityHintButton({
           ? error
           : isLoading
             ? "Listening…"
-            : `Ask the memory who it was · −${IDENTITY_HINT_PENALTY} pts`}
+            : `Ask for a hint · −${IDENTITY_HINT_PENALTY} pts`}
       </Text>
     </Pressable>
   );
