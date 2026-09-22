@@ -60,8 +60,11 @@ export function IdentityHintButton({
     setError(null);
     try {
       if (runId) {
-        // Identity nudges cost double a scene hint (2 units x HINT_PENALTY = IDENTITY_HINT_PENALTY).
-        await useHintMutation({ runId, count: 2 });
+        // Identity nudge consumes 1 hint unit from the per-run cap; the score
+        // deduction (IDENTITY_HINT_PENALTY) is still 2x a scene hint, so the
+        // harder hint still costs more points — the cap just keeps the budget
+        // from being blown in a single tap.
+        await useHintMutation({ runId, count: 1 });
       }
       const result = await generateIdentityHint({ episodeId });
       setHint(result);

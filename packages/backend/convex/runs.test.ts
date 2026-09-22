@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
+import { MAX_GUESSES_PER_RUN } from "./scoring";
 
 const modules = import.meta.glob("./**/*.*s");
 
@@ -194,12 +195,37 @@ describe("runs lifecycle", () => {
 
     const first = await t.mutation(api.runs.useHint, { runId: run._id });
     expect(first.hintsUsed).toBe(1);
+    expect(first.hintsRemaining).toBe(1);
 
     const repeated = await t.mutation(api.runs.useHint, { runId: run._id });
     expect(repeated.hintsUsed).toBe(2);
+    expect(repeated.hintsRemaining).toBe(0);
 
     const stored = await t.query(api.runs.getActiveRun, { episodeId, identityId: "player-hints" });
     expect(stored?.hintsUsed).toBe(2);
+  });
+
+  test("useHint caps at MAX_HINTS_PER_RUN and reports zero remaining", async () => {
+    const t = setup();
+    const episodeId = await seedEpisode(t);
+    const run = await t.mutation(api.runs.startRun, {
+      episodeId,
+      identityId: "player-hints-cap",
+      playerName: "Cap",
+    });
+
+    let result = await t.mutation(api.runs.useHint, { runId: run._id, count: 1 });
+    expect(result.hintsUsed).toBe(1);
+    expect(result.hintsRemaining).toBe(1);
+
+    // Past the cap: a third call is a no-op, not a refusal.
+    result = await t.mutation(api.runs.useHint, { runId: run._id, count: 1 });
+    expect(result.hintsUsed).toBe(2);
+    expect(result.hintsRemaining).toBe(0);
+
+    result = await t.mutation(api.runs.useHint, { runId: run._id, count: 1 });
+    expect(result.hintsUsed).toBe(2);
+    expect(result.hintsRemaining).toBe(0);
   });
 
   test("submitGuess with correct figureId solves the run and computes a score", async () => {
@@ -249,7 +275,7 @@ describe("runs lifecycle", () => {
     ).rejects.toThrow(/resolved or exhausted/);
   });
 
-  test("submitGuess exhausts the run after five wrong guesses and reveals the answer once", async () => {
+  test("submitGuess exhausts the run after MAX_GUESSES_PER_RUN wrong guesses and reveals the answer once", async () => {
     const t = setup();
     const episodeId = await seedEpisode(t);
     const ada = await t.query(api.figures.search, { query: "Ada" }).then((rows) => rows[0]);
@@ -261,7 +287,7 @@ describe("runs lifecycle", () => {
     await t.mutation(api.runs.enterScene, { runId: run._id, sceneIndex: 0 });
 
     let lastResult: { status: string; guessesRemaining: number; answer?: string } | null = null;
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < MAX_GUESSES_PER_RUN; i += 1) {
       lastResult = await t.mutation(api.runs.submitGuess, {
         runId: run._id,
         figureId: ada._id,
@@ -275,7 +301,7 @@ describe("runs lifecycle", () => {
 
     const stored = await t.query(api.runs.getActiveRun, { episodeId, identityId: "player-f" });
     expect(stored?.status).toBe("exhausted");
-    expect(stored?.guessesUsed).toBe(5);
+    expect(stored?.guessesUsed).toBe(MAX_GUESSES_PER_RUN);
 
     // Reloads: the exhausted player can still recover the answer.
     const answer = await t.query(api.runs.getAnswer, { episodeId, identityId: "player-f" });

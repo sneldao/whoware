@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { clampInteger, computeDetailedProximity, computeScore, MAX_GUESSES_PER_RUN, proximityMessage } from "./scoring";
+import { clampInteger, computeDetailedProximity, computeScore, MAX_GUESSES_PER_RUN, MAX_HINTS_PER_RUN, proximityMessage } from "./scoring";
 
 const guessProximity = v.union(
   v.literal("correct"),
@@ -193,17 +193,22 @@ export const useHint = mutation({
     /** How many hint units to charge. Identity nudges cost 2; scene whispers cost 1. */
     count: v.optional(v.number()),
   },
-  returns: v.object({ hintsUsed: v.number() }),
+  returns: v.object({ hintsUsed: v.number(), hintsRemaining: v.number() }),
   handler: async (ctx, args) => {
     const run = await ctx.db.get(args.runId);
     if (!run) throw new Error("Run not found");
     if (run.status !== "active") {
       throw new Error("Run is already resolved or exhausted");
     }
-    const count = clampInteger(args.count ?? 1, 1, 10);
+    const remaining = Math.max(0, MAX_HINTS_PER_RUN - run.hintsUsed);
+    if (remaining === 0) {
+      return { hintsUsed: run.hintsUsed, hintsRemaining: 0 };
+    }
+    const requested = clampInteger(args.count ?? 1, 1, 10);
+    const count = Math.min(requested, remaining);
     const hintsUsed = run.hintsUsed + count;
     await ctx.db.patch(args.runId, { hintsUsed });
-    return { hintsUsed };
+    return { hintsUsed, hintsRemaining: Math.max(0, MAX_HINTS_PER_RUN - hintsUsed) };
   },
 });
 

@@ -7,7 +7,9 @@ export const IDENTITY_HINT_PENALTY = HINT_PENALTY * 2;
 export const GUESS_PENALTY = 600;
 export const TIME_BUCKET_MS = 30_000;
 export const TIME_BUCKET_PENALTY = 5;
-export const MAX_GUESSES_PER_RUN = 5;
+/** Per-run caps — v0.2: more guesses (8 vs 5), hints hard-capped at 2. */
+export const MAX_GUESSES_PER_RUN = 8;
+export const MAX_HINTS_PER_RUN = 2;
 
 export interface ScoringInput {
   memoriesViewed: number;
