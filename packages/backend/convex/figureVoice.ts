@@ -203,49 +203,52 @@ const KIND_NOUN: Record<ObjectKind, string[]> = {
 };
 
 const KIND_RELATION: Record<ObjectKind, string[]> = {
-  instrument: ["I learned on", "I used to chart", "I built with", "I calibrated against the stars with"],
-  weapon: ["I carried", "I wielded", "I held", "I fought with"],
-  document: ["I drafted", "I read until I knew it by heart", "I signed", "I kept with me"],
-  garment: ["I wore", "they dressed me in", "I was buried in", "I carried into"],
-  building: ["I built", "I lived in", "I prayed in", "I raised"],
-  portrait: ["they made of me", "I sat for", "I painted", "I kept hidden"],
-  letter: ["I wrote", "I received", "I carried across", "I answered"],
-  jewelry: ["I wore", "they gave me", "I never removed", "I inherited"],
-  tool: ["I worked with", "I learned my craft with", "I made my living with", "I used"],
-  food: ["I ate", "we shared", "sustained me through", "I traded for"],
-  plant: ["I grew", "I cultivated", "I learned the uses of", "I gathered"],
-  animal: ["I kept", "I rode", "I trained", "I lived beside"],
-  book: ["I read", "I wrote", "I carried with me", "I learned from"],
-  vessel: ["I drank from", "I poured", "I kept my ink in", "I broke on the day"],
-  music: ["I played", "I learned on", "I composed for", "I heard first on"],
-  generic: ["I held", "I kept", "I found", "I remember"],
+  // First-person verbs, no leading "I" — the pattern adds the "I".
+  instrument: ["learned on", "used to chart", "built with", "calibrated against the stars with"],
+  weapon: ["carried", "wielded", "held", "fought with"],
+  document: ["drafted", "read until I knew it by heart", "signed", "kept with me"],
+  garment: ["wore", "was dressed in", "was buried in", "carried into"],
+  building: ["built", "lived in", "prayed in", "raised"],
+  portrait: ["sat for", "painted", "kept hidden", "refused to look at"],
+  letter: ["wrote", "received", "carried across", "answered"],
+  jewelry: ["wore", "was given", "never removed", "inherited"],
+  tool: ["worked with", "learned my craft on", "made my living with", "used"],
+  food: ["ate", "shared with the household", "was sustained by", "traded for"],
+  plant: ["grew", "cultivated", "learned the uses of", "gathered"],
+  animal: ["kept", "rode", "trained", "lived beside"],
+  book: ["read", "wrote", "carried with me", "learned from"],
+  vessel: ["drank from", "poured from", "kept my ink in", "broke the day"],
+  music: ["played", "learned on", "composed for", "heard first on"],
+  generic: ["held", "kept", "found", "remember"],
 };
 
 const KIND_FOLLOW: Record<ObjectKind, string[]> = {
+  // Follow phrases never lead with "and" — the patterns supply that connector
+  // when they want one.
   instrument: ["what my teacher built before me", "what the stars spoke to me through", "what measured my life's work", "what no one else could read"],
   weapon: ["when the field was lost", "when I knew it was over", "until the day I fell", "when I learned what I was for"],
-  document: ["and I believe every word", "though I changed my mind about some of it", "which they would not let me publish", "which outlived me"],
-  garment: ["and never took it off again", "until the day I was taken", "the day I came into my own", "for every public thing I did"],
-  building: ["and saw it finished", "and lived there until they came for me", "with nothing but my own hands", "until the last of us was gone"],
-  portrait: ["and tried not to blink", "and they painted me tired", "and the painter knew more than I did", "which I never looked at directly"],
-  letter: ["and burned the draft three times first", "and sent it anyway", "and waited years for the answer", "which I rewrote twice"],
-  jewelry: ["and never told anyone where I kept it", "for the rest of my life", "until they took it from me", "from the day they gave it to me"],
-  tool: ["until my hands gave out", "every day for years", "when I had nothing else", "until I learned to do without"],
-  food: ["when there was nothing else", "and thought of home", "through the worst winter I knew", "and was grateful for it"],
-  plant: ["in the only patch of earth I owned", "and it survived me", "which I tended every morning", "that the birds never touched"],
-  animal: ["and it understood me better than most", "until we were separated", "for as long as I lived", "and it never left my side"],
-  book: ["until I could recite it", "and disagreed with half of it", "which I still keep", "and still reach for"],
-  vessel: ["and thought of who had used it before me", "and the taste stayed with me", "which I never washed", "and the wine was better than the company"],
-  music: ["and the room fell silent", "until I could play it in my sleep", "for the only audience that mattered", "which I never played the same way twice"],
-  generic: ["and I have not let it go since", "which they would not let me forget", "and I think of it still", "and the world has never been the same"],
+  document: ["I believe every word", "though I changed my mind about some of it", "which they would not let me publish", "which outlived me"],
+  garment: ["I never took it off again", "until the day I was taken", "the day I came into my own", "for every public thing I did"],
+  building: ["I saw it finished", "I lived there until they came for me", "with nothing but my own hands", "until the last of us was gone"],
+  portrait: ["I tried not to blink", "they painted me tired", "the painter knew more than I did", "which I never looked at directly"],
+  letter: ["I burned the draft three times first", "I sent it anyway", "I waited years for the answer", "which I rewrote twice"],
+  jewelry: ["I never told anyone where I kept it", "for the rest of my life", "until they took it from me", "from the day they gave it to me"],
+  tool: ["until my hands gave out", "every day for years", "I had nothing else", "until I learned to do without"],
+  food: ["when there was nothing else", "I thought of home", "through the worst winter I knew", "I was grateful for it"],
+  plant: ["in the only patch of earth I owned", "it survived me", "which I tended every morning", "that the birds never touched"],
+  animal: ["it understood me better than most", "until we were separated", "for as long as I lived", "it never left my side"],
+  book: ["until I could recite it", "I disagreed with half of it", "which I still keep", "I still reach for it"],
+  vessel: ["I thought of who had used it before me", "the taste stayed with me", "which I never washed", "the wine was better than the company"],
+  music: ["the room fell silent", "until I could play it in my sleep", "for the only audience that mattered", "which I never played the same way twice"],
+  generic: ["I have not let it go since", "they would not let me forget", "I think of it still", "the world has never been the same"],
 };
 
 const MEM_PHRASES: Record<EraBucket, string[]> = {
-  ancient: ["in the time of the first emperor", "when the city still stood", "before the fire", "in the days of my father", "when the gods were still speaking"],
-  classical: ["when the city was at its height", "before the plague", "in the days of the old law", "when the borders were open", "in my grandfather's time"],
-  renaissance: ["when the new learning came", "before the schism", "in the time of the great voyages", "when the printing house first opened", "in my father's house"],
-  "early-modern": ["when the railways were new", "before the revolution", "in the year of the great comet", "when the colonies were still ours", "when my mother was alive"],
-  modern: ["when I was young", "before the war", "in the year everything changed", "when the old world was still here", "in my first job"],
+  ancient: ["the time of the first emperor", "the days when the city still stood", "before the fire", "my father's time", "when the gods were still speaking"],
+  classical: ["when the city was at its height", "before the plague", "the days of the old law", "when the borders were open", "my grandfather's time"],
+  renaissance: ["the new learning", "before the schism", "the time of the great voyages", "when the printing house first opened", "my father's house"],
+  "early-modern": ["when the railways were new", "before the revolution", "the year of the great comet", "when the colonies were still ours", "when my mother was alive"],
+  modern: ["when I was young", "before the war", "the year everything changed", "when the old world was still here", "my first job"],
 };
 
 const ROLE_LABELS: Record<VoiceRole, string> = {
@@ -286,15 +289,15 @@ const PATTERNS: Record<VoiceRole, Array<(slots: PatternSlots) => string>> = {
     ({ I, thing, relation, memEra, place }) =>
       `${capitalize(I)} ${relation} ${thing} ${memEra}, in ${place}. The work kept me.`,
     ({ I, thing, relation, follow }) =>
-      `${capitalize(I)} ${relation} ${thing} and ${follow}. The rest of it — what people made of it — was never mine.`,
+      `${capitalize(I)} ${relation} ${thing} — ${follow}. The rest of it — what people made of it — was never mine.`,
   ],
   ruler: [
     ({ I, thing, relation, follow, place }) =>
-      `${capitalize(I)} ${relation} ${thing}; ${follow}. ${place} was my office, not my home.`,
+      `${capitalize(I)} ${relation} ${thing}; ${follow}. ${capitalize(place)} was my office, not my home.`,
     ({ I, thing, relation, place }) =>
-      `${capitalize(I)} ${relation} ${thing} because the office demanded it. ${place} saw more of me than my family did.`,
+      `${capitalize(I)} ${relation} ${thing} because the office demanded it. ${capitalize(place)} saw more of me than my family did.`,
     ({ I, thing, relation, follow }) =>
-      `${capitalize(I)} ${relation} ${thing}, and ${follow}. People remember the office; I remember the work.`,
+      `${capitalize(I)} ${relation} ${thing} — ${follow}. People remember the office; I remember the work.`,
   ],
   religious: [
     ({ I, thing, relation, follow, place }) =>
@@ -356,9 +359,10 @@ function pick<T>(arr: T[]): T {
 function pickPlaceRef(region: string, location: string): string {
   const candidates = [region, location].filter(Boolean);
   for (const c of candidates) {
-    // Strip trailing commas, periods.
+    // Strip trailing commas, periods. Cap length so a long-form region
+    // ("Roman Empire", "the Kingdom of France") doesn't dominate the quote.
     const trimmed = c.replace(/[,.]\s*$/, "").trim();
-    if (trimmed.length > 0 && trimmed.length < 60) return trimmed;
+    if (trimmed.length > 0 && trimmed.length <= 24) return trimmed;
   }
   return "home";
 }
