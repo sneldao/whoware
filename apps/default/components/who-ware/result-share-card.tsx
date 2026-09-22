@@ -1,32 +1,8 @@
 import { theme } from "@/lib/theme";
-import { GRADE_COLORS, gradeForScore } from "@/lib/score-projection";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
-import * as Haptics from "expo-haptics";
-import { LinearGradient } from "expo-linear-gradient";
-import * as Sharing from "expo-sharing";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Platform, Pressable, Share, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import { captureRef } from "react-native-view-shot";
-
-interface ResultShareCardProps {
-  episodeNumber: number;
-  memoriesViewed: number;
-  cluesOpened: number;
-  elapsedMs: number;
-  score: number;
-  rank: number | null;
-  rankedCount: number;
-  streak?: number;
-  guessesUsed?: number;
-  hotspotsOpened?: number;
-  difficulty?: "iconic" | "field" | "research";
-  figureEra?: string;
-  figureRegion?: string;
-  /** True when this score beats every prior solved episode — flex badge. */
-  isPersonalBest?: boolean;
-}
 
 export const DIFFICULTY_PALETTE: Record<string, { bg: string; fg: string; label: string }> = {
   iconic: { bg: theme.accentAlpha22, fg: theme.accent, label: "Iconic" },
@@ -34,586 +10,269 @@ export const DIFFICULTY_PALETTE: Record<string, { bg: string; fg: string; label:
   research: { bg: "rgba(147, 197, 253, 0.22)", fg: "#93C5FD", label: "Research" },
 };
 
-function getStreakTier(streak: number): { label: string; color: string; icon: string; glow: string } {
-  if (streak >= 100) return { label: "Eternal", color: "#C084FC", icon: "diamond", glow: "rgba(192, 132, 252, 0.3)" };
-  if (streak >= 30) return { label: "Inferno", color: "#EF4444", icon: "flame", glow: "rgba(239, 68, 68, 0.3)" };
-  if (streak >= 7) return { label: "Flame", color: "#FB923C", icon: "flame", glow: "rgba(251, 146, 60, 0.3)" };
-  if (streak >= 1) return { label: "Spark", color: theme.accent, icon: "flash", glow: theme.accentAlpha30 };
-  return { label: "", color: "#FB923C", icon: "flame", glow: "rgba(251, 146, 60, 0.3)" };
+interface ResultShareCardProps {
+  episodeNumber: number;
+  figureName: string;
+  outcome: "solved" | "exhausted";
+  score: number;
+  guessesUsed?: number;
+  maxGuesses?: number;
+  difficulty?: "iconic" | "field" | "research";
+  figureEra?: string;
+  figureRegion?: string;
+  /** Optional app/site URL appended to the share text. */
+  siteUrl?: string;
 }
 
-function getScoreTierGradient(percentile: number | null): string[] {
-  if (percentile !== null && percentile <= 10) return [theme.accent, theme.goldGradientEnd, theme.accent];
-  if (percentile !== null && percentile <= 25) return ["#D1D5DB", "#9CA3AF", "#D1D5DB"];
-  if (percentile !== null && percentile <= 50) return ["#D97706", "#B45309", "#D97706"];
-  return [theme.accentAlpha28, theme.accentAlpha12, theme.accentAlpha28];
+const FILLED = "🟧";
+const EMPTY = "⬜";
+
+function buildEmojiRow(filled: number, total: number): string {
+  const safeTotal = Math.max(0, total);
+  const safeFilled = Math.max(0, Math.min(filled, safeTotal));
+  return FILLED.repeat(safeFilled) + EMPTY.repeat(Math.max(0, safeTotal - safeFilled));
 }
 
+function buildShareText(args: {
+  episodeNumber: number;
+  figureName: string;
+  outcome: "solved" | "exhausted";
+  score: number;
+  guessesUsed: number;
+  maxGuesses: number;
+  difficulty?: "iconic" | "field" | "research";
+  figureEra?: string;
+  figureRegion?: string;
+  siteUrl?: string;
+}): string {
+  const outcomeLabel = args.outcome === "solved" ? "Solved" : "Missed";
+  const diff = args.difficulty ? ` · ${args.difficulty}` : "";
+  const era = args.figureEra ? ` · ${args.figureEra}` : "";
+  const region = args.figureRegion ? ` · ${args.figureRegion}` : "";
+  const row = buildEmojiRow(args.guessesUsed, args.maxGuesses);
+  const tail = args.siteUrl ? `\n${args.siteUrl}` : "";
+  return [
+    `WhoWare #${String(args.episodeNumber).padStart(3, "0")}${diff}`,
+    `${outcomeLabel}: ${args.figureName}${era}${region}`,
+    `${row}  ${args.score.toLocaleString()} pts`,
+    tail,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Compact result card. Copy-button and native share — that's the whole job.
+ * Heavy rank/grade/streak chrome and the image-capture pipeline moved out
+ * to keep this lean (v0.2 cut #6).
+ */
 export function ResultShareCard({
   episodeNumber,
-  memoriesViewed,
-  cluesOpened,
-  elapsedMs,
+  figureName,
+  outcome,
   score,
-  rank,
-  rankedCount,
-  streak = 0,
   guessesUsed = 1,
-  hotspotsOpened = 0,
+  maxGuesses = 8,
   difficulty,
   figureEra,
   figureRegion,
-  isPersonalBest = false,
+  siteUrl,
 }: ResultShareCardProps) {
-  const cardRef = useRef<View>(null);
-  const [isSharing, setIsSharing] = useState(false);
-  const [isCopied, setIsCopied] = useState(false);
-  const [isImageSharing, setIsImageSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  const memoryGrid = buildMemoryGrid(memoriesViewed, cluesOpened);
-  const percentile = rank && rankedCount > 0 ? Math.max(1, Math.round((rank / rankedCount) * 100)) : null;
-  const grade = gradeForScore(score);
-  const shareText = buildShareText({ episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak, score, guessesUsed, gradeTitle: grade.title, grade: grade.grade, isPersonalBest });
+  const shareText = buildShareText({
+    episodeNumber,
+    figureName,
+    outcome,
+    score,
+    guessesUsed,
+    maxGuesses,
+    difficulty,
+    figureEra,
+    figureRegion,
+    siteUrl,
+  });
+
   const difficultyStyle = difficulty ? DIFFICULTY_PALETTE[difficulty] ?? DIFFICULTY_PALETTE.iconic : null;
-  const tier = getStreakTier(streak);
-  const borderGradient = getScoreTierGradient(percentile);
-
-  async function handleShare() {
-    if (isSharing) return;
-    setIsSharing(true);
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    try {
-      if (Platform.OS !== "web" && cardRef.current) {
-        const uri = await captureRef(cardRef, { format: "png", quality: 1 });
-        const canShareFile = await Sharing.isAvailableAsync();
-        if (canShareFile) {
-          await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Share your WhoWare result" });
-          return;
-        }
-      }
-      await Share.share({ message: shareText });
-    } catch {
-      try {
-        await Share.share({ message: shareText });
-      } catch {
-        // user dismissed
-      }
-    } finally {
-      setIsSharing(false);
-    }
-  }
-
-  async function handleShareImage() {
-    if (isImageSharing) return;
-    setIsImageSharing(true);
-    if (Platform.OS !== "web") {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
-    try {
-      if (cardRef.current) {
-        const uri = await captureRef(cardRef, { format: "png", quality: 1 });
-        if (Platform.OS === "web") {
-          const link = document.createElement("a");
-          link.href = uri;
-          link.download = `whoware-${episodeNumber}.png`;
-          link.click();
-        } else {
-          const canShare = await Sharing.isAvailableAsync();
-          if (canShare) {
-            await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: "Share result image" });
-          }
-        }
-      }
-    } catch {
-      // user dismissed
-    } finally {
-      setIsImageSharing(false);
-    }
-  }
 
   async function handleCopy() {
-    if (isCopied) return;
     await Clipboard.setStringAsync(shareText);
-    setIsCopied(true);
-    if (Platform.OS !== "web") {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  }
+
+  async function handleShare() {
+    try {
+      await Share.share({ message: shareText });
+    } catch {
+      /* user cancelled */
     }
-    setTimeout(() => setIsCopied(false), 1800);
   }
 
   return (
-    <Animated.View entering={FadeInDown.springify().damping(14).stiffness(120)} style={styles.container}>
-      <View style={styles.borderWrap}>
-        <LinearGradient colors={borderGradient} style={styles.borderGradient}>
-          <View ref={cardRef} collapsable={false} style={styles.captureSurface}>
-            <LinearGradient colors={["#2A1A09", "#140C04"]} style={StyleSheet.absoluteFill} />
-            <View style={styles.cardHeader}>
-              <View style={styles.brandMark}>
-                <Ionicons name="eye" size={16} color={theme.inkInverted} />
-              </View>
-              <Text style={styles.brandName}>WhoWare</Text>
-              <View style={styles.headerChips}>
-                {streak > 0 ? (
-                  <View style={[styles.tierChip, { backgroundColor: tier.glow, borderColor: tier.color }]}>
-                    <Ionicons name={tier.icon as "flash" | "flame" | "diamond"} size={12} color={tier.color} />
-                    <Text style={[styles.tierChipText, { color: tier.color }]}>{tier.label}</Text>
-                  </View>
-                ) : null}
-                {difficultyStyle ? (
-                  <View style={[styles.chip, { backgroundColor: difficultyStyle.bg }]}>
-                    <Text style={[styles.chipText, { color: difficultyStyle.fg }]}>{difficultyStyle.label}</Text>
-                  </View>
-                ) : null}
-                <Text style={styles.episodeTag}>#{episodeNumber}</Text>
-              </View>
-            </View>
-
-            <Text style={styles.solvedLabel}>Identity anchored</Text>
-
-            {figureEra && figureRegion ? (
-              <Text style={styles.figureContext}>
-                {figureEra} · {figureRegion}
-              </Text>
-            ) : null}
-
-            <View style={styles.gridRow}>
-              {memoryGrid.map((symbol, index) => (
-                <Text key={index} style={styles.gridSymbol}>
-                  {symbol}
-                </Text>
-              ))}
-            </View>
-
-            <View style={styles.statRow}>
-              <ShareStat label="Memories" value={`${memoriesViewed}`} />
-              <ShareStat label="Clues" value={`${cluesOpened}`} />
-              <ShareStat label="Time" value={formatElapsed(elapsedMs)} />
-            </View>
-
-            <View style={styles.statRow}>
-              <ShareStat label="Guesses" value={`${guessesUsed}`} />
-              <ShareStat label="Hotspots" value={`${hotspotsOpened}`} />
-              <ShareStat label="Score" value={formatScore(score)} />
-            </View>
-
-            <View style={styles.scoreRow}>
-              <Text style={styles.scoreValue}>{formatScore(score)}</Text>
-              <Text style={styles.scoreSuffix}>pts</Text>
-              <View
-                style={[
-                  styles.gradeBadge,
-                  { borderColor: GRADE_COLORS[grade.grade], backgroundColor: `${GRADE_COLORS[grade.grade]}22` },
-                ]}
-              >
-                <Text style={[styles.gradeText, { color: GRADE_COLORS[grade.grade] }]}>{grade.grade}</Text>
-              </View>
-              {percentile !== null ? (
-                <View style={styles.percentileBadge}>
-                  <Text style={styles.percentile}>Top {percentile}%</Text>
-                </View>
-              ) : null}
-              {isPersonalBest ? (
-                <View style={styles.pbBadge}>
-                  <Ionicons name="trophy" size={10} color={theme.inkOnAccent} />
-                  <Text style={styles.pbText}>PB</Text>
-                </View>
-              ) : null}
-            </View>
-            <Text style={styles.gradeTitle}>
-              {isPersonalBest ? "Personal best — " : ""}{grade.title} — {grade.blurb}
-            </Text>
-
-            {streak > 0 ? (
-              <View style={styles.streakRow}>
-                <View style={[styles.streakFlameGlow, { backgroundColor: tier.glow }]}>
-                  <Ionicons name="flame" size={16} color={tier.color} />
-                </View>
-                <Text style={[styles.streakText, { color: tier.color }]}>{streak}-day streak</Text>
-              </View>
-            ) : null}
-
-            <Text style={styles.tagline}>Can you name them in fewer? · whoware.app</Text>
+    <View style={styles.card}>
+      <View style={styles.header}>
+        <Text style={styles.episode}>WhoWare #{String(episodeNumber).padStart(3, "0")}</Text>
+        {difficultyStyle ? (
+          <View style={[styles.pill, { backgroundColor: difficultyStyle.bg }]}>
+            <Text style={[styles.pillText, { color: difficultyStyle.fg }]}>{difficultyStyle.label}</Text>
           </View>
-        </LinearGradient>
+        ) : null}
+      </View>
+
+      <Text style={[styles.figureName, outcome === "exhausted" && styles.figureNameMissed]}>
+        {outcome === "exhausted" ? "Missed: " : "Solved: "}
+        {figureName}
+      </Text>
+
+      {(figureEra || figureRegion) ? (
+        <Text style={styles.meta}>
+          {[figureEra, figureRegion].filter(Boolean).join(" · ")}
+        </Text>
+      ) : null}
+
+      <View style={styles.row}>
+        <Text style={styles.rowEmoji}>{buildEmojiRow(guessesUsed, maxGuesses)}</Text>
+        <Text style={styles.rowScore}>{score.toLocaleString()} pts</Text>
       </View>
 
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Copy result"
           onPress={handleCopy}
-          disabled={isCopied}
-          style={({ pressed }) => [styles.copyButton, pressed && styles.pressed, isCopied && styles.copyButtonDone]}
+          style={({ pressed }) => [styles.action, pressed && styles.pressed, copied && styles.actionDone]}
         >
-          <Ionicons name={isCopied ? "checkmark" : "copy-outline"} size={18} color={theme.accent} />
-          <Text style={styles.copyButtonText}>{isCopied ? "Copied" : "Copy text"}</Text>
+          <Ionicons name={copied ? "checkmark" : "copy-outline"} size={15} color={copied ? "#86EFAC" : theme.accent} />
+          <Text style={[styles.actionText, copied && styles.actionTextDone]}>
+            {copied ? "Copied" : "Copy"}
+          </Text>
         </Pressable>
-
         <Pressable
           accessibilityRole="button"
-          onPress={handleShareImage}
-          disabled={isImageSharing}
-          style={({ pressed }) => [styles.imageButton, pressed && styles.pressed, isImageSharing && styles.shareButtonBusy]}
-        >
-          <Ionicons name="image-outline" size={18} color={theme.accent} />
-          <Text style={styles.imageButtonText}>{isImageSharing ? "…" : "Image"}</Text>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="button"
+          accessibilityLabel="Share result"
           onPress={handleShare}
-          disabled={isSharing}
-          style={({ pressed }) => [styles.shareButton, pressed && styles.pressed, isSharing && styles.shareButtonBusy]}
+          style={({ pressed }) => [styles.action, styles.actionPrimary, pressed && styles.pressed]}
         >
-          <Ionicons name="share-outline" size={18} color={theme.inkInverted} />
-          <Text style={styles.shareButtonText}>{isSharing ? "…" : "Share"}</Text>
+          <Ionicons name="share-outline" size={15} color={theme.inkInverted} />
+          <Text style={[styles.actionText, styles.actionTextPrimary]}>Share</Text>
         </Pressable>
       </View>
-    </Animated.View>
-  );
-}
 
-interface ShareStatProps {
-  label: string;
-  value: string;
-}
-
-function ShareStat({ label, value }: ShareStatProps) {
-  return (
-    <View style={styles.shareStat}>
-      <Text style={styles.shareStatValue}>{value}</Text>
-      <Text style={styles.shareStatLabel}>{label}</Text>
+      {Platform.OS === "web" ? (
+        <Text style={styles.webHint}>Tap Share to post to any platform.</Text>
+      ) : null}
     </View>
   );
 }
 
-function buildMemoryGrid(memoriesViewed: number, cluesOpened: number): string[] {
-  const memCount = Math.max(1, Math.min(memoriesViewed, 3));
-  const tiles: string[] = [];
-  for (let i = 0; i < memCount; i += 1) tiles.push("🏛️");
-  for (let i = 0; i < Math.min(cluesOpened, 6); i += 1) tiles.push("🔍");
-  return tiles;
-}
-
-function buildShareText(args: {
-  episodeNumber: number;
-  memoryGrid: string[];
-  memoriesViewed: number;
-  cluesOpened: number;
-  elapsedMs: number;
-  percentile: number | null;
-  streak: number;
-  score: number;
-  guessesUsed: number;
-  grade: string;
-  gradeTitle: string;
-  isPersonalBest?: boolean;
-}): string {
-  const { episodeNumber, memoryGrid, memoriesViewed, cluesOpened, elapsedMs, percentile, streak, score, guessesUsed, grade, gradeTitle, isPersonalBest } = args;
-  const percentileLine = percentile !== null ? ` (Top ${percentile}%)` : "";
-  const streakLine = streak > 1 ? ` · 🔥 ${streak}-day streak` : "";
-  const pbLine = isPersonalBest ? " · 🏆 personal best" : "";
-  
-  return [
-    `WhoWare #${episodeNumber} 🏛️`,
-    `${memoryGrid.join("")}`,
-    `🎖️ ${formatScore(score)} pts · Grade ${grade} — ${gradeTitle} · ${guessesUsed}/5 accusations${pbLine}`,
-    `⏱️ ${formatElapsed(elapsedMs)} · ${memoriesViewed} room${memoriesViewed > 1 ? "s" : ""} · ${cluesOpened} clue${cluesOpened !== 1 ? "s" : ""}${percentileLine}${streakLine}`,
-    `Can you name them from the room? 🗝️ https://whoware.app`,
-  ].join("\n");
-}
-
-function formatElapsed(elapsedMs: number): string {
-  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
-
-function formatScore(score: number): string {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(score);
-}
-
 const styles = StyleSheet.create({
-  container: {
-    gap: 12,
-  },
-  borderWrap: {
-    borderRadius: 30,
+  card: {
+    padding: 18,
+    gap: 10,
+    borderRadius: 22,
     borderCurve: "continuous",
-    overflow: "hidden",
+    backgroundColor: "rgba(8, 5, 2, 0.72)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 240, 214, 0.12)",
   },
-  borderGradient: {
-    padding: 2,
-    borderRadius: 30,
-    borderCurve: "continuous",
-  },
-  captureSurface: {
-    overflow: "hidden",
-    padding: 22,
-    gap: 12,
-    borderRadius: 28,
-    borderCurve: "continuous",
-  },
-  cardHeader: {
+  header: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  brandMark: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    borderCurve: "continuous",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: theme.accent,
-  },
-  brandName: {
+  episode: {
     flex: 1,
-    color: theme.ink,
-    fontSize: 18,
-    fontWeight: "900",
-    letterSpacing: -0.4,
-  },
-  episodeTag: {
-    color: theme.accentAlpha90,
-    fontSize: 16,
-    fontWeight: "900",
-    fontVariant: ["tabular-nums"],
-  },
-  headerChips: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  tierChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  tierChipText: {
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.3,
-  },
-  chip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  chipText: {
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  solvedLabel: {
-    color: theme.inkAlpha60,
-    fontSize: 11,
+    color: theme.inkAlpha70,
+    fontSize: 12,
     fontWeight: "900",
     letterSpacing: 1.4,
     textTransform: "uppercase",
   },
-  figureContext: {
-    color: theme.inkAlpha70,
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+  pill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
-  gridRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 4,
-  },
-  gridSymbol: {
-    fontSize: 24,
-  },
-  statRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  shareStat: {
-    flex: 1,
-    padding: 10,
-    gap: 2,
-    borderRadius: 14,
-    borderCurve: "continuous",
-    backgroundColor: theme.inkAlpha07,
-    borderWidth: 1,
-    borderColor: theme.inkAlpha8,
-  },
-  shareStatValue: {
-    color: theme.ink,
-    fontSize: 17,
+  pillText: {
+    fontSize: 10,
     fontWeight: "900",
-    fontVariant: ["tabular-nums"],
-  },
-  shareStatLabel: {
-    color: theme.inkAlpha45,
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   },
-  gradeBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    borderCurve: "continuous",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-    marginLeft: 8,
-  },
-  gradeText: {
-    fontSize: 17,
+  figureName: {
+    color: theme.ink,
+    fontSize: 22,
     fontWeight: "900",
+    letterSpacing: -0.3,
   },
-  gradeTitle: {
-    color: theme.inkAlpha55,
+  figureNameMissed: {
+    color: theme.dangerText,
+  },
+  meta: {
+    color: theme.inkAlpha60,
     fontSize: 12,
     fontWeight: "700",
-    textAlign: "center",
-    marginTop: 2,
-  },
-  pbBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 9,
-    borderCurve: "continuous",
-    backgroundColor: theme.accent,
-    marginLeft: 8,
-  },
-  pbText: {
-    color: theme.inkOnAccent,
-    fontSize: 11,
-    fontWeight: "900",
     letterSpacing: 0.4,
   },
-  scoreRow: {
+  row: {
     flexDirection: "row",
-    alignItems: "baseline",
-    gap: 3,
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
   },
-  scoreValue: {
+  rowEmoji: {
+    fontSize: 18,
+    letterSpacing: 1,
+  },
+  rowScore: {
     color: theme.accent,
-    fontSize: 32,
-    fontWeight: "900",
-    fontVariant: ["tabular-nums"],
-    letterSpacing: -1,
-  },
-  scoreSuffix: {
-    color: theme.accentAlpha60,
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  percentileBadge: {
-    marginLeft: "auto",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: theme.inkAlpha8,
-  },
-  percentile: {
-    color: theme.ink,
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  streakRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  streakFlameGlow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  streakText: {
     fontSize: 14,
     fontWeight: "900",
-  },
-  tagline: {
-    color: theme.inkAlpha38,
-    fontSize: 11,
-    fontWeight: "800",
-    marginTop: 2,
   },
   actions: {
     flexDirection: "row",
     gap: 8,
+    marginTop: 6,
   },
-  copyButton: {
-    paddingHorizontal: 14,
-    minHeight: 50,
+  action: {
+    flex: 1,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    borderRadius: 18,
+    borderRadius: 14,
     borderCurve: "continuous",
-    backgroundColor: theme.accentAlpha10,
     borderWidth: 1,
     borderColor: theme.accentAlpha35,
+    backgroundColor: theme.accentAlpha10,
   },
-  copyButtonDone: {
+  actionPrimary: {
+    backgroundColor: theme.accent,
+    borderColor: theme.accent,
+  },
+  actionDone: {
     backgroundColor: "rgba(134, 239, 172, 0.14)",
     borderColor: "rgba(134, 239, 172, 0.5)",
   },
-  copyButtonText: {
+  actionText: {
     color: theme.accent,
     fontSize: 13,
     fontWeight: "900",
   },
-  imageButton: {
-    paddingHorizontal: 14,
-    minHeight: 50,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderRadius: 18,
-    borderCurve: "continuous",
-    backgroundColor: theme.accentAlpha10,
-    borderWidth: 1,
-    borderColor: theme.accentAlpha35,
+  actionTextDone: {
+    color: "#86EFAC",
   },
-  imageButtonText: {
-    color: theme.accent,
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  shareButton: {
-    flex: 1,
-    minHeight: 50,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderRadius: 18,
-    borderCurve: "continuous",
-    backgroundColor: theme.accent,
-  },
-  shareButtonBusy: {
-    opacity: 0.7,
-  },
-  shareButtonText: {
+  actionTextPrimary: {
     color: theme.inkInverted,
-    fontSize: 14,
-    fontWeight: "900",
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.75,
+  },
+  webHint: {
+    color: theme.inkAlpha40,
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

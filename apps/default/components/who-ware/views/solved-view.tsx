@@ -85,19 +85,13 @@ export function SolvedView(props: SolvedViewProps) {
         <>
           <ResultShareCard
             episodeNumber={result.episodeNumber}
-            memoriesViewed={result.memoriesViewed}
-            cluesOpened={result.cluesOpened}
-            elapsedMs={result.elapsedMs}
+            figureName={figureReveal.figureName}
+            outcome="solved"
             score={result.score}
-            rank={result.rank}
-            rankedCount={result.rankedCount}
-            streak={result.streak}
             guessesUsed={result.guessesUsed}
-            hotspotsOpened={result.hotspotsOpened}
-            difficulty={result.difficulty}
+            difficulty={result.difficulty as "iconic" | "field" | "research" | undefined}
             figureEra={result.figureEra}
             figureRegion={result.figureRegion}
-            isPersonalBest={result.isPersonalBest}
           />
         </>
       )}
@@ -106,19 +100,13 @@ export function SolvedView(props: SolvedViewProps) {
         <>
           <ResultShareCard
             episodeNumber={result.episodeNumber}
-            memoriesViewed={result.memoriesViewed}
-            cluesOpened={result.cluesOpened}
-            elapsedMs={result.elapsedMs}
+            figureName={figureReveal.figureName}
+            outcome="solved"
             score={result.score}
-            rank={result.rank}
-            rankedCount={result.rankedCount}
-            streak={result.streak}
             guessesUsed={result.guessesUsed}
-            hotspotsOpened={result.hotspotsOpened}
-            difficulty={result.difficulty}
+            difficulty={result.difficulty as "iconic" | "field" | "research" | undefined}
             figureEra={result.figureEra}
             figureRegion={result.figureRegion}
-            isPersonalBest={result.isPersonalBest}
           />
           <View style={styles.onChainRow}>
             {isSmartAccountUpgraded && (

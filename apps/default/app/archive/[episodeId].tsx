@@ -1,4 +1,5 @@
 import { theme } from "@/lib/theme";
+import { SITE_URL } from "@/lib/site";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { useIdentity } from "@/hooks/use-identity";
@@ -179,18 +180,14 @@ export default function ArchiveDetailScreen() {
                 {run && (
                   <ResultShareCard
                     episodeNumber={episodeNumber}
-                    memoriesViewed={run.memoriesViewed}
-                    cluesOpened={run.hotspotsOpened}
-                    elapsedMs={run.solvedAt ? run.solvedAt - run.startedAt : 0}
+                    figureName={episode.figure.canonicalName}
+                    outcome={run.status === "solved" ? "solved" : "exhausted"}
                     score={run.score ?? 0}
-                    rank={playerRank?.rank ?? null}
-                    rankedCount={leaderboard.rankedCount}
-                    streak={streak}
                     guessesUsed={run.guessesUsed}
-                    hotspotsOpened={run.hotspotsOpened}
                     difficulty={episode.difficulty}
                     figureEra={episode.figure.era}
                     figureRegion={episode.figure.region}
+                    siteUrl={SITE_URL}
                   />
                 )}
 
