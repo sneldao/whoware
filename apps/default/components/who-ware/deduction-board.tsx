@@ -5,9 +5,13 @@ import { theme } from "@/lib/theme";
 export interface GuessAttempt {
   figureName: string;
   isCorrect: boolean;
+  /** Era match — kept for closest-call computation in app/index.tsx. */
   eraMatch: boolean;
+  /** Region match — kept for closest-call computation in app/index.tsx. */
   regionMatch: boolean;
+  /** Field match — kept for closest-call computation in app/index.tsx. */
   fieldMatch: boolean;
+  /** Prose feedback authored server-side (scoring.proximityMessage). */
   message?: string;
 }
 
@@ -16,57 +20,42 @@ interface DeductionBoardProps {
   maxGuesses?: number;
 }
 
-export function DeductionBoard({ attempts, maxGuesses = 5 }: DeductionBoardProps) {
+export function DeductionBoard({ attempts, maxGuesses = 8 }: DeductionBoardProps) {
   if (!attempts || attempts.length === 0) return null;
 
   return (
     <View style={styles.board}>
       <View style={styles.header}>
         <Ionicons name="git-network-outline" size={13} color={theme.accent} />
-        <Text style={styles.headerTitle}>Deduction log</Text>
+        <Text style={styles.headerTitle}>Guesses</Text>
         <Text style={styles.headerCount}>{attempts.length}/{maxGuesses}</Text>
       </View>
 
       <View style={styles.list}>
         {attempts.map((att, idx) => (
           <View key={idx} style={[styles.row, att.isCorrect && styles.rowCorrect]}>
-            <View style={styles.rowTop}>
-              <View style={styles.nameCol}>
-                <Ionicons
-                  name={att.isCorrect ? "checkmark-circle" : "close-circle"}
-                  size={14}
-                  color={att.isCorrect ? theme.success : theme.dangerText}
-                />
-                <Text style={[styles.nameText, att.isCorrect && styles.nameTextCorrect]} numberOfLines={1}>
-                  {att.figureName}
-                </Text>
-              </View>
-
-              <View style={styles.badgesCol}>
-                <Badge label="Era" match={att.eraMatch} />
-                <Badge label="Region" match={att.regionMatch} />
-                <Badge label="Field" match={att.fieldMatch} />
-              </View>
+            <View style={styles.nameRow}>
+              <Ionicons
+                name={att.isCorrect ? "checkmark-circle" : "close-circle"}
+                size={14}
+                color={att.isCorrect ? theme.success : theme.dangerText}
+              />
+              <Text style={[styles.nameText, att.isCorrect && styles.nameTextCorrect]} numberOfLines={1}>
+                {att.figureName}
+              </Text>
             </View>
-            {/* The room's answer, kept — the toast fades, the record stays. */}
-            {att.message && !att.isCorrect ? (
-              <Text style={styles.proximityLine} numberOfLines={2}>
+            {/* The room's answer, kept — prose reads faster than three badges. */}
+            {att.message ? (
+              <Text
+                style={[styles.proximityLine, att.isCorrect && styles.proximityLineCorrect]}
+                numberOfLines={3}
+              >
                 {att.message}
               </Text>
             ) : null}
           </View>
         ))}
       </View>
-    </View>
-  );
-}
-
-function Badge({ label, match }: { label: string; match: boolean }) {
-  return (
-    <View style={[styles.badge, match ? styles.badgeMatch : styles.badgeMiss]}>
-      <Text style={[styles.badgeText, match ? styles.badgeTextMatch : styles.badgeTextMiss]}>
-        {label} {match ? "✓" : "✗"}
-      </Text>
     </View>
   );
 }
@@ -119,11 +108,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   proximityLine: {
-    color: theme.inkAlpha50,
-    fontSize: 11,
+    color: theme.inkAlpha60,
+    fontSize: 12,
     fontWeight: "600",
-    lineHeight: 15,
-    paddingLeft: 20,
+    lineHeight: 17,
+    paddingLeft: 22,
+    paddingTop: 2,
+  },
+  proximityLineCorrect: {
+    color: theme.success,
+    fontStyle: "italic",
   },
   rowCorrect: {
     backgroundColor: "rgba(134, 239, 172, 0.12)",
@@ -137,6 +131,11 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingRight: 8,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   nameText: {
     color: theme.ink,
     fontSize: 13,
@@ -144,35 +143,5 @@ const styles = StyleSheet.create({
   },
   nameTextCorrect: {
     color: theme.success,
-  },
-  badgesCol: {
-    flexDirection: "row",
-    gap: 4,
-  },
-  badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  badgeMatch: {
-    backgroundColor: "rgba(134, 239, 172, 0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(134, 239, 172, 0.35)",
-  },
-  badgeMiss: {
-    backgroundColor: "rgba(239, 68, 68, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.25)",
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-  },
-  badgeTextMatch: {
-    color: "#86EFAC",
-  },
-  badgeTextMiss: {
-    color: "#FCA5A5",
   },
 });
