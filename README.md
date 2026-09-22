@@ -11,20 +11,24 @@ WhoWare is a daily history guessing game where you step into a 3D memory scene, 
 
 ## How it works
 
-- **Immersion-first entry** — cold start lands in today's room behind a case plate (episode number, difficulty tier, live "collapses in" countdown, streak-at-risk flame when a run is on the line), the three verbs (Walk the memory · Name the figure · Five accusations), and Enter with/without sound
-- **Where you left off** — returning mid-run players get a dismissible Case File recap (memories, clues found, guesses left, hints used, last proximity) instead of a silent drop into the room
+- **Immersion-first entry** — cold start lands in today's room behind a case plate (episode number, difficulty tier, live "collapses in" countdown, streak-at-risk flame when a run is on the line). A single **Enter** drops you into the room. Sound is a top-right toggle (hydrates from your saved preference), not a fork in the entry path. Web players can also flip a "3D" chip to enter the immersive 3D room instead of the default 2D scene.
+- **Where you left off** — returning mid-run players get a dismissible Case File recap (scenes opened, clues found, guesses left, last proximity) instead of a silent drop into the room
 - **Daily episodes** — one new historical figure per day, across three difficulty tiers (iconic, field, research); research-tier days coach first-timers so a hard figure never reads as a bug
-- **3D memory scenes** — the AI-generated panorama becomes a skybox the player looks around inside; props anchored to the scene brief appear as 3D objects the player inspects
-- **Live score ceiling** — the HUD shows a client-side projection of `computeScore` ticking every second ("if I name them right now, I score this"), so every memory, clue, whisper, and wrong accusation visibly bleeds the ceiling. The guess pool always contains the answer (`figures.searchForEpisode`, difficulty-scaled), and accusations are two-tap commits — no mis-tap burns a guess
-- **Sparse play HUD** — ceiling/clues/whispers/accusation pips stay as a floating overlay; denser panels open only for the accusation or the evidence log. Phone-column chrome returns after the reveal
-- **Deduction board** — every accusation lands as a colour-coded row with Era/Region/Field ✓/✗ tags *and* the room's proximity answer kept in place (the toast fades; the record stays), turning guessing from trivia roulette into Wordle-style logical narrowing. Guess feedback is persisted server-side (`runs.getRunGuesses`), so the board survives reloads
-- **The verdict lands in the room** — on solve/exhaust the room holds ("Identity anchored…" / "The signal fades…"), then the reveal plays *over the room* — typewriter name, narrative summary — with no toast pre-empting it and no confetti on a loss. Only after the player continues does the column shell return; exhausted runs get a closest-call salvage line and an honest streak-fate note (freeze absorbs one miss)
+- **2D scenes by default, 3D as opt-in** — the AI-generated panorama renders as a single high-resolution image on the default path. On web, players can opt into the Three.js 3D room (skybox sphere, procedural props, drag-to-look) via the "3D" chip on the entry gate. Mobile keeps 2D only.
+- **The figure has a voice (v0.3)** — every clue opens with a paired quote from the figure in the room, reacting to the prop in first-person. Generated at curation time by a deterministic template engine (`packages/backend/convex/figureVoice.ts`) that composes from the figure's tags, era, and region — no LLM cost.
+- **The Witness Chamber (v0.4)** — when the puzzle target has related figures in the catalog, the figure in the room is *someone who knew the target* (a student, a tutor, a rival). The room-figure speaks about the target in relational first-person ("She gave me this to learn on"); solving identifies the absent one. The reveal acknowledges: "<room-figure> nods slowly." before the target name typewriters in. Episodes without related figures fall back to v0.3 behavior (the room-figure is the target).
+- **Player vocabulary** — three words: **scene · clue · guess**. The room holds a scene with clues; you read clues and guess.
+- **Guess budget** — 8 guesses, 2 hints per run (formerly 5 / uncapped). Wrong guesses read as prose feedback ("Hypatia lived around the same century — close, but not the one") rather than colored badges.
+- **Live score ceiling** — the HUD shows a client-side projection of `computeScore` ticking every second ("if I name them right now, I score this"), so every scene opened, clue inspected, hint spent, and wrong guess visibly bleeds the ceiling. Guesses are two-tap commits — no mis-tap burns a guess.
+- **Sparse play HUD** — ceiling/evidence/guesses pips stay as a floating overlay; denser panels open only for the guess panel or the evidence log. Phone-column chrome returns after the reveal.
+- **Deduction log** — each guess lands as a row in a server-persisted log (`runs.getRunGuesses`); the proximity prose is the record, not a fading toast. The board survives reloads.
+- **The verdict lands in the room** — on solve/exhaust the room holds ("Identity anchored…" / "The signal fades…"), then the reveal plays *over the room* — typewriter name, narrative summary. Witness Chamber episodes prepend an acknowledgment line from the room-figure ("Synesius of Cyrene nods slowly."). No confetti on a loss; only after the player continues does the column shell return; exhausted runs get a closest-call salvage line and an honest streak-fate note (freeze absorbs one miss).
 - **Return ritual** — one-tap "Remind me" push opt-in plus a spoiler-free "Tomorrow's room: era · region" teaser on the countdown card
 - **Portable identity** — play is anonymous by default (a local investigator UUID). Connecting a wallet links the identity, and a fresh device that connects the same wallet adopts the existing identity (streak + history follow the player)
-- **Atmosphere** — optional ambient bed on Enter with sound (ducks under clue SFX); hard mute on Enter without; hovering a prop shows an "Inspect" tooltip while ~180 dust motes drift through the room. Wrong accusations are graded by ear: a rising fifth when you're warm, a sinking saw when you're cold, a low knell when the last accusation is spent
-- **Evidence, not popups** — clue payoffs open as numbered exhibits ("EXHIBIT 01") with a censor-bar declassification beat, and the accusation sheet keeps the standings one tap away behind the case board instead of shouting over the moment
+- **Atmosphere** — optional ambient bed on Enter with sound (ducks under clue SFX); hovering a prop shows an "Inspect" tooltip while ~180 dust motes drift through the room. Wrong guesses are graded by ear: a rising fifth when you're warm, a sinking saw when you're cold, a low knell when the last guess is spent
+- **Evidence, not popups** — clue payoffs open as numbered exhibits ("CLUE 01") with a censor-bar declassification beat; the figure's quote appears as a quote-block (italic parchment, accent border) beneath the artifact description
 - **AI-powered hints** — Venice AI generates privacy-preserving hints that guide without spoiling
-- **Scoring by restraint** — highest scores go to players who guess with fewer memories, clues, and time; every solve earns a detective grade (S/A/B/C/D with a rank title) that lands on the share card and in the share text alongside the score
+- **Scoring by restraint** — highest scores go to players who guess with fewer scenes, clues, and time; every solve earns a detective grade that lands on the share card and in the share text alongside the score
 - **On-chain verification** — score NFTs and streak tokens minted on Mantle Sepolia for tamper-proof leaderboards
 - **x402 archive paywall** — closed episodes' rich content (scenes, hotspots, ambient text) unlocks via USDC payment on Polygon Amoy, verified on-chain. Episode summaries (figure name, era, region, difficulty, tags, scene count) are freely accessible to any visitor.
 
@@ -53,6 +57,8 @@ whoware/
 │   └── assets/                                 # Static images
 ├── packages/backend/                            # Convex backend
 │   ├── convex/                                 # Functions, schema, agent pipeline, AI fallback
+│   │   ├── figureVoice.ts                      # v0.3 self-voice + v0.4 relational-voice template engine
+│   │   └── migrations.ts                       # Idempotent backfills: hintsUsed, figureQuote, roomFigureId
 │   └── scripts/                                # Smoke tests, helpers
 ├── packages/contracts/                          # Solidity contracts (Hardhat + viem)
 ├── 3D-PLAN.md                                   # Phase roadmap for the 3D pivot
@@ -75,23 +81,23 @@ The 3D scene is rendered by `apps/default/components/who-ware/scene-3d/SceneCanv
 2. **Lighting rig** — three-point lighting (ambient + key + fill) sourced from the scene brief's `lighting` block, with a cinematic default when the AI doesn't supply one.
 3. **Props** — 4–8 3D objects per scene from a closed vocabulary of 51 kinds (room, furniture, era, doc, object). Phase 2 uses procedural primitives (boxes/cylinders/spheres composed to evoke the real object); Phase 3 will swap hero props for Tripo GLBs.
 
-`apps/default/lib/scene-quality.ts` decides whether to render the 3D or 2D path per client (WebGL2 capability, low-power GPU detection, user override). The 2D `PanoramaScene` remains the fallback.
+**Renderer default is 2D (v0.4).** `apps/default/lib/scene-quality.ts` returns `"panorama"` for every client unless the player explicitly opts in via the "3D" chip on the entry gate (web only — 3D is not surfaced on mobile). The opt-in writes a localStorage override; the renderer reads it on every visit. Mobile keeps the 2D `PanoramaScene` only. The 3D renderer code is still shipped and tested (`scene-3d-skybox.test.ts`); it just isn't reached by default.
 
 ## First-run immersion
 
 Cold path (web):
 
-1. **Threshold** — today's scene 0 already running full-bleed behind the case plate (episode · difficulty · collapse countdown), WhoWare + tagline, the three verbs, and Enter with/without sound. "How to play" links to `/how-to` without leaving the cold path
-2. **Wake** — `ensureRun` + `enterScene(0)`; ambient bed starts only for with-sound; onboarding flag persisted
-3. **ImmersionSession** — same full-bleed room; whisper/coach until first clue, Name the figure, or ~12s; every scene change whispers the memory's title inside the room
-4. **PlayChrome overlay** — metrics + scene rail + actions; clue/guess sheet expands on demand; tapping the Guesses metric opens the guess panel directly
-5. **Solve / exhaust** — restore the phone-column shell (`HeroPanel` + SolvedView / ExhaustedView)
+1. **Threshold** — today's scene 0 already running full-bleed behind the case plate (episode · difficulty · collapse countdown), WhoWare + tagline, and a single **Enter** button. Sound is a top-right toggle; the "3D" chip on the threshold lets web players opt into the 3D room. "How to play" links to `/how-to` without leaving the cold path.
+2. **Wake** — `ensureRun` + `enterScene(0)`; ambient bed starts only when sound is enabled; onboarding flag persisted.
+3. **ImmersionSession** — same full-bleed room; whisper/coach until first clue, Guess, or ~12s; every scene change whispers the scene's title inside the room. Clues open as numbered exhibits paired with a quote from the figure.
+4. **PlayChrome overlay** — ceiling + evidence + guesses metrics; scene rail + actions; clue/guess sheet expands on demand; tapping the Guesses metric opens the guess panel directly.
+5. **Solve / exhaust** — restore the phone-column shell (`HeroPanel` + SolvedView / ExhaustedView). Witness Chamber reveals prepend the room-figure's acknowledgment before the target name.
 
 `lib/immersion-shell.tsx` drops the 560px web column while threshold or an active run is up. Returning mid-run players skip the threshold and land HUD-over-room with chrome unlocked, plus a one-time **Case File recap** ("Where you left off") until they resume or dismiss it.
 
-Progressive coaches (one-shot, AsyncStorage) fire at the moment of need: first wrong accusation, first "Deeper memory," first open of Name the figure, and entering a research-tier day. Optional full rules live at `/how-to` — never on the cold path.
+Progressive coaches (one-shot, AsyncStorage) fire at the moment of need: first wrong guess, first "Next scene," first open of Guess, and entering a research-tier day. Optional full rules live at `/how-to` — never on the cold path.
 
-Desktop shortcuts while in the room: `Esc` close sheets · `G` Name the figure · `N` deeper memory · `1`–`9` scene rail. A wrong accusation soft-pulses **Deeper memory** instead of auto-advancing. After solve/exhaust, the room holds for the reveal and stays up until it's dismissed.
+Desktop shortcuts while in the room: `Esc` close sheets · `G` Guess · `N` next scene · `1`–`9` scene rail. A wrong guess soft-pulses **Next scene** instead of auto-advancing. After solve/exhaust, the room holds for the reveal and stays up until it's dismissed.
 
 ## Smart Contracts (Mantle Sepolia)
 
@@ -169,16 +175,17 @@ cd apps/default && bun run start
 Run tests from the repo root or per-package.
 
 ```bash
-# Backend — Convex functions, AI pipeline, AI fallback
+# Backend — Convex functions, AI pipeline, AI fallback, figure voice
 cd packages/backend && npm test
-# (142 tests across 15 suites: analytics, archive, catalog, daily, example,
-#  mercy, notifications, paywall, practice, props, relationships, runs,
-#  scene-3d-skybox, scoring, venice — includes the answer-leak guard suites)
+# (16 suites: analytics, archive, catalog, daily, example, figureVoice
+#  (v0.3/v0.4), mercy, notifications, paywall, practice, props,
+#  relationships, runs, scene-3d-skybox, scoring, venice — includes the
+#  answer-leak guard suites)
 
 # Frontend — hooks, theme tokens, contract addresses, scoring-tooltip, logger
 cd apps/default && npm test
-# (53 tests across 7 suites: theme, contracts, scoring-tooltip, logger,
-#  use-guessing, use-inco-guess, use-clue-insights)
+# (7 suites: theme, contracts, scoring-tooltip, logger, use-guessing,
+#  use-inco-guess, use-clue-insights)
 # Run from app dir so vitest resolves Expo's tsconfig.base.
 
 # Contracts — Hardhat
