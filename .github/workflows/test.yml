@@ -1,0 +1,42 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  suites:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      # No --no-optional: Vercel's build drops optional deps, but the test
+      # runner needs its platform-specific native binaries on Linux.
+      - run: bun install --frozen-lockfile
+
+      - name: Anna bundle tools
+        run: bun test anna/whoware/tools/
+
+      - name: Backend (Convex functions, AI pipeline, answer-leak guards)
+        working-directory: packages/backend
+        run: bun run test
+
+      - name: Frontend (hooks, theme, contracts, scoring-tooltip, logger)
+        working-directory: apps/default
+        run: bun run test
+
+      # packages/contracts is intentionally not run here. 8 of its 17 specs
+      # call Inco Lightning cheatcodes (fakePrepareEuint256Ciphertext) that
+      # only exist in the Inco Hardhat plugin; they fail on a plain runner.
