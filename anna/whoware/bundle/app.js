@@ -3,15 +3,17 @@
 // Static SPA, no build step. Talks to the host only through AnnaAppRuntime:
 //   anna.storage.*  — per-user durable KV (APS): streak, score, guess log
 //   anna.window.*   — window chrome
+//   anna.llm.*      — the figure's line for a clue, spoken live (see voice.js)
 // The episode itself is read-only global data from ./episode.json, generated
 // at curation time by tools/build-fixture-episode.ts.
 //
 // Grants required by manifest.ui.host_api:
-//   storage: get, set     window: set_title, ready
+//   storage: get, set     window: set_title, ready     llm: complete
 //
 // Structure:
 //   game.js    pure rules — scoring, streak, guess evaluation, share text
 //   motion.js  cancellable motion + dust motes
+//   voice.js   the live figure-voice line, and the curated line it falls back to
 //   app.js     this file — APS state, view lifecycle, DOM
 //
 // Views are built once and *patched*, not torn down. The previous version

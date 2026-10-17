@@ -126,6 +126,22 @@ whole grant. It also makes the app the thing it claims to be.
 **Do this before submitting.** It is the difference between a shipped app and a
 counted one.
 
+**Resolved — done, and verified against the production host.** Each clue reveal
+now calls `anna.llm.complete` for the figure's line (`bundle/voice.js`), with the
+curated quote kept as the instant fallback so a reveal never blocks or reads
+empty. Confirmed live under `anna-app dev --storage aps` (real bridge, real
+nexus APS): the host's `window.hello` grants `llm.complete`, a real completion
+came back for an opened clue, and it rendered as the live line. The spoiler guard
+also held on genuine model output — it called the target "he" and "our enemies"
+without naming him, so the puzzle survives a chatty model.
+
+Two caveats, stated plainly. A Qualified App Run is still the platform's
+judgement, not ours: `dora`'s answer describes the *shape* a run must have, and
+we now meet that shape rather than proving the count. And the one combination not
+watched in the log is the live line being written into the APS run record — the
+write path and the cache path are each verified separately, and it is the same
+`saveState()` call, but that is inference rather than observation.
+
 ---
 
 ## 2. Why WhoWare is a good fit
@@ -324,14 +340,14 @@ Decide this before writing UI, not after. It changes the room layout.
 | 3 | Rewrite this plan around the App UI path | ✅ done |
 | 4 | Episode generator → `bundle/episode.json` (Witness Chamber fixture) | ✅ done (fixture) · ⚠️ live Convex query still pending — this machine has no Convex access |
 | 5 | Build room UI (panorama, hotspots, clue exhibit, quote-block) | ✅ done |
-| 6 | Wire APS for score / streak / guess log | ✅ done (code) · ⚠️ **unverified against real APS** — needs `anna-app login` |
+| 6 | Wire APS for score / streak / guess log | ✅ done · **verified against real APS** — written in one window, read back in a fresh one; a cold miss arrives as `{value:null,exists:false}` and is handled as a new player |
 | 7 | Apply short-mode tuning from §5 | ✅ done |
 | 8 | Verdict view + share card + `view.summary_template` | ✅ done |
 | 8b | Entry gate, return recap, keyboard, affordances, dust, declassification beat | ✅ done |
-| 8c | **Add host `llm.complete` to the primary function** (§1a) | ⬜ **blocking — without it a run may not count toward MAU** |
-| 8d | Store listing (`app.json`) — name, tagline, description | ✅ done |
-| 9 | `anna-app login`, `account set-handle` | ⬜ **blocking — needs a human PAT** |
-| 10 | `anna-app apps push` → `apps submit-review` | ⬜ |
+| 8c | **Add host `llm.complete` to the primary function** (§1a) | ✅ done · verified against the production host — see §1a |
+| 8d | Store listing (`app.json`) — name, tagline, description | ✅ done · `slug` added (push failed without it); listing created in the Developer Console as `whoware` |
+| 9 | `anna-app login`, `account set-handle` | ✅ login (PAT on `anna.partners`, scope `aps:dev`) · ⬜ `account set-handle` not checked |
+| 10 | `anna-app apps push` → `apps submit-review` | ✅ push (working draft rev 1) · ⬜ cut + submit-review |
 | 11 | Logo upload (`POST /api/v1/developer/apps/{id}/logo`, square ≤2 MB) | ⬜ |
 
 ### Store positioning

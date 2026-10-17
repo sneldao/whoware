@@ -75,9 +75,9 @@ which is otherwise invisible in local dev. The same reasoning applies to
 `startDust`, which stops on `visibilitychange` and yields entirely under
 `prefers-reduced-motion`.
 
-## The open question: does a run count?
+## Does a run count? — answered, and shipped
 
-A Qualified App Run is what the grant is measured in, and the app is currently
+A Qualified App Run is what the grant is measured in, and the app was originally
 built in a way that may not produce one.
 
 `dora`, answering a builder with a manifest-schema-2 bundle-only app
@@ -87,18 +87,20 @@ built in a way that may not produce one.
 > it can be part of the workflow, but simply saving data is not enough on its
 > own.
 
-WhoWare's only host calls during a run are `window.set_title` and
+WhoWare's only host calls during a run *used to be* `window.set_title` and
 `storage.set`. The AI work happened at curation time, off-platform. App Review
 wants an "AI-Native Core" for the same reason: primary value should depend on
 AI reasoning *at runtime*.
 
-**The fix is a host `llm.complete` call in the primary function** — see ANNA.md
-§1a. It is billed to the user's own quota, needs no API key, and is the
-documented default over an Executa, so it does not undo the no-Executa decision.
-The deterministic `figureVoice` engine stays as the offline fallback and as the
-unit-tested source of the voice format.
+**The fix is in.** Each clue reveal calls `anna.llm.complete` for the figure's
+line — billed to the player's own quota, no API key, and the documented default
+over an Executa, so it does not undo the no-Executa decision. The deterministic
+`figureVoice` engine stays as the offline fallback and as the unit-tested source
+of the voice format, and a generated line that names the target is thrown away
+rather than shown, so the model cannot end the puzzle.
 
-Grant required: `manifest.ui.host_api.llm: ["complete"]`. Nothing else changes.
+Grant: `manifest.ui.host_api.llm: ["complete"]`. Nothing else changed. Verified
+against the production host — see ANNA.md §1a for what was and was not observed.
 
 ## Rendering model
 
