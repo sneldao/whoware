@@ -350,7 +350,7 @@ Decide this before writing UI, not after. It changes the room layout.
 | 8b | Entry gate, return recap, keyboard, affordances, dust, declassification beat | ✅ done |
 | 8c | **Add host `llm.complete` to the primary function** (§1a) | ✅ done · verified against the production host — see §1a |
 | 8d | Store listing (`app.json`) — name, tagline, description | ✅ done · `slug` added (push failed without it); listing created in the Developer Console as `whoware` |
-| 9 | `anna-app login`, `account set-handle` | ✅ login (PAT on `anna.partners`, scope `aps:dev`) · ⬜ `account set-handle` not checked |
+| 9 | `anna-app login`, `account set-handle` | ✅ login (PAT on `anna.partners`, scope `aps:dev`) · ✅ handle `papa` — the CLI requires it before an app can be created, and `whoware` exists, so it is set |
 | 10 | `anna-app apps push` → `apps submit-review` | ✅ **submitted** — draft rev 1, cut `v0.1.0` (`version_id=1436`), status `pending_review`, `review_candidate_version: 0.1.0` |
 | 11 | Logo upload (`POST /api/v1/developer/apps/{id}/logo`, square ≤2 MB) | ✅ via the console listing form, which took a logo **URL** instead of an upload — not verifiable from the CLI |
 
@@ -438,10 +438,11 @@ lazily fetched. A curated episode's `imageUrl` takes precedence.
 
 ### What is still unverified
 
-- **Real APS backend.** Everything here was exercised against the harness's
-  in-memory `legacy` backend, which shares the dispatcher and the ACL but not
-  Postgres/Redis quota, etags, or TTLs. Run `anna-app dev --storage aps`
-  after `anna-app login` before trusting quota behaviour.
+- **Real APS backend.** Verified 2026-10-17 under `anna-app dev --storage aps`:
+  a run written in one window was read back in a fresh one, and a cold miss
+  arrives as `{value:null,exists:false}` rather than being mistaken for a saved
+  `null`. Still not exercised: etag/TTL behaviour under concurrent writes, and
+  the live voice line landing in the stored run record (§1a).
 - **Live episode images.** `episode.json` uses a generated SVG backdrop;
   `scene.imageUrl` takes precedence and is wired but untested against a real
   Venice URL.

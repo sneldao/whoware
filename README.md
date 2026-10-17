@@ -9,7 +9,9 @@
 > **Treasury wallet:** see [`TREASURY.md`](./TREASURY.md)
 > **Anna App port:** see [`ANNA.md`](./ANNA.md) and [`anna/whoware/`](./anna/whoware/) —
 > a schema-2 Anna Marketplace App built from the same episode data, with no
-> Executa and the pure game core in `anna/whoware/bundle/game.js`.
+> Executa and the pure game core in `anna/whoware/bundle/game.js`. There the
+> figure's line is generated live by the host's `llm.complete`, with the curated
+> quote as fallback. `v0.1.0` is in Anna review as of 2026-10-17.
 
 WhoWare is a daily history guessing game where you step into a 3D memory scene, walk through it, inspect props for clues, and identify the historical figure before your guesses run out. Think Wordle meets an explorable history museum.
 
