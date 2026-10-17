@@ -11,28 +11,111 @@
 
 WhoWare ships as an approved **Anna Marketplace App** and qualifies for the founding
 builder grant. Grant-funded, not revenue-funded — the only metrics that matter are
-**approved Marketplace App** and **MAU**.
+**approved Marketplace App** and **Qualified App MAU**.
 
-**Verified (dorahacks.io):**
+> **The economics in this file were wrong until 2026-10-17 and have been corrected
+> below.** The prior version claimed "$6k from 200 MAU" (~$30/MAU). That is off by
+> two orders of magnitude. Treat any earlier copy of this file as unreliable.
 
-| Fact | Value |
-|------|-------|
-| Prize pool | $6,000 |
-| Deadline | 2026-10-31 15:59 (extended from 09-30) |
-| Hacker count | 91 |
-| Builds submitted | 1 |
+### Actual grant tiers
 
-**From prior program notes — treat as unverified, re-check before relying on it:**
+Source: [forum.anna.partners thread 205](https://forum.anna.partners/t/turn-your-ai-agents-apps-into-recurring-monthly-grants-join-the-anna-ai-os-founding-builder-program-up-to-80k-month-pool/205)
 
-- Up to $6k Sep Boost, up to $5k/mo after, from 200 MAU (~$30/MAU at the threshold)
-- $80k pool/mo, no leaderboard, qualify Sep 1 – Nov 30
-- Portfolio dedup (Oct update): 1 grant/builder/mo
-- Qualified Run = signed-in user completes the primary function
-- Final gate = approved Marketplace App
+| Tier | Required Monthly MAU | Sept Launch Boost | Standard Monthly |
+|---|---|---|---|
+| S — Galactic Sovereign | 20,000+ | $6,000 | $5,000 |
+| A — Growth Titans | 10,000+ | $4,000 | $2,500 |
+| B — Starship Commanders | 4,000+ | $1,600 | $1,000 |
+| C — Orbit Pioneers | 1,000+ | $400 | $200 |
+| D — Stratosphere Builders | 500+ | $200 | $100 |
+| E — Genesis Spark | 200+ | $80 | $50 |
 
-> **Do not plan against the "Sep 1 – Nov 30" window.** The build deadline is Oct 31.
-> Grant payout cadence after Oct 31 is a separate question and does not change
-> what we must ship.
+**What this means for us:**
+
+- **200 MAU is $50/month, not $6,000.** The "$6,000" headline is Tier S and needs
+  20,000 MAU. At the qualification floor we earn $0.25 per MAU.
+- **The September Launch Boost is gone.** It applied only to the Sept 1–30 cycle.
+  Anything first qualifying in October or November gets the **standard** grant
+  only. Our realistic ceiling this cycle is Tier C ($200/mo at 1,000 MAU).
+- **The real bar is known:** exactly **two** builders qualified in September, both
+  at Tier D (500+ MAU). Low competition, real MAU bar.
+- **One grant per builder per month, portfolio-wide** — see §1b.
+
+**Second revenue path:** 70% of eligible usage profit when users run the app on
+paid Anna credits, settled T+1, payable from a $50 balance. Separate from grants
+and not counted in the tier math.
+
+### Deadlines
+
+| Milestone | Value |
+|---|---|
+| DoraHacks BUIDL deadline | **2026-10-31 15:59** (extended from 09-30) |
+| Founding Builder qualification window | 2026-09-01 -> **2026-11-30** |
+| App review turnaround | 3-5 business days (two-part review) |
+
+Dora states the BUIDL deadline "will be extended again to the end of November" to
+stay aligned with the Anna window. **Do not plan on that** — submit by Oct 27 and
+treat any extension as upside. A BUIDL submitted while review is still pending is
+accepted; approval follows the App.
+
+Qualification needs 200 Qualified App MAU in a **single** calendar month during
+Sept/Oct/Nov. Pushing Oct 27 puts review around Nov 3, leaving roughly four weeks
+of the November cycle to accumulate MAU.
+
+### 1b. Portfolio consolidation (effective 2026-10-01)
+
+All apps owned by the same builder are measured as **one portfolio**: qualified
+users are combined and **deduplicated** across apps, and the builder receives at
+most **one grant per calendar month** at the tier their combined MAU reaches.
+
+This makes the Brume pairing a policy requirement, not an optimisation. A user who
+tries both apps counts once, so overlap is wasted reach; only *distinct* users add
+up. Splitting into more apps does not multiply grants.
+
+---
+
+## 1a. The risk that would void everything: does a run even count?
+
+**This is the highest-consequence unknown in the plan.**
+
+From `dora` answering a builder with a manifest-schema-2 bundle-only app, in
+[forum thread 351](https://forum.anna.partners/t/founding-builder-buidl-deadline-while-app-review-is-pending-and-mau-counting-for-bundle-only-apps/351):
+
+> A Qualified App Run does not have to go through an Executa or an Agent session.
+> A bundle-only App can count as long as [...] the App successfully completes its
+> declared primary function [...] **A `storage.set` call by itself would not be
+> treated as a Qualified App Run; it can be part of the workflow, but simply saving
+> data is not enough on its own.**
+>
+> We do not use one universal Host API call as the completion marker for every App
+> [...] The full successful execution is considered together with the App's
+> declared function and server-side activity.
+
+WhoWare is bundle-only, and during a run its **only** host calls are
+`window.set_title` and `storage.set`. The AI work happened at curation time,
+off-platform, and the run is otherwise client-side. On the stated rule, that is
+unlikely to register as a Qualified App Run — and MAU we cannot count is MAU we do
+not get paid for.
+
+App Review makes the same point independently: *"AI-Native Core — Primary value
+must depend on AI reasoning or workflows."* Our primary value currently does not
+depend on AI at runtime.
+
+**The fix is also the product improvement we were missing anyway.** Add a real
+host-mediated `llm.complete` call to the primary function:
+
+| Option | What it buys |
+|---|---|
+| Generate a bespoke figure-voice line for each clue the player opens | Genuinely AI-native, keeps the deterministic engine as the offline fallback, and the quotes get better every day instead of being templated forever |
+| Generate scene/clue detail on entry | Endless episodes instead of one bundled `episode.json` |
+| `llm.image` for the panorama | Also removes the generated-SVG placeholder, and finally gives every scene a real image |
+
+`llm.complete` is billed to the **user's own** quota, needs no API key, and is the
+documented default over an Executa. `manifest.ui.host_api.llm: ["complete"]` is the
+whole grant. It also makes the app the thing it claims to be.
+
+**Do this before submitting.** It is the difference between a shipped app and a
+counted one.
 
 ---
 
@@ -74,7 +157,13 @@ any of it. The iframe is exactly where this product belongs.
 Platform guidance is explicit that the Host API is the default and Executa is an
 escape hatch for heavy CPU, long-lived session state, un-abstracted capabilities,
 **developer-owned secrets**, and agent-orchestrable tools. None of the first four
-apply to a read-only pre-baked catalog + per-user KV.
+apply here — so still **no Executa**.
+
+But "no Executa" must not become "no AI at runtime". §1a: a bundle-only app whose
+only host calls are `storage.set` is unlikely to register as a Qualified App Run,
+and App Review wants an AI-native core. The answer is the **Host API**
+(`manifest.ui.host_api.llm: ["complete"]`), not an Executa — user-quota billing,
+no API key, and it is the documented default path.
 
 **When an Executa earns its place — v2:** on-demand episode *generation*. "Build
 me a room about someone I care about." That needs a developer-owned Venice key,
@@ -131,19 +220,55 @@ strip it and drop `executas/`.
 The daily-habit loop **does not survive contact with Anna.**
 
 - "Streak-at-risk flame" assumes yesterday's player. An Anna user arrives from a
-  `#mention` or the App Store with no history.
-- The "Remind me" push opt-in has no surface — Anna has no push.
+  `#mention` or the Marketplace with no history.
+- There is no push surface on Anna, so the "Remind me" opt-in cannot fire.
 - The "tomorrow's room: era · region" teaser is worth nothing to a first install.
 
-**The hook has to be the verdict, not the ritual.** Assets that already work:
+So the hook is the **verdict**, not the ritual. Assets that already work: the share
+card, the detective grade, the prose proximity ("Hypatia lived around the same
+century — close, but not the one"), and the Witness Chamber reveal.
 
-- **Share card + detective grade** — the payoff is a grade and a score worth posting
-- **Prose proximity feedback** — "Hypatia lived around the same century" is quotable
-- **The Witness Chamber reveal** — a genuinely surprising narrative beat
+### How the 500-MAU builders actually got there
 
-**Pairing with Brume** (another project of ours, not in this repo) to pool unique
-users toward 200 MAU remains the growth strategy. There is no leaderboard to climb,
-so this is about raw unique-user count across the portfolio.
+[forum thread 367](https://forum.anna.partners/t/how-i-reached-500-mau-for-my-apps-using-direct-outreach-college-communities-hackathons-and-tech-communities-instead-of-a-big-marketing-budget/367)
+is a builder's honest retrospective and it is the most actionable thing found in
+this research:
+
+- **Direct outreach beat posting links**, decisively. Explaining the app, showing
+  it, letting people try it, collecting feedback, asking happy users to share.
+- **College, hackathons, tech communities, WhatsApp groups, existing network.**
+- **Sponsor something small at a hackathon** (they bought a Codex subscription as
+  a prize) to buy a relevant audience rather than buying ads.
+- **X / social posting underperformed for them.** Treat it as a secondary channel.
+- "Don't just drop a link in a community" — say what problem it solves first.
+
+This maps onto what we already built: the share card is the "ask a happy user to
+share" lever, and the Witness Chamber reveal is the thing worth talking about.
+
+### Competitive landscape
+
+The concept is proven and already copied. Everyone found is **tile/attribute
+based**:
+
+| Competitor | What it is |
+|---|---|
+| **Historydle** (historydle.com, on Google Play) | The direct one. Free daily Wordle-style history guessing, **199+ figures**, four modes (Classic, Quote, Portrait, Places) |
+| Whodle (timedle.com) | Countryle-style attribute comparison, not free-text |
+| Past Puzzle (App Store) | Daily "guess the year" quiz |
+| Ravel daily challenge, various figure-quiz apps | Single daily figure, 7 tries |
+
+**The gap is us.** None of them are embodied, and none of them are relational:
+
+- You are *in a room*, not filling in a grid. Inspecting props is the mechanic.
+- The Witness Chamber makes the answer **someone who is not in the room** — the
+  figure present is a witness who knew the target and speaks about them in first
+  person. No tile game can express that.
+
+Historydle competes on breadth (199 figures, four modes). We compete on depth of a
+single experience. **Lead with the room and the witness in review, in the store
+listing, and in the share card** — "the only history game where you are in the room
+with someone who remembers them." Breadth is the thing we cannot win, and should
+not pretend to.
 
 ---
 
@@ -156,6 +281,12 @@ But WhoWare's ceiling is 8 guesses, 2 hints, 3 scenes of deliberate clue-reading
 A user who opened the app from a chat mention **will not finish that in one
 session.** The Qualified Run rate is the whole program, and current tuning is
 hostile to it.
+
+The measured definition is stricter than "opens the app": a run must be started
+by a signed-in user, **successfully execute the declared primary function**, and
+return a meaningful non-trivial result. Opening or installing does not count, and
+developer/QA accounts are excluded entirely — so local testing does nothing for
+us here.
 
 **Required change: a short-mode path.**
 
@@ -181,6 +312,7 @@ Decide this before writing UI, not after. It changes the room layout.
 | 7 | Apply short-mode tuning from §5 | ✅ done |
 | 8 | Verdict view + share card + `view.summary_template` | ✅ done |
 | 8b | Entry gate, return recap, keyboard, affordances, dust, declassification beat | ✅ done |
+| 8c | **Add host `llm.complete` to the primary function** (§1a) | ⬜ **blocking — without it a run may not count toward MAU** |
 | 9 | `anna-app login`, `account set-handle` | ⬜ **blocking — needs a human PAT** |
 | 10 | `anna-app apps push` → `apps submit-review` | ⬜ |
 
@@ -289,4 +421,8 @@ Current fixture: Churchill in the room, Turing as the absent target.
 | App is approved but has no MAU | Grant needs both. Ship share card in v1, not v2. |
 | Qualified Run rate too low | §5 short-mode is the lever. Decide before UI. |
 | `aps.*` vs `storage` validator rejection | Already resolved — use schema-2 `ui.host_api.storage`. |
-| Grants unverified against live terms | Re-confirm payout cadence with organizers via the hackathon Q&A before Oct 31. |
+| Grants unverified against live terms | **Resolved 2026-10-17** — see §1 for the real tier table. |
+| **A run does not register as a Qualified App Run** | **Highest risk in the plan.** Bundle-only app whose only host call is `storage.set`. Fix: host `llm.complete` in the primary function (§1a). |
+| **Maintenance requirement missed** | At least one meaningful improvement per calendar month to stay eligible. The commit log counts; keep shipping. |
+| November MAU is thin | Review lands ~Nov 3, leaving ~4 weeks. Tier E (200) is the realistic target, Tier D (500) the stretch. Outreach playbook in §4, not ad spend. |
+| Brume overlap wastes reach | Portfolio MAU is deduplicated — a user in both apps counts once. Only distinct users add up. |
