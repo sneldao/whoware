@@ -54,9 +54,9 @@ generated at curation time. APS holds only per-user state. See ANNA.md §3 for
 the full split and why `aps.kv` cannot hold the catalog.
 
 **2. Two keys, not one.** `whoware/profile` (streak, best, freezes, history)
-survives days; `whoware/run/<episodeDay>` is one day's run. An earlier
-revision kept the streak inside the run, and because a new episode resets
-the run, every new day zeroed it. `game.test.js` pins this.
+survives days; `whoware/run/<episodeDay>` is one day's run. An earlier revision
+kept the streak inside the run, and because a new episode resets the run, every
+new day zeroed it. `game.test.js` pins this.
 
 **3. The window is usually not focused.** An Anna app window spends most of
 its life unfocused or collapsed while the user reads the conversation it was
@@ -73,6 +73,31 @@ there:
 which is otherwise invisible in local dev. The same reasoning applies to
 `startDust`, which stops on `visibilitychange` and yields entirely under
 `prefers-reduced-motion`.
+
+## The open question: does a run count?
+
+A Qualified App Run is what the grant is measured in, and the app is currently
+built in a way that may not produce one.
+
+`dora`, answering a builder with a manifest-schema-2 bundle-only app
+([forum thread 351](https://forum.anna.partners/t/founding-builder-buidl-deadline-while-app-review-is-pending-and-mau-counting-for-bundle-only-apps/351)):
+
+> **A `storage.set` call by itself would not be treated as a Qualified App Run**;
+> it can be part of the workflow, but simply saving data is not enough on its
+> own.
+
+WhoWare's only host calls during a run are `window.set_title` and
+`storage.set`. The AI work happened at curation time, off-platform. App Review
+wants an "AI-Native Core" for the same reason: primary value should depend on
+AI reasoning *at runtime*.
+
+**The fix is a host `llm.complete` call in the primary function** — see ANNA.md
+§1a. It is billed to the user's own quota, needs no API key, and is the
+documented default over an Executa, so it does not undo the no-Executa decision.
+The deterministic `figureVoice` engine stays as the offline fallback and as the
+unit-tested source of the voice format.
+
+Grant required: `manifest.ui.host_api.llm: ["complete"]`. Nothing else changes.
 
 ## Rendering model
 

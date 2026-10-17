@@ -1,9 +1,18 @@
 # Anna AI OS — Founding Builder Program: WhoWare Plan
 
-> **Deadline: 2026-10-31 15:59** (extended from 09-30). Verify at
-> [dorahacks.io/hackathon/2349/build](https://dorahacks.io/hackathon/2349/build).
-> As of 2026-10-17: **14 days remain**, prize pool **$6,000**, 91 hackers, **1 build submitted**.
-> Platform docs: [anna.partners/llms.txt](https://anna.partners/llms.txt)
+> **Status 2026-10-17.** 14 days to the DoraHacks BUIDL deadline
+> (2026-10-31 15:59). App review is 3-5 business days, so the push target is
+> **Oct 27**. 8 of 10 build steps done; 1 blocked on a human PAT; 1 open and
+> higher-risk than it looks (see §1a).
+>
+> The headline "$6,000 prize pool" is **not** a per-app prize and is not
+> reachable. Grants are tiered by Qualified App MAU, 200 MAU -> $50/mo through
+> 20,000 MAU -> $5,000/mo. See §1 for the table before making any prioritisation
+> call.
+>
+> Docs: [anna.partners/llms.txt](https://anna.partners/llms.txt) ·
+> [program rules](https://forum.anna.partners/t/turn-your-ai-agents-apps-into-recurring-monthly-grants-join-the-anna-ai-os-founding-builder-program-up-to-80k-month-pool/205) ·
+> [hackathon](https://dorahacks.io/hackathon/2349/build)
 
 ---
 
@@ -121,13 +130,20 @@ counted one.
 
 ## 2. Why WhoWare is a good fit
 
-- **Daily episode, Wordle-like habit, streak-at-risk.** Proven loop; already
-  playable at whoware.vercel.app with a live Convex backend.
-- **Primary function is trivially definable** for the Qualified Run metric:
-  land in today's room, solve or exhaust, see the verdict.
-- **2D default path is iframe-friendly.** The panorama room renders as a single
-  high-resolution image — no WebGL, no heavy bundle. The 3D room stays opt-in.
-- **No crypto in the v1 path.** Strip the Polygon paywall entirely. A USDC wall
+- **A daily ritual is the right shape** — one figure a day, a reason to come
+  back tomorrow. But the *retention* half of that loop (streaks, reminders)
+  does not survive being summoned from a chat, so it is not the hook here.
+  §4 explains what is.
+- **The primary function is trivially definable** for the Qualified Run metric:
+  land in today's room, inspect it, name who changed history from it. Short
+  mode (§5) makes that finishable in one session, which is what the metric
+  actually rewards.
+- **Already playable.** whoware.vercel.app, with a live Convex backend, a
+  curated figure catalog and a deterministic voice engine — the AI work
+  already exists, it just has to move onto the platform (§1a).
+- **2D default path is iframe-friendly.** The panorama room is a single image —
+  no WebGL, no heavy bundle.
+- **No crypto in the v1 path.** The Polygon paywall is stripped. A USDC wall
   fights the MAU metric and has no place in a chat-first surface.
 
 ---
@@ -313,8 +329,20 @@ Decide this before writing UI, not after. It changes the room layout.
 | 8 | Verdict view + share card + `view.summary_template` | ✅ done |
 | 8b | Entry gate, return recap, keyboard, affordances, dust, declassification beat | ✅ done |
 | 8c | **Add host `llm.complete` to the primary function** (§1a) | ⬜ **blocking — without it a run may not count toward MAU** |
+| 8d | Store listing (`app.json`) — name, tagline, description | ✅ done |
 | 9 | `anna-app login`, `account set-handle` | ⬜ **blocking — needs a human PAT** |
 | 10 | `anna-app apps push` → `apps submit-review` | ⬜ |
+| 11 | Logo upload (`POST /api/v1/developer/apps/{id}/logo`, square ≤2 MB) | ⬜ |
+
+### Store positioning
+
+`app.json` leads with the **room and the witness**, not the genre. Research
+(§4) found the direct competitor, Historydle, competing on breadth — 199+
+figures, four modes — and every other daily history game on tiles or attributes.
+Breadth is the axis we cannot win. The two things nobody else has are that you
+are *in a place* and that the person speaking is a **witness to someone who is
+not there**. Say those two things in the listing, the review submission and the
+share card.
 
 ### APS state layout
 

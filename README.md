@@ -6,6 +6,9 @@
 > **3D roadmap:** see [`3D-PLAN.md`](./3D-PLAN.md)
 > **On-chain vision:** see [`ONCHAIN-VISION.md`](./ONCHAIN-VISION.md)
 > **Treasury wallet:** see [`TREASURY.md`](./TREASURY.md)
+> **Anna App port:** see [`ANNA.md`](./ANNA.md) and [`anna/whoware/`](./anna/whoware/) —
+> a schema-2 Anna Marketplace App built from the same episode data, with no
+> Executa and the pure game core in `anna/whoware/bundle/game.js`.
 
 WhoWare is a daily history guessing game where you step into a 3D memory scene, walk through it, inspect props for clues, and identify the historical figure before your guesses run out. Think Wordle meets an explorable history museum.
 

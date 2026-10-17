@@ -1,6 +1,6 @@
 {
-  "name": "whoware",
-  "tagline": "TODO",
-  "description": "TODO",
-  "category": "productivity"
+  "name": "WhoWare",
+  "tagline": "Name the one who changed history from this room",
+  "description": "A daily history ritual. You wake in a room where something happened. Inspect what's in it, read what the figure standing there says about it, and name the person who changed history from that spot — before your guesses run out.\n\nThe figure in the room is rarely the answer. In a Witness Chamber episode they are someone who *knew* the person you are looking for: a student, a tutor, a colleague. They talk about the absent one in first person, and never say the name. You have to work it out from the objects, and from them.\n\nOne new figure every day. 5 guesses, 2 hints, three rooms. Wrong guesses are answered with prose — \"that era, but not the one\" — never a coloured tile. Score rewards restraint: fewer scenes opened, fewer hints spent, faster.\n\nScoring, streaks and your deduction log persist across days.",
+  "category": "education"
 }
