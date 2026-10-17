@@ -1,9 +1,13 @@
 # Anna AI OS — Founding Builder Program: WhoWare Plan
 
-> **Status 2026-10-17.** 14 days to the DoraHacks BUIDL deadline
-> (2026-10-31 15:59). App review is 3-5 business days, so the push target is
-> **Oct 27**. 8 of 10 build steps done; 1 blocked on a human PAT; 1 open and
-> higher-risk than it looks (see §1a).
+> **Status 2026-10-17.** Submitted to Anna for review today — `v0.1.0`,
+> `pending_review` — ten days ahead of the DoraHacks BUIDL deadline
+> (2026-10-31 15:59), and ahead of the Oct 27 push target derived from a 3-5
+> business-day review. §1a's counting risk is closed in code and verified against
+> the production host; whether a run is *counted* remains the platform's call.
+> Still open: real Convex episodes (this machine has no Convex access), and the
+> DoraHacks BUIDL post — a separate submission from this one, with no record in
+> this repo.
 >
 > The headline "$6,000 prize pool" is **not** a per-app prize and is not
 > reachable. Grants are tiered by Qualified App MAU, 200 MAU -> $50/mo through
@@ -347,8 +351,8 @@ Decide this before writing UI, not after. It changes the room layout.
 | 8c | **Add host `llm.complete` to the primary function** (§1a) | ✅ done · verified against the production host — see §1a |
 | 8d | Store listing (`app.json`) — name, tagline, description | ✅ done · `slug` added (push failed without it); listing created in the Developer Console as `whoware` |
 | 9 | `anna-app login`, `account set-handle` | ✅ login (PAT on `anna.partners`, scope `aps:dev`) · ⬜ `account set-handle` not checked |
-| 10 | `anna-app apps push` → `apps submit-review` | ✅ push (working draft rev 1) · ⬜ cut + submit-review |
-| 11 | Logo upload (`POST /api/v1/developer/apps/{id}/logo`, square ≤2 MB) | ⬜ |
+| 10 | `anna-app apps push` → `apps submit-review` | ✅ **submitted** — draft rev 1, cut `v0.1.0` (`version_id=1436`), status `pending_review`, `review_candidate_version: 0.1.0` |
+| 11 | Logo upload (`POST /api/v1/developer/apps/{id}/logo`, square ≤2 MB) | ✅ via the console listing form, which took a logo **URL** instead of an upload — not verifiable from the CLI |
 
 ### Store positioning
 
