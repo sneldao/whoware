@@ -15,6 +15,9 @@
   green, Anna bundle 61 green. The catalog parse error that had silenced 18
   suites (including the answer-leak guard) since 2026-09-22 is fixed, and the
   three assertions left behind by the 5→8 guess bump are resolved.
+- CI now runs those three suites on every push to main and every PR
+  (`.github/workflows/test.yml`, green in 25s on first run). The TestSprite
+  check will land next to a repo check that can be seen failing.
 - Not green, and not in scope: the 8 `WhoWareConfidentialGuess` specs need Inco's
   Hardhat cheatcodes, so they fail on a plain local run — which is consistent
   with the chain-free suite scope below anyway.

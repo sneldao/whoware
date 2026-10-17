@@ -211,6 +211,12 @@ and remaining-guesses assertions now derive from the constant instead of
 hardcoding it, and the frontend's player-facing contract test keeps a literal —
 that one is meant to fail loudly if the budget moves again.
 
+`.github/workflows/test.yml` runs the Anna bundle tools, the backend and the
+frontend suites on every push to `main` and every PR. Nothing in the repo ran a
+test on merge before that, which is how a committed parse error in
+`convex/catalog.ts` survived four weeks. `packages/contracts` is excluded from
+CI for the cheatcode reason above.
+
 The web app allows 8 guesses and the Anna app allows 5. That is deliberate:
 ANNA.md §5 tunes the marketplace build to a short mode, and its store listing
 advertises "5 guesses, 2 hints" to match. Do not "fix" one to the other.

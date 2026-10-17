@@ -14,7 +14,9 @@ concurrency:
 
 jobs:
   suites:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: latest migrates to Ubuntu 26 on Oct 19, inside
+    # the TestSprite window.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
