@@ -11,11 +11,13 @@
 - Deterministic asserts: ceiling bleed, hints 2, deduction log, Witness Chamber.
 - Existing 17 backend + 8 frontend suites + answer-leak guards (README §4 lists
   them by name), plus 61 bun tests for the Anna bundle's rules, motion and voice.
-- Suite state 2026-10-17: 16/17 backend files green once `catalog.ts` parsed
-  again — it had not since 2026-09-22, so the answer-leak guard had been reporting
-  nothing. Three assertions still expect the pre-Sept-22 five-guess budget
-  (`runs.test.ts` ×2, `scoring-tooltip.test.ts` ×1). Those need a decision, not a
-  rewrite: the web app allows 8 guesses, the Anna app plays 5.
+- Suite state 2026-10-17: backend 200 tests / 17 files green, frontend 63 / 8
+  green, Anna bundle 61 green. The catalog parse error that had silenced 18
+  suites (including the answer-leak guard) since 2026-09-22 is fixed, and the
+  three assertions left behind by the 5→8 guess bump are resolved.
+- Not green, and not in scope: the 8 `WhoWareConfidentialGuess` specs need Inco's
+  Hardhat cheatcodes, so they fail on a plain local run — which is consistent
+  with the chain-free suite scope below anyway.
 
 ## Gates
 - Portal suite FIRST vs live URL, then GitHub App on sneldao/whoware.

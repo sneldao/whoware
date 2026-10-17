@@ -251,7 +251,7 @@ describe("runs lifecycle", () => {
     expect(typeof result.score).toBe("number");
     expect((result.score as number)).toBeGreaterThan(0);
     expect(result.guessesUsed).toBe(1);
-    expect(result.guessesRemaining).toBe(4);
+    expect(result.guessesRemaining).toBe(MAX_GUESSES_PER_RUN - 1);
 
     const stored = await t.query(api.runs.getActiveRun, { episodeId, identityId: "player-d" });
     expect(stored?.status).toBe("solved");
@@ -404,7 +404,7 @@ describe("runs lifecycle", () => {
     expect(churchillResult.fieldMatch).toBe(true);
   });
 
-  test("submitGuess enforces the five-guess cap even if the client tries to keep going", async () => {
+  test("submitGuess enforces the guess cap even if the client tries to keep going", async () => {
     const t = setup();
     const episodeId = await seedEpisode(t);
     const ada = await t.query(api.figures.search, { query: "Ada" }).then((rows) => rows[0]);
@@ -415,7 +415,7 @@ describe("runs lifecycle", () => {
     });
     await t.mutation(api.runs.enterScene, { runId: run._id, sceneIndex: 0 });
 
-    for (let i = 0; i < 5; i += 1) {
+    for (let i = 0; i < MAX_GUESSES_PER_RUN; i += 1) {
       await t.mutation(api.runs.submitGuess, { runId: run._id, figureId: ada._id });
     }
 

@@ -196,15 +196,24 @@ cd apps/default && npm test
 
 # Contracts — Hardhat
 cd packages/contracts && bun install && bun run test
+# (17 tests. The 8 WhoWareConfidentialGuess specs need Inco's Hardhat cheatcodes
+#  injected — see the prerequisites in that test file — so they fail on a plain
+#  local run. 9 pass.)
 
 # Anna app bundle — pure rules, motion, and the live figure-voice layer
 bun test anna/whoware/tools/
 # (61 tests across game, motion, voice — no build step, no host needed)
 ```
 
-Two assertions in `runs.test.ts` and one in `scoring-tooltip.test.ts` still
-expect the five-guess budget that `cbd76ee` replaced with eight, so the backend
-suite is not clean at HEAD — see `TESTSPRITE.md` for the current state.
+Backend (200 tests) and frontend (63 tests) are green as of 2026-10-17. Three of
+them had been red since `cbd76ee` bumped `MAX_GUESSES_PER_RUN` 5→8: the guess-cap
+and remaining-guesses assertions now derive from the constant instead of
+hardcoding it, and the frontend's player-facing contract test keeps a literal —
+that one is meant to fail loudly if the budget moves again.
+
+The web app allows 8 guesses and the Anna app allows 5. That is deliberate:
+ANNA.md §5 tunes the marketplace build to a short mode, and its store listing
+advertises "5 guesses, 2 hints" to match. Do not "fix" one to the other.
 
 Both Vitest suites use the project's `vitest.config.ts` per package and
 fail loudly on missing test fixtures or stale test output. The frontend

@@ -49,8 +49,8 @@ describe("scoring constants — player-facing contract", () => {
     expect(TIME_BUCKET_PENALTY).toBe(5);
   });
 
-  it("max guesses per run is 5", () => {
-    expect(MAX_GUESSES_PER_RUN).toBe(5);
+  it("max guesses per run is 8", () => {
+    expect(MAX_GUESSES_PER_RUN).toBe(8);
   });
 });
 
