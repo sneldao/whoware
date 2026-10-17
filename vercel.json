@@ -4,6 +4,7 @@
   "installCommand": "bun install --no-optional",
   "framework": null,
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://cheery-elk-110.convex.site/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://cheery-elk-110.convex.site/api/:path*" },
+    { "source": "/:path((?!api/)[^.]*)", "destination": "/index.html" }
   ]
 }
