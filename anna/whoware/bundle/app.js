@@ -10,8 +10,17 @@
 //   storage: get, set     window: set_title, ready
 
 import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
+import {
+  applySolve,
+  defaultProfile,
+  detectiveGrade,
+  evaluateGuess,
+  recordMiss,
+  runSummary,
+  scoreCeiling,
+  streakSummary,
+} from "./game.js";
 
-const STATE_KEY = "whoware:run";
 const MAX_GUESS_CHARS = 64;
 
 let episode = null;
@@ -22,119 +31,71 @@ let anna = null; // null when running standalone (bundle opened directly)
 // Only mutable data lives here. Everything in episode.json is global and
 // read-only — see ANNA.md §3 for the split and why aps.kv cannot hold the
 // catalog.
+//
+// Two keys, deliberately separated:
+//
+//   whoware/profile      durable across days — streak, best, day history
+//   whoware/run/<day>    one day's in-flight run
+//
+// The first version kept `streak` inside the run record. Because a new
+// episode resets the run, every new day silently zeroed the streak — which
+// is the one mechanic the whole daily loop rests on.
 
-const defaultState = () => ({
-  episodeDay: null,
+const PROFILE_KEY = "whoware/profile";
+const runKey = (day) => `whoware/run/${day}`;
+
+const defaultRun = () => ({
+  sceneIndex: 0,
   guessesLeft: 0,
   hintsLeft: 0,
   cluesFound: [],
   guesses: [],
   score: 0,
-  streak: 0,
   solved: false,
   exhausted: false,
 });
 
-let state = defaultState();
+let state = defaultRun();
+let profile = defaultProfile();
 
 function startState(ep) {
   return {
-    ...defaultState(),
-    episodeDay: ep.episodeDay,
+    ...defaultRun(),
     guessesLeft: ep.tuning.guessLimit,
     hintsLeft: ep.tuning.hintLimit,
   };
 }
 
-async function saveState() {
-  if (!anna) return;
+// APS `storage.get` returns `{value, exists}` — a stored `null` is
+// indistinguishable from a miss if you branch on `value` alone.
+async function readKey(key) {
+  if (!anna) return null;
   try {
-    await anna.storage.set({ key: STATE_KEY, value: state });
+    const res = await anna.storage.get({ key });
+    return res?.exists ? res.value : null;
   } catch (e) {
-    // Storage is best-effort: a failed write must not break the run.
-    console.warn("state save failed", e);
+    console.warn(`storage get failed (${key})`, e);
+    return null;
   }
 }
+
+async function writeKey(key, value) {
+  if (!anna) return;
+  try {
+    await anna.storage.set({ key, value });
+  } catch (e) {
+    // Best-effort: a failed write must never break an in-progress run.
+    console.warn(`storage set failed (${key})`, e);
+  }
+}
+
+const saveState = () => writeKey(runKey(episode.episodeDay), state);
+const saveProfile = () => writeKey(PROFILE_KEY, profile);
 
 async function loadState() {
-  if (!anna) return;
-  try {
-    const res = await anna.storage.get({ key: STATE_KEY });
-    const v = res?.value;
-    if (v && v.episodeDay === episode.episodeDay) state = { ...defaultState(), ...v };
-  } catch (e) {
-    console.warn("state load failed", e);
-  }
-}
-
-// ── Scoring by restraint (ANNA.md §5 — short mode) ────────────────
-//
-// Mirrors packages/backend/convex/scoring.ts in spirit: every scene opened,
-// clue read, hint spent and wrong guess bleeds the ceiling.
-
-function scoreCeiling(ep, s) {
-  const t = ep.tuning;
-  const base = 1000;
-  const cluePenalty = s.cluesFound.length * 40;
-  const hintPenalty = (t.hintLimit - s.hintsLeft) * 120;
-  const guessPenalty = (t.guessLimit - s.guessesLeft) * 80;
-  // Mercy is only a penalty when a mercy scene was actually taken. Charging
-  // it unconditionally capped every run at 700 and made `archivist` (>800)
-  // unreachable.
-  const mercyPenalty = ep.scenes.some((sc, i) => sc.isMercy && i <= (s.sceneIndex ?? 0)) ? 300 : 0;
-  return Math.max(0, base - cluePenalty - hintPenalty - guessPenalty - mercyPenalty);
-}
-
-function detectiveGrade(score) {
-  if (score >= 800) return "archivist";
-  if (score >= 600) return "curator";
-  if (score >= 400) return "investigator";
-  return "witness";
-}
-
-// ── Guess checking ─────────────────────────────────────────────────
-//
-// v1 accepts the target's canonical name or any alias. Proximity prose is
-// resolved client-side against the bundled catalog — enough for the Anna
-// slice, where only one episode ships. A production build should port
-// packages/backend/convex/relationships.ts rather than grow this.
-
-function normalise(s) {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function candidates(target) {
-  return [target.canonicalName, ...(target.aliases ?? [])];
-}
-
-function evaluateGuess(text, ep) {
-  const g = normalise(text);
-  if (!g) return { correct: false, proximity: "off", prose: "Say a name." };
-
-  const t = ep.target;
-  if (candidates(t).some((c) => normalise(c) === g)) {
-    return { correct: true, proximity: "correct", prose: "That is the one." };
-  }
-
-  const near = candidates(t).some((c) => {
-    const n = normalise(c);
-    return n.includes(g) || g.includes(n);
-  });
-  if (near) {
-    return {
-      correct: false,
-      proximity: "same_region",
-      prose: `Close to the name — but not the one. Look again at what is on the desk.`,
-    };
-  }
-
-  const eraHit = normalise(t.era).includes(g) || g.includes(normalise(t.era));
-  const regionHit = normalise(t.region).includes(g) || g.includes(normalise(t.region));
-  if (eraHit) return { correct: false, proximity: "same_era", prose: `That era, yes — but not the one.` };
-  if (regionHit)
-    return { correct: false, proximity: "same_region", prose: `That region, yes — but not the one.` };
-
-  return { correct: false, proximity: "off", prose: `Nothing in this room points there.` };
+  const [p, r] = await Promise.all([readKey(PROFILE_KEY), readKey(runKey(episode.episodeDay))]);
+  if (p) profile = { ...defaultProfile(), ...p };
+  if (r) state = { ...defaultRun(), ...r };
 }
 
 // ── Rendering ─────────────────────────────────────────────────────
@@ -305,12 +266,15 @@ function openGuessSheet() {
     state.guessesLeft -= 1;
     state.guesses.push({ text: input.value.trim(), prose: result.prose, proximity: result.proximity });
     if (result.correct) {
-      state.solved = true;
-      state.streak = (state.streak ?? 0) + 1;
       state.score = scoreCeiling(episode, state);
+      profile = applySolve(profile, episode, state.score);
+      state.solved = true;
+      saveProfile();
     } else if (state.guessesLeft <= 0) {
       state.exhausted = true;
       state.score = 0;
+      profile = recordMiss(profile, episode);
+      saveProfile();
     }
     saveState();
     close();
@@ -331,7 +295,7 @@ function openGuessSheet() {
 
 function renderVerdict() {
   const solved = state.solved;
-  const grade = detectiveGrade(state.score);
+  const grade = solved ? detectiveGrade(state.score) : null;
 
   const wrap = el("div", `verdict ${solved ? "solved" : "exhausted"}`);
 
@@ -345,10 +309,12 @@ function renderVerdict() {
     wrap.append(name);
     wrap.append(el("p", "summary", episode.targetSummary));
     wrap.append(el("div", "grade", `${grade} · ${state.score} points`));
+    wrap.append(el("div", "streak", streakLine()));
   } else {
     wrap.append(el("h1", "reveal", episode.target.canonicalName));
     wrap.append(el("p", "summary", episode.targetSummary));
     wrap.append(el("p", "salvage", `The signal fades. ${episode.roomFigure.canonicalName} says nothing.`));
+    wrap.append(el("div", "streak", streakLine(true)));
   }
 
   // The LLM reads this when summarising the window for the assistant.
@@ -356,6 +322,8 @@ function renderVerdict() {
 
   const again = el("button", "btn primary", "Play again");
   again.addEventListener("click", () => {
+    // Replaying resets the run only — the streak lives in the profile and
+    // must survive, or the daily ritual has no memory.
     state = startState(episode);
     saveState();
     render();
@@ -365,11 +333,12 @@ function renderVerdict() {
   app.append(wrap);
 }
 
+function streakLine(missed = false) {
+  return streakSummary(profile, missed);
+}
+
 function summaryForLlm() {
-  const outcome = state.solved
-    ? `solved as ${episode.target.canonicalName}, ${detectiveGrade(state.score)}, ${state.score} points`
-    : `did not solve; target was ${episode.target.canonicalName}`;
-  return `WhoWare day ${episode.episodeDay}: ${outcome}. Streak ${state.streak ?? 0}. Guesses used ${state.guesses.length}/${episode.tuning.guessLimit}.`;
+  return runSummary(profile, state, episode);
 }
 
 function typewrite(node, text) {
@@ -388,14 +357,14 @@ function typewrite(node, text) {
 async function main() {
   episode = await fetch("./episode.json").then((r) => r.json());
   state = startState(episode);
-  state.sceneIndex = 0;
 
   try {
     anna = await AnnaAppRuntime.connect();
     await anna.window.set_title({ title: "WhoWare — name who changed history" });
     await anna.window.ready?.();
+    // A returning player lands back in the run they left; the profile
+    // (streak, history) loads regardless of which day the run belongs to.
     await loadState();
-    if (state.solved || state.exhausted) state.sceneIndex = 0;
   } catch (e) {
     anna = null;
     console.info("standalone preview — APS disabled", e);

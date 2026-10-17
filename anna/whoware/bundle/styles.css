@@ -347,6 +347,12 @@ body {
   color: var(--accent);
 }
 
+.streak {
+  font: 600 11px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--parchment) 60%, transparent);
+}
+
 /* Consumed by the LLM via view.summary_template; hidden from the player. */
 .summary-template {
   display: none;

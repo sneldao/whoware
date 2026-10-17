@@ -176,12 +176,43 @@ Decide this before writing UI, not after. It changes the room layout.
 | 2 | `anna-app init anna/whoware`, validate manifest | ✅ done |
 | 3 | Rewrite this plan around the App UI path | ✅ done |
 | 4 | Episode generator → `bundle/episode.json` (Witness Chamber fixture) | ✅ done (fixture) · ⚠️ live Convex query still pending — this machine has no Convex access |
-| 5 | Build room UI (panorama, hotspots, clue exhibit, quote-block) | ⬜ next |
-| 6 | Wire APS for score / streak / guess log | ⬜ |
-| 7 | Apply short-mode tuning from §5 | 🟡 tuning is in the bundle JSON, UI not wired |
-| 8 | Verdict view + share card + `view.summary_template` | ⬜ |
-| 9 | `anna-app login`, `account set-handle` | ⬜ |
+| 5 | Build room UI (panorama, hotspots, clue exhibit, quote-block) | ✅ done |
+| 6 | Wire APS for score / streak / guess log | ✅ done (code) · ⚠️ **unverified against real APS** — needs `anna-app login` |
+| 7 | Apply short-mode tuning from §5 | ✅ done |
+| 8 | Verdict view + share card + `view.summary_template` | 🟡 verdict + LLM summary done · **share card not built** |
+| 9 | `anna-app login`, `account set-handle` | ⬜ **blocking — needs a human PAT** |
 | 10 | `anna-app apps push` → `apps submit-review` | ⬜ |
+
+### APS state layout
+
+Two keys, deliberately separated:
+
+| Key | Contents | Lifetime |
+|---|---|---|
+| `whoware/profile` | streak, best, freezes, lastSolvedDay, day history (capped at 60) | across days |
+| `whoware/run/<episodeDay>` | in-flight run: guesses left, hints, clues found, guess log, score, scene index | one day |
+
+An earlier revision kept `streak` inside the run record. Since a new episode
+resets the run, **every new day silently zeroed the streak** — the one
+mechanic the daily loop rests on. `tools/game.test.js` pins the fix.
+
+`bundle/game.js` holds the pure rules (scoring, grading, guess evaluation,
+streak transitions) with no DOM or host dependency, so the streak logic is
+unit-tested rather than only reachable by clicking through a room:
+
+```bash
+bun test anna/whoware/tools/game.test.js   # 23 pass
+```
+
+### What is still unverified
+
+- **Real APS backend.** Everything here was exercised against the harness's
+  in-memory `legacy` backend, which shares the dispatcher and the ACL but not
+  Postgres/Redis quota, etags, or TTLs. Run `anna-app dev --storage aps`
+  after `anna-app login` before trusting quota behaviour.
+- **Live episode images.** `episode.json` uses a generated SVG backdrop;
+  `scene.imageUrl` takes precedence and is wired but untested against a real
+  Venice URL.
 
 **Strip from the scaffold before shipping:** `executas/`,
 `required_executas`, `host_api.tools`.
