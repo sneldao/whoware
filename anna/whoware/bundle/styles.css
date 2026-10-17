@@ -393,6 +393,19 @@ body {
   font-size: 14px;
 }
 
+/* A line the figure spoke just now, rather than the curated one it replaces.
+   A brief settle so the swap is legible instead of looking like a glitch. */
+.quote.live .quote-line {
+  animation: speak-in 620ms ease both;
+}
+
+@keyframes speak-in {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+}
+
 .quote cite {
   display: block;
   margin-top: 6px;

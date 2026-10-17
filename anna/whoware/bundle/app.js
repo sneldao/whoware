@@ -31,6 +31,7 @@ import {
   streakSummary,
 } from "./game.js";
 import { crossfade, reducedMotion, startDust, typewriter } from "./motion.js";
+import { ensureVoice, voiceKey } from "./voice.js";
 
 const MAX_GUESS_CHARS = 64;
 const SITE_URL = "https://whoware.vercel.app";
@@ -66,6 +67,9 @@ const defaultRun = () => ({
   solved: false,
   exhausted: false,
   lastHint: null,
+  /** clueKey -> the figure's live line. Cached with the day's run so a
+   * returning player is never charged twice for the same quote. */
+  voice: {},
 });
 
 let state = defaultRun();
@@ -353,10 +357,15 @@ function renderRoomScene(refs) {
     box.append(el("figcaption", "exhibit-no", `CLUE ${String(open.index).padStart(2, "0")}`));
     box.append(el("h3", "exhibit-label", open.label));
     box.append(el("p", "exhibit-detail", open.detail));
-    if (open.figureQuote) {
+    // The figure's line. A live one is preferred; the curated quote is the
+    // instant fallback, so the exhibit is never empty and never blocked.
+    const vkey = voiceKey(episode.episodeDay, open.index);
+    const live = state.voice?.[vkey];
+    const line = live ?? open.figureQuote;
+    if (line) {
       const q = el("blockquote", "quote");
-      q.append(el("p", null, open.figureQuote));
-      q.append(el("cite", null, `— ${episode.roomFigure.canonicalName}`));
+      q.append(el("p", "quote-line", line), el("cite", null, `\u2014 ${episode.roomFigure.canonicalName}`));
+      if (live) q.classList.add("live");
       box.append(q);
     }
     // Declassification wipe — the native app's "censor bar" beat.
@@ -391,6 +400,31 @@ function revealClue(clue) {
   state.cluesFound = [...state.cluesFound, clue.index].sort((a, b) => a - b);
   saveState();
   patchRoom();
+  speakFor(clue);
+}
+
+/**
+ * Ask the host for this clue's line, then upgrade the exhibit in place.
+ *
+ * Deliberately not awaited: the exhibit is already showing the curated quote,
+ * so the room is playable immediately and this only ever enriches it. Any
+ * failure -- not granted, out of quota, no eligible model -- is swallowed by
+ * requestVoice and leaves the curated line standing.
+ */
+function speakFor(clue) {
+  ensureVoice({
+    anna,
+    state,
+    episode,
+    scene: currentScene(),
+    clue,
+    onLine: () => {
+      saveState();
+      // Only repaint if this clue is the one currently on display.
+      const shown = currentScene().clues.filter((c) => state.cluesFound.includes(c.index)).at(-1);
+      if (shown?.index === clue.index) patchRoom();
+    },
+  });
 }
 
 function spendHint() {

@@ -1,0 +1,9 @@
+# Canned host responses for `anna-app dev --mock-llm fixtures/voice.jsonl`.
+#
+# The harness matches on the APP-FACING namespace, not the model API: bundle code
+# calls anna.llm.complete(), so the entry is {"ns":"llm","method":"complete"}.
+# A {"ns":"sampling","method":"createMessage"} line never matches and silently
+# falls back to the curated quote.
+#
+# Serve with: anna-app dev --mock-llm fixtures/voice.jsonl
+{"ns":"llm","method":"complete","result":{"role":"assistant","content":{"type":"text","text":"He gave me this the week before he disappeared from the desk, and I have not had the nerve to move it since."},"model":"mock-model","stopReason":"endTurn"}}

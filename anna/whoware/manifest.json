@@ -1,6 +1,10 @@
 {
   "schema": 2,
-  "tags": ["game", "history", "daily"],
+  "tags": [
+    "game",
+    "history",
+    "daily"
+  ],
   "ui": {
     "bundle": {
       "format": "static-spa",
@@ -12,22 +16,39 @@
         "name": "room",
         "title": "WhoWare",
         "default": true,
-        "default_size": { "w": 640, "h": 800 },
-        "min_size": { "w": 360, "h": 480 },
+        "default_size": {
+          "w": 640,
+          "h": 800
+        },
+        "min_size": {
+          "w": 360,
+          "h": 480
+        },
         "resizable": true,
         "movable": true,
         "single_instance": true
       }
     ],
     "host_api": {
-      "storage": ["get", "set"],
-      "window": ["set_title", "ready"]
+      "storage": [
+        "get",
+        "set"
+      ],
+      "window": [
+        "set_title",
+        "ready"
+      ],
+      "llm": [
+        "complete"
+      ]
     },
     "csp_overrides": {},
     "state_merge": "last_writer_wins"
   },
   "dev": {
-    "fixtures": ["fixtures/*.jsonl"],
+    "fixtures": [
+      "fixtures/*.jsonl"
+    ],
     "seed_storage": {},
     "user_id": 1
   }

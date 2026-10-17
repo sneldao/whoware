@@ -12,13 +12,14 @@ Strategy, funding model and the path that led to this architecture live in
 
 ```bash
 anna-app validate --strict            # schema + host_api ACL coverage
-anna-app dev --no-llm                 # local harness, offline, :5180
+anna-app dev --no-llm                 # local harness, offline, :5180 (llm calls return null → curated quote)
+anna-app dev --mock-llm fixtures/voice.jsonl  # canned llm.complete, exercises the live-voice path
 anna-app dev --storage aps            # real APS (needs `anna-app login`)
 anna-app apps push                    # upsert the working draft
 anna-app apps submit-review           # DRAFT -> PENDING_REVIEW
 
 bun run tools/build-fixture-episode.ts # regenerate bundle/episode.json + panoramas
-bun test tools/                        # 36 tests
+bun test tools/                        # 61 tests
 ```
 
 ## Layout
