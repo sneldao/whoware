@@ -359,3 +359,95 @@ describe("v0.4 — quoteForClue in relational mode", () => {
     expect(quoteForClue(args)).toBe(quoteForClue(args));
   });
 });
+
+// ── Regressions: catalog/voice-contract bugs found 2026-10-17 ───────
+//
+// These three shipped to production before being caught. They are cheap to
+// regress, so they get pinned here.
+
+describe("regression — era bucketing against the real seed catalog", () => {
+  test("19th century is early-modern, not modern", () => {
+    // The century path used `n < 19`, so the 19th century fell into the
+    // modern bucket and gave Victorian figures wrong-era voice vocabulary.
+    expect(bucketEra("19th century")).toBe("early-modern");
+    expect(bucketEra("18th–19th century")).toBe("early-modern");
+  });
+
+  test("15th century is classical, not renaissance", () => {
+    // Joan of Arc is catalogued as 15th century and was being rendered
+    // with Renaissance vocabulary.
+    expect(bucketEra("15th century")).toBe("classical");
+  });
+
+  test("ranges bind to the earlier bound", () => {
+    // "4th–5th century" must bucket as ancient; the old regex matched the
+    // last bound in the range.
+    expect(bucketEra("4th–5th century")).toBe("ancient");
+  });
+
+  test("named eras resolve before numeric parsing", () => {
+    expect(bucketEra("Renaissance")).toBe("renaissance");
+  });
+});
+
+describe("regression — relational place binds to the target", () => {
+  const relational = (region: string, targetRegion: string) =>
+    quoteForClue({
+      figure: {
+        canonicalName: "Winston Churchill",
+        era: "20th century",
+        region,
+        tags: ["statesman"],
+      },
+      scene: { title: "Room", location: "London", era: "20th century" },
+      clue: { label: "The bombe's plugboard", detail: "Wired valves." },
+      targetFigure: {
+        canonicalName: "Alan Turing",
+        era: "20th century",
+        region: targetRegion,
+        tags: ["mathematician"],
+      },
+    });
+
+  test("does not splice the speaker's region into a self-deprecating line", () => {
+    // A British room-figure describing a British target used to render
+    // "I was nobody from Britain; they noticed me anyway."
+    expect(relational("Britain", "Britain")).not.toMatch(/nobody from/i);
+  });
+
+  test("target region, not speaker region, drives the place slot", () => {
+    const fromTarget = relational("Britain", "Germany");
+    expect(fromTarget).toMatch(/Germany/);
+    expect(fromTarget).not.toMatch(/nobody from/i);
+  });
+});
+
+describe("regression — punctuation artifacts from slot concatenation", () => {
+  test("no ' ; and ' or ' ;and' joins survive", () => {
+    for (const label of [
+      "The bombe's plugboard",
+      "An Enigma cipher chart",
+      "A dispatch, unsigned",
+      "A portrait of the staff roll",
+    ]) {
+      const quote = quoteForClue({
+        figure: {
+          canonicalName: "Winston Churchill",
+          era: "20th century",
+          region: "Britain",
+          tags: ["statesman"],
+        },
+        scene: { title: "Room", location: "London", era: "20th century" },
+        clue: { label, detail: "x" },
+        targetFigure: {
+          canonicalName: "Alan Turing",
+          era: "20th century",
+          region: "Britain",
+          tags: ["mathematician"],
+        },
+      });
+      expect(quote).not.toMatch(/;\s*and\s/);
+      expect(quote).not.toMatch(/—\s*and\s/);
+    }
+  });
+});

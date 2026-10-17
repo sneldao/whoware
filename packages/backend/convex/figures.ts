@@ -18,14 +18,14 @@ export interface FigureSeed {
   relatedFigures?: string[];
 }
 
-const seedCatalogData: FigureSeed[] = [
+export const seedCatalogData: FigureSeed[] = [
   {
     canonicalName: "Winston Churchill",
     aliases: ["Churchill", "Winston Spencer Churchill", "Sir Winston Churchill"],
     era: "20th century",
     region: "Britain",
     tier: "iconic",
-    tags: ["wartime", "prime minister", "orator", "world war 2"],
+    tags: ["wartime", "prime minister", "orator", "world war 2", "statesman"],
     difficulty: "iconic",
     relatedFigures: ["Alan Turing", "Mahatma Gandhi", "Napoleon Bonaparte"],
   },
@@ -65,7 +65,7 @@ const seedCatalogData: FigureSeed[] = [
     era: "19th–20th century",
     region: "India",
     tier: "iconic",
-    tags: ["independence", "nonviolence", "satyagraha", "civil rights"],
+    tags: ["independence", "nonviolence", "satyagraha", "civil rights", "reformer"],
     difficulty: "iconic",
   },
   {
@@ -111,7 +111,7 @@ const seedCatalogData: FigureSeed[] = [
     era: "19th century",
     region: "United States",
     tier: "iconic",
-    tags: ["abolitionist", "underground railroad", "civil war"],
+    tags: ["abolitionist", "underground railroad", "civil war", "spy"],
     difficulty: "iconic",
   },
   {
@@ -149,7 +149,7 @@ const seedCatalogData: FigureSeed[] = [
     era: "14th century",
     region: "Morocco / wider Islamic world",
     tier: "field",
-    tags: ["traveler", "geographer", "rihla"],
+    tags: ["traveler", "geographer", "rihla", "traveller"],
     difficulty: "field",
   },
   {
@@ -249,7 +249,7 @@ const seedCatalogData: FigureSeed[] = [
     era: "19th century",
     region: "South America",
     tier: "iconic",
-    tags: ["liberator", "revolutionary", "gran colombia", "independence"],
+    tags: ["liberator", "revolutionary", "gran colombia", "independence", "statesman"],
     difficulty: "iconic",
   },
   {
@@ -276,7 +276,7 @@ const seedCatalogData: FigureSeed[] = [
     era: "20th century",
     region: "United States",
     tier: "field",
-    tags: ["computer scientist", "navy", "COBOL", "compiler", "debugging"],
+    tags: ["computer scientist", "navy", "COBOL", "compiler", "debugging", "scientist"],
     difficulty: "field",
   },
   {

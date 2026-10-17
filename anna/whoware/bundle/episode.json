@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "episodeDay": 20261017,
+  "difficulty": "iconic",
+  "witnessChamber": true,
+  "roomFigure": {
+    "canonicalName": "Winston Churchill",
+    "era": "20th century",
+    "region": "Britain",
+    "tags": [
+      "wartime",
+      "prime minister",
+      "orator",
+      "world war 2",
+      "statesman"
+    ]
+  },
+  "target": {
+    "canonicalName": "Alan Turing",
+    "era": "20th century",
+    "region": "Britain",
+    "tags": [
+      "mathematician",
+      "cryptanalyst",
+      "computing",
+      "bletchley"
+    ]
+  },
+  "answerOptions": [
+    "Alan Turing",
+    "Winston Churchill",
+    "Ada Lovelace",
+    "Claude Shannon"
+  ],
+  "targetSummary": "A mathematician who broke the cipher that blinded Germany for two years, then was destroyed by the state he had saved. He described his own work as nothing more than stepping-stones for those who come after.",
+  "tuning": {
+    "guessLimit": 5,
+    "hintLimit": 2,
+    "preRevealedClues": 1
+  },
+  "scenes": [
+    {
+      "title": "The War Cabinet Room",
+      "location": "London, England",
+      "era": "20th century",
+      "palette": [
+        "#1b1f24",
+        "#3d4a52",
+        "#c9a227",
+        "#e8dfc8"
+      ],
+      "ambientText": "Map cases line the wall. The speaker does not look at you when he speaks.",
+      "clues": [
+        {
+          "label": "Enigma cipher chart",
+          "detail": "A wall chart of rotor orders and plugboard swaps, annotated in three different hands. Two of the annotations are later than the war.",
+          "x": 0.28,
+          "y": 0.52,
+          "figureQuote": "He wrote for me this document; I keep it still. Britain was his office before it was mine.",
+          "index": 1,
+          "sceneIndex": 0
+        },
+        {
+          "label": "A dispatch, unsigned",
+          "detail": "No signature, no seal. It asks for one more month of funding and signs off on a machine that does not yet exist.",
+          "x": 0.72,
+          "y": 0.44,
+          "figureQuote": "He wrote for me this document when Britain was theirs. I learned the room before I learned the work.",
+          "index": 2,
+          "sceneIndex": 0
+        }
+      ],
+      "panoramaDataUri": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201600%20900%22%3E%0A%3Cdefs%3E%0A%3ClinearGradient%20id%3D%22sky%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%0A%3Cstop%20offset%3D%220%22%20stop-color%3D%22%231b1f24%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%233d4a52%22%2F%3E%0A%3C%2FlinearGradient%3E%0A%3CradialGradient%20id%3D%22glow%22%20cx%3D%220.32%22%20cy%3D%220.34%22%20r%3D%220.7%22%3E%0A%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23c9a227%22%20stop-opacity%3D%220.34%22%2F%3E%0A%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23c9a227%22%20stop-opacity%3D%220%22%2F%3E%0A%3C%2FradialGradient%3E%0A%3CradialGradient%20id%3D%22vig%22%20cx%3D%220.5%22%20cy%3D%220.5%22%20r%3D%220.78%22%3E%0A%3Cstop%20offset%3D%220.55%22%20stop-color%3D%22%23000%22%20stop-opacity%3D%220%22%2F%3E%0A%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23000%22%20stop-opacity%3D%220.62%22%2F%3E%0A%3C%2FradialGradient%3E%0A%3C%2Fdefs%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23sky)%22%2F%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23glow)%22%2F%3E%0A%3Cg%20fill%3D%22%233d4a52%22%20opacity%3D%220.85%22%3E%0A%3Crect%20x%3D%220%22%20y%3D%22596%22%20width%3D%221600%22%20height%3D%22304%22%2F%3E%0A%3Crect%20x%3D%22120%22%20y%3D%22430%22%20width%3D%22230%22%20height%3D%22180%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22404%22%20y%3D%22352%22%20width%3D%22168%22%20height%3D%22258%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22628%22%20y%3D%22470%22%20width%3D%22286%22%20height%3D%22140%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22968%22%20y%3D%22392%22%20width%3D%22150%22%20height%3D%22218%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%221166%22%20y%3D%22500%22%20width%3D%22320%22%20height%3D%22110%22%20rx%3D%224%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22%23c9a227%22%20opacity%3D%220.20%22%3E%0A%3Crect%20x%3D%22452%22%20y%3D%22404%22%20width%3D%2272%22%20height%3D%2256%22%20rx%3D%223%22%2F%3E%0A%3Crect%20x%3D%221020%22%20y%3D%22444%22%20width%3D%2266%22%20height%3D%2250%22%20rx%3D%223%22%2F%3E%0A%3C%2Fg%3E%0A%3Crect%20y%3D%22600%22%20width%3D%221600%22%20height%3D%22300%22%20fill%3D%22%231b1f24%22%20opacity%3D%220.42%22%2F%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23vig)%22%2F%3E%0A%3Ctext%20x%3D%2256%22%20y%3D%2270%22%20font-family%3D%22Georgia%2Cserif%22%20font-size%3D%2230%22%20fill%3D%22%23e8dfc8%22%20opacity%3D%220.5%22%3EThe%20War%20Cabinet%20Room%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+    },
+    {
+      "title": "Hut 8, Bletchley Park",
+      "location": "Bletchley Park, Buckinghamshire",
+      "era": "20th century",
+      "palette": [
+        "#141a1a",
+        "#2f4a3c",
+        "#7f9c6b",
+        "#dfe4d0"
+      ],
+      "ambientText": "Rain on the hut roof. Machines idling. Nobody here speaks to the visitor.",
+      "clues": [
+        {
+          "label": "The bombe's plugboard",
+          "detail": "Routed wires and a rotating drum, built to search a space no human could hold in their head. It was described, generously, as a machine that could not think.",
+          "x": 0.62,
+          "y": 0.58,
+          "figureQuote": "He gave me this; I think of him when I see it. Britain was his office before it was mine.",
+          "index": 1,
+          "sceneIndex": 1
+        },
+        {
+          "label": "A portrait of the staff roll",
+          "detail": "Dozens of faces outside this hut, credited in a register that never appeared in the official history. One name among them reads: that is all I am permitted to say.",
+          "x": 0.35,
+          "y": 0.48,
+          "figureQuote": "He sat for this portrait when Britain was theirs. I learned the room before I learned the work.",
+          "index": 2,
+          "sceneIndex": 1
+        }
+      ],
+      "panoramaDataUri": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201600%20900%22%3E%0A%3Cdefs%3E%0A%3ClinearGradient%20id%3D%22sky%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%0A%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23141a1a%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%232f4a3c%22%2F%3E%0A%3C%2FlinearGradient%3E%0A%3CradialGradient%20id%3D%22glow%22%20cx%3D%220.32%22%20cy%3D%220.34%22%20r%3D%220.7%22%3E%0A%3Cstop%20offset%3D%220%22%20stop-color%3D%22%237f9c6b%22%20stop-opacity%3D%220.34%22%2F%3E%0A%3Cstop%20offset%3D%221%22%20stop-color%3D%22%237f9c6b%22%20stop-opacity%3D%220%22%2F%3E%0A%3C%2FradialGradient%3E%0A%3CradialGradient%20id%3D%22vig%22%20cx%3D%220.5%22%20cy%3D%220.5%22%20r%3D%220.78%22%3E%0A%3Cstop%20offset%3D%220.55%22%20stop-color%3D%22%23000%22%20stop-opacity%3D%220%22%2F%3E%0A%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23000%22%20stop-opacity%3D%220.62%22%2F%3E%0A%3C%2FradialGradient%3E%0A%3C%2Fdefs%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23sky)%22%2F%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23glow)%22%2F%3E%0A%3Cg%20fill%3D%22%232f4a3c%22%20opacity%3D%220.85%22%3E%0A%3Crect%20x%3D%220%22%20y%3D%22596%22%20width%3D%221600%22%20height%3D%22304%22%2F%3E%0A%3Crect%20x%3D%22120%22%20y%3D%22430%22%20width%3D%22230%22%20height%3D%22180%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22404%22%20y%3D%22352%22%20width%3D%22168%22%20height%3D%22258%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22628%22%20y%3D%22470%22%20width%3D%22286%22%20height%3D%22140%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22968%22%20y%3D%22392%22%20width%3D%22150%22%20height%3D%22218%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%221166%22%20y%3D%22500%22%20width%3D%22320%22%20height%3D%22110%22%20rx%3D%224%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22%237f9c6b%22%20opacity%3D%220.20%22%3E%0A%3Crect%20x%3D%22452%22%20y%3D%22404%22%20width%3D%2272%22%20height%3D%2256%22%20rx%3D%223%22%2F%3E%0A%3Crect%20x%3D%221020%22%20y%3D%22444%22%20width%3D%2266%22%20height%3D%2250%22%20rx%3D%223%22%2F%3E%0A%3C%2Fg%3E%0A%3Crect%20y%3D%22600%22%20width%3D%221600%22%20height%3D%22300%22%20fill%3D%22%23141a1a%22%20opacity%3D%220.42%22%2F%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23vig)%22%2F%3E%0A%3Ctext%20x%3D%2256%22%20y%3D%2270%22%20font-family%3D%22Georgia%2Cserif%22%20font-size%3D%2230%22%20fill%3D%22%23dfe4d0%22%20opacity%3D%220.5%22%3EHut%208%2C%20Bletchley%20Park%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+    },
+    {
+      "title": "A college, after the war",
+      "location": "Cambridge, England",
+      "era": "20th century",
+      "palette": [
+        "#2a2622",
+        "#5c4a3a",
+        "#9c7b52",
+        "#efe6d6"
+      ],
+      "ambientText": "The room is warm and entirely ordinary. This is where it ends badly.",
+      "clues": [
+        {
+          "label": "A typescript on computable numbers",
+          "detail": "Typed by hand on a machine that reads left to right, in a subject that had no name yet. The argument is complete and cannot be finished.",
+          "x": 0.5,
+          "y": 0.55,
+          "figureQuote": "He gave me this, and I think of him when I see it. The office remembers him longer than people do.",
+          "index": 1,
+          "sceneIndex": 2
+        },
+        {
+          "label": "A coroner's finding",
+          "detail": "One page. Cause of death given plainly. A postscript notes that prosecution, not the sentence, had done the killing.",
+          "x": 0.66,
+          "y": 0.62,
+          "figureQuote": "He gave me this; I think of him when I see it. Britain was his office before it was mine.",
+          "index": 2,
+          "sceneIndex": 2
+        }
+      ],
+      "panoramaDataUri": "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%201600%20900%22%3E%0A%3Cdefs%3E%0A%3ClinearGradient%20id%3D%22sky%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%0A%3Cstop%20offset%3D%220%22%20stop-color%3D%22%232a2622%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%235c4a3a%22%2F%3E%0A%3C%2FlinearGradient%3E%0A%3CradialGradient%20id%3D%22glow%22%20cx%3D%220.32%22%20cy%3D%220.34%22%20r%3D%220.7%22%3E%0A%3Cstop%20offset%3D%220%22%20stop-color%3D%22%239c7b52%22%20stop-opacity%3D%220.34%22%2F%3E%0A%3Cstop%20offset%3D%221%22%20stop-color%3D%22%239c7b52%22%20stop-opacity%3D%220%22%2F%3E%0A%3C%2FradialGradient%3E%0A%3CradialGradient%20id%3D%22vig%22%20cx%3D%220.5%22%20cy%3D%220.5%22%20r%3D%220.78%22%3E%0A%3Cstop%20offset%3D%220.55%22%20stop-color%3D%22%23000%22%20stop-opacity%3D%220%22%2F%3E%0A%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23000%22%20stop-opacity%3D%220.62%22%2F%3E%0A%3C%2FradialGradient%3E%0A%3C%2Fdefs%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23sky)%22%2F%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23glow)%22%2F%3E%0A%3Cg%20fill%3D%22%235c4a3a%22%20opacity%3D%220.85%22%3E%0A%3Crect%20x%3D%220%22%20y%3D%22596%22%20width%3D%221600%22%20height%3D%22304%22%2F%3E%0A%3Crect%20x%3D%22120%22%20y%3D%22430%22%20width%3D%22230%22%20height%3D%22180%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22404%22%20y%3D%22352%22%20width%3D%22168%22%20height%3D%22258%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22628%22%20y%3D%22470%22%20width%3D%22286%22%20height%3D%22140%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%22968%22%20y%3D%22392%22%20width%3D%22150%22%20height%3D%22218%22%20rx%3D%224%22%2F%3E%0A%3Crect%20x%3D%221166%22%20y%3D%22500%22%20width%3D%22320%22%20height%3D%22110%22%20rx%3D%224%22%2F%3E%0A%3C%2Fg%3E%0A%3Cg%20fill%3D%22%239c7b52%22%20opacity%3D%220.20%22%3E%0A%3Crect%20x%3D%22452%22%20y%3D%22404%22%20width%3D%2272%22%20height%3D%2256%22%20rx%3D%223%22%2F%3E%0A%3Crect%20x%3D%221020%22%20y%3D%22444%22%20width%3D%2266%22%20height%3D%2250%22%20rx%3D%223%22%2F%3E%0A%3C%2Fg%3E%0A%3Crect%20y%3D%22600%22%20width%3D%221600%22%20height%3D%22300%22%20fill%3D%22%232a2622%22%20opacity%3D%220.42%22%2F%3E%0A%3Crect%20width%3D%221600%22%20height%3D%22900%22%20fill%3D%22url(%23vig)%22%2F%3E%0A%3Ctext%20x%3D%2256%22%20y%3D%2270%22%20font-family%3D%22Georgia%2Cserif%22%20font-size%3D%2230%22%20fill%3D%22%23efe6d6%22%20opacity%3D%220.5%22%3EA%20college%2C%20after%20the%20war%3C%2Ftext%3E%0A%3C%2Fsvg%3E"
+    }
+  ]
+}

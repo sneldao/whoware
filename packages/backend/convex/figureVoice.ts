@@ -114,7 +114,7 @@ export function pickRole(tags: string[]): VoiceRole {
 // ── Object kind selection ─────────────────────────────────────────
 
 const KIND_RULES: Array<[RegExp, ObjectKind]> = [
-  [/astrolabe|telescope|microscope|lens|prism|compass|sextant|clock|orrey|sundial|calculator|abacus/i, "instrument"],
+  [/astrolabe|telescope|microscope|lens|prism|compass|sextant|clock|orrery|orrey|sundial|calculator|abacus/i, "instrument"],
   [/sword|blade|dagger|spear|bow|glaive|pistol|gun|musket|rifle|cannon|saber|halberd|scimitar/i, "weapon"],
   [/map|chart|scroll|parchment|deed|will|testament|manifest|ledger|dispatch|treaty|codex/i, "document"],
   [/robe|cloak|gown|garment|dress|sash|tunic|armor|armour|helmet|crown|shawl|coat|veil/i, "garment"],
@@ -142,14 +142,25 @@ export function pickObjectKind(label: string): ObjectKind {
 
 export function bucketEra(era: string): EraBucket {
   const lower = era.toLowerCase();
-  // Look for century markers first.
-  const centuryMatch = lower.match(/(\d{1,2})(?:st|nd|rd|th)?\s*(?:century|c\.|centur)/);
+  // Named eras before numeric parsing.
+  if (/renaissance/.test(lower)) return "renaissance";
+  if (/antiquity|ancient world/.test(lower)) return "ancient";
+  // Century markers. Bind to the FIRST century in a range ("18th–19th
+  // century" → 18), because the earlier bound is what characterises when
+  // the figure is remembered. The old regex matched the last bound, which
+  // put Napoleon (18th–19th) in the modern bucket.
+  const centuryMatch = lower.match(
+    /(\d{1,2})\s*(?:st|nd|rd|th)?\s*(?:[–—-]|to)?\s*(?:\d{1,2}\s*(?:st|nd|rd|th)?\s*)?(?:century|c\.|centur)/,
+  );
   if (centuryMatch) {
     const n = parseInt(centuryMatch[1], 10);
+    // Boundaries are inclusive: the 15th century is still classical, the
+    // 19th is still early-modern. Using `<` here put both in the next
+    // bucket up.
     if (n < 5) return "ancient";
-    if (n < 15) return "classical";
-    if (n < 17) return "renaissance";
-    if (n < 19) return "early-modern";
+    if (n <= 15) return "classical";
+    if (n <= 17) return "renaissance";
+    if (n <= 19) return "early-modern";
     return "modern";
   }
   // Year-based fallback.
@@ -660,6 +671,19 @@ function substituteRelationalFollow(phrase: string, pronoun: Pronoun): string {
   occasionally hardcode "they" when they mean the target; this
   normalization rescues those mismatches.
   */
+/**
+ * Trim grammar artifacts left by slot concatenation. Templates that join
+ * with ";" or "—" against a `follow` slot that already starts with a
+ * conjunction render "…this document; and I keep it still."
+ */
+function normalizePunctuation(text: string): string {
+  return text
+    .replace(/;\s+and\s+/gi, "; ")
+    .replace(/—\s+and\s+/g, "— ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
 function normalizePronouns(text: string, pronoun: Pronoun): string {
   if (pronoun === "they") return text; // already neutral
   const obj = pronoun === "she" ? "her" : "him";
@@ -753,7 +777,6 @@ export function quoteForClue(input: FigureVoiceInput): string {
   const role = pickRole(figure.tags);
   const objectKind = pickObjectKind(clue.label);
   const eraBucket = bucketEra(figure.era || scene.era);
-  const place = pickPlaceRef(figure.region, scene.location);
   const memEra = pick(MEM_PHRASES[eraBucket]);
   const thing = pick(KIND_NOUN[objectKind]);
 
@@ -763,6 +786,16 @@ export function quoteForClue(input: FigureVoiceInput): string {
   const isRelational =
     !!targetFigure &&
     targetFigure.canonicalName.trim().toLowerCase() !== figure.canonicalName.trim().toLowerCase();
+
+  // v0.4 fix — in relational mode the sentence's subject is the *target*
+  // (`subj` is the target's pronoun), so the place reference must bind to
+  // the target too. Binding it to the speaker produced voice-confused
+  // non-sequiturs: a British room-figure describing a British target
+  // rendered "I was nobody from Britain; they noticed me anyway."
+  const place = pickPlaceRef(
+    isRelational && targetFigure?.region ? targetFigure.region : figure.region,
+    scene.location,
+  );
 
   const patterns = isRelational ? RELATIONAL_PATTERNS[role] : PATTERNS[role];
   const hash = simpleHash(clue.label);
@@ -781,7 +814,7 @@ export function quoteForClue(input: FigureVoiceInput): string {
       memEra,
       place,
     });
-    return normalizePronouns(quote.trim(), pronoun);
+    return normalizePunctuation(normalizePronouns(quote.trim(), pronoun));
   }
 
   const relation = pick(KIND_RELATION[objectKind]);
@@ -795,7 +828,7 @@ export function quoteForClue(input: FigureVoiceInput): string {
     place,
     role: ROLE_LABELS[role],
   });
-  return quote.trim();
+  return normalizePunctuation(quote.trim());
 }
 
 /** Cheap deterministic hash. Doesn't need to be cryptographic. */
