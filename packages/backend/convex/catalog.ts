@@ -122,7 +122,6 @@ async function resolveFigureIdByName(
     .first();
   return row?._id;
 }
-});
 
 export const createDraftEpisode = mutation({
   args: {
