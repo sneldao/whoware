@@ -3,7 +3,8 @@
 **Daily embodied history ritual.** Someone changed history from this room — can you name them?
 
 > **Live demo:** https://whoware.vercel.app
-> **TestSprite S4:** see [`TESTSPRITE.md`](./TESTSPRITE.md) — live URL + PR-loop plan.
+> **TestSprite S4:** see [`TESTSPRITE.md`](./TESTSPRITE.md) — ordered setup runbook
+> (portal suite → GitHub App → PR trigger), the PR to cut, and an evidence block.
 > **3D roadmap:** see [`3D-PLAN.md`](./3D-PLAN.md)
 > **On-chain vision:** see [`ONCHAIN-VISION.md`](./ONCHAIN-VISION.md)
 > **Treasury wallet:** see [`TREASURY.md`](./TREASURY.md)
