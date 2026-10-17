@@ -9,7 +9,13 @@
 - Live: https://whoware.vercel.app — 2D default, no wallet/keys.
 - Loop: Enter -> scene -> clue -> guess x8 -> solve/exhaust -> reveal+score.
 - Deterministic asserts: ceiling bleed, hints 2, deduction log, Witness Chamber.
-- Existing 16 backend + 7 frontend suites + answer-leak guards.
+- Existing 17 backend + 8 frontend suites + answer-leak guards (README §4 lists
+  them by name), plus 61 bun tests for the Anna bundle's rules, motion and voice.
+- Suite state 2026-10-17: 16/17 backend files green once `catalog.ts` parsed
+  again — it had not since 2026-09-22, so the answer-leak guard had been reporting
+  nothing. Three assertions still expect the pre-Sept-22 five-guess budget
+  (`runs.test.ts` ×2, `scoring-tooltip.test.ts` ×1). Those need a decision, not a
+  rewrite: the web app allows 8 guesses, the Anna app plays 5.
 
 ## Gates
 - Portal suite FIRST vs live URL, then GitHub App on sneldao/whoware.

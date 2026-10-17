@@ -183,20 +183,28 @@ Run tests from the repo root or per-package.
 ```bash
 # Backend — Convex functions, AI pipeline, AI fallback, figure voice
 cd packages/backend && npm test
-# (16 suites: analytics, archive, catalog, daily, example, figureVoice
-#  (v0.3/v0.4), mercy, notifications, paywall, practice, props,
-#  relationships, runs, scene-3d-skybox, scoring, venice — includes the
-#  answer-leak guard suites)
+# (17 suites: analytics, archive, catalog, daily, example, figureVoice
+#  (v0.3/v0.4), figures.voice, mercy, notifications, paywall, practice,
+#  props, relationships, runs, scene-3d-skybox, scoring, venice — includes
+#  the answer-leak guard suites)
 
 # Frontend — hooks, theme tokens, contract addresses, scoring-tooltip, logger
 cd apps/default && npm test
-# (7 suites: theme, contracts, scoring-tooltip, logger, use-guessing,
-#  use-inco-guess, use-clue-insights)
+# (8 suites: theme, contracts, score-projection, scoring-tooltip, logger,
+#  use-guessing, use-inco-guess, use-clue-insights)
 # Run from app dir so vitest resolves Expo's tsconfig.base.
 
 # Contracts — Hardhat
 cd packages/contracts && bun install && bun run test
+
+# Anna app bundle — pure rules, motion, and the live figure-voice layer
+bun test anna/whoware/tools/
+# (61 tests across game, motion, voice — no build step, no host needed)
 ```
+
+Two assertions in `runs.test.ts` and one in `scoring-tooltip.test.ts` still
+expect the five-guess budget that `cbd76ee` replaced with eight, so the backend
+suite is not clean at HEAD — see `TESTSPRITE.md` for the current state.
 
 Both Vitest suites use the project's `vitest.config.ts` per package and
 fail loudly on missing test fixtures or stale test output. The frontend
