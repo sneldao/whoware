@@ -28,6 +28,107 @@ body {
   flex-direction: column;
 }
 
+/* ── Entry gate (cold path) ───────────────────────────────────── */
+
+.gate {
+  margin: auto;
+  width: min(480px, 92vw);
+  padding: 26px 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gate.rise-in {
+  animation: rise 420ms ease both;
+}
+
+.plate {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--parchment) 14%, transparent);
+  background: var(--panel);
+}
+
+.plate-kicker {
+  font: 600 10px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.plate-title {
+  margin: 0;
+  font-size: 32px;
+}
+
+.plate-tag {
+  margin: 0;
+  font-size: 14px;
+  color: color-mix(in srgb, var(--parchment) 74%, transparent);
+}
+
+.plate-meta {
+  margin: 10px 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  font: 400 11px/1.5 ui-monospace, Menlo, monospace;
+}
+
+.plate-meta dt {
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--parchment) 46%, transparent);
+}
+
+.plate-meta dd {
+  margin: 0;
+  color: color-mix(in srgb, var(--parchment) 88%, transparent);
+}
+
+.gate-enter {
+  min-height: 46px;
+  font-size: 15px;
+}
+
+.gate-howto {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+  color: color-mix(in srgb, var(--parchment) 55%, transparent);
+}
+
+/* Return recap — the "where you left off" beat. */
+.recap {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed color-mix(in srgb, var(--parchment) 20%, transparent);
+}
+
+.recap-title {
+  font: 600 10px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--parchment) 55%, transparent);
+}
+
+.recap-line,
+.recap-proximity {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.recap-proximity {
+  font-style: italic;
+  color: color-mix(in srgb, var(--parchment) 62%, transparent);
+}
+
 /* ── Room ─────────────────────────────────────────────────────── */
 
 .room {
@@ -132,6 +233,37 @@ body {
   outline: none;
 }
 
+/* Affordance: the old dot gave a sighted user no hint it was interactive. */
+.hotspot-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--parchment);
+  font: 600 10px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.hotspot:hover .hotspot-tip,
+.hotspot:focus-visible .hotspot-tip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.hotspots {
+  position: absolute;
+  inset: 0;
+}
+
 @keyframes pulse {
   0%,
   100% {
@@ -142,8 +274,72 @@ body {
   }
 }
 
+/* ── Dust motes ────────────────────────────────────────────────── */
+
+.dust {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Declassification beat ─────────────────────────────────────── */
+
+.censor {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--accent);
+  transform-origin: left center;
+  animation: none;
+}
+
+.censor.retract {
+  transition: transform 420ms cubic-bezier(0.4, 0, 0.2, 1);
+  transform: scaleX(0);
+}
+
+@keyframes censor-wipe {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* ── Hint feedback + objective ─────────────────────────────────── */
+
+.hint-line {
+  margin: 0;
+  font: 400 12px/1.5 ui-serif, Georgia, serif;
+  font-style: italic;
+  color: var(--accent);
+}
+
+.hint-line[hidden] {
+  display: none;
+}
+
+.objective {
+  margin: auto 0 0;
+  font-size: 12px;
+  color: color-mix(in srgb, var(--parchment) 52%, transparent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hotspot {
+    animation: none;
+  }
+  .censor,
+  .dust {
+    display: none;
+  }
+  .exhibit,
+  .gate.rise-in {
     animation: none;
   }
 }
@@ -276,6 +472,23 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.sheet-kicker {
+  margin: 0;
+  font: 600 10px/1.4 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+}
+
+.sheet-help {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  color: color-mix(in srgb, var(--parchment) 50%, transparent);
 }
 
 .guess-input {

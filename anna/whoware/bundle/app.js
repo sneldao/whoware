@@ -8,6 +8,15 @@
 //
 // Grants required by manifest.ui.host_api:
 //   storage: get, set     window: set_title, ready
+//
+// Structure:
+//   game.js    pure rules — scoring, streak, guess evaluation, share text
+//   motion.js  cancellable motion + dust motes
+//   app.js     this file — APS state, view lifecycle, DOM
+//
+// Views are built once and *patched*, not torn down. The previous version
+// did `app.innerHTML = ""` on every clue reveal, which destroyed and rebuilt
+// the panorama layer and dropped focus mid-interaction.
 
 import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 import {
@@ -21,8 +30,10 @@ import {
   scoreCeiling,
   streakSummary,
 } from "./game.js";
+import { crossfade, reducedMotion, startDust, typewriter } from "./motion.js";
 
 const MAX_GUESS_CHARS = 64;
+const SITE_URL = "https://whoware.vercel.app";
 
 let episode = null;
 let anna = null; // null when running standalone (bundle opened directly)
@@ -54,6 +65,7 @@ const defaultRun = () => ({
   score: 0,
   solved: false,
   exhausted: false,
+  lastHint: null,
 });
 
 let state = defaultRun();
@@ -99,7 +111,7 @@ async function loadState() {
   if (r) state = { ...defaultRun(), ...r };
 }
 
-// ── Rendering ─────────────────────────────────────────────────────
+// ── DOM helpers ───────────────────────────────────────────────────
 
 const app = document.getElementById("app");
 const el = (tag, cls, text) => {
@@ -117,231 +129,391 @@ function applyPalette(scene) {
   if (p[3]) document.body.style.setProperty("--parchment", p[3]);
 }
 
-// A real curated episode carries `imageUrl` (Venice panorama). The fixture
-// falls back to a generated SVG so the room never renders as an empty box.
-function sceneBackdrop(scene) {
-  return scene.imageUrl ? `url("${scene.imageUrl}")` : null;
-}
-
 function currentScene() {
   return episode.scenes[Math.min(state.sceneIndex ?? 0, episode.scenes.length - 1)];
-}
-
-function render() {
-  app.innerHTML = "";
-  applyPalette(currentScene());
-
-  if (state.solved || state.exhausted) return renderVerdict();
-  renderRoom();
-}
-
-function renderRoom() {
-  const scene = currentScene();
-  const wrap = el("div", "room");
-
-  const hud = el("div", "hud");
-  hud.append(
-    el("span", "hud-item", `CLUES ${state.cluesFound.length}/${totalClues()}`),
-    el("span", "hud-item", `GUESSES ${state.guessesLeft}`),
-    el("span", "hud-item", `CEILING ${scoreCeiling(episode, state)}`)
-  );
-  wrap.append(hud);
-
-  if (state.guesses.length) wrap.append(renderLog());
-
-  const stage = el("div", "stage");
-  const backdrop = sceneBackdrop(scene) ?? (scene.panoramaDataUri ? `url("${scene.panoramaDataUri}")` : null);
-  if (backdrop) stage.style.setProperty("--backdrop", backdrop);
-  const title = el("div", "scene-title", scene.title);
-  const ambient = el("div", "ambient", scene.ambientText);
-  stage.append(title, ambient);
-
-  // Hotspots. One declassified up-front per short-mode tuning so a cold
-  // user has something to work from immediately.
-  const revealed = new Set(state.cluesFound);
-  scene.clues.forEach((clue) => {
-    if (!revealed.has(clue.index)) {
-      const dot = el("button", "hotspot");
-      dot.style.left = `${clue.x * 100}%`;
-      dot.style.top = `${clue.y * 100}%`;
-      dot.setAttribute("aria-label", `Undisclosed clue ${clue.index}`);
-      dot.addEventListener("click", () => revealClue(clue));
-      stage.append(dot);
-    }
-  });
-
-  if (revealed.size) {
-    const open = scene.clues.find((c) => revealed.has(c.index));
-    if (open) stage.append(renderExhibit(open));
-  }
-
-  wrap.append(stage);
-  wrap.append(renderControls(scene));
-  app.append(wrap);
 }
 
 function totalClues() {
   return episode.scenes.reduce((n, s) => n + s.clues.length, 0);
 }
 
-function renderExhibit(clue) {
-  const box = el("figure", "exhibit");
-  box.append(el("figcaption", "exhibit-no", `CLUE ${String(clue.index).padStart(2, "0")}`));
-  box.append(el("h3", "exhibit-label", clue.label));
-  box.append(el("p", "exhibit-detail", clue.detail));
-  if (clue.figureQuote) {
-    const q = el("blockquote", "quote");
-    q.append(el("p", null, clue.figureQuote));
-    q.append(el("cite", null, `— ${episode.roomFigure.canonicalName}`));
-    box.append(q);
-  }
-  return box;
+function isRunInProgress() {
+  return !state.solved && !state.exhausted && (state.guesses.length > 0 || state.cluesFound.length > 0);
 }
 
-function renderLog() {
-  const log = el("div", "log");
-  for (const g of state.guesses.slice().reverse()) {
-    log.append(el("div", "log-row", `${g.text} — ${g.prose}`));
-  }
-  return log;
+// ── View lifecycle ────────────────────────────────────────────────
+//
+// Every view owns its teardown. Aborting the controller stops the
+// typewriter; calling `stopDust` cancels the rAF loop. Without this, moving
+// between views leaked a timer chain and a full-screen canvas animation
+// every time.
+
+let disposeView = () => {};
+let stopDust = () => {};
+let roomRefs = null; // node handles of the mounted room, for in-place patching
+
+function mountView(build) {
+  disposeView();
+  roomRefs = null;
+  const controller = new AbortController();
+  disposeView = () => {
+    controller.abort();
+    stopDust();
+    stopDust = () => {};
+  };
+  app.replaceChildren();
+  build(controller.signal);
 }
 
-function renderControls(scene) {
-  const bar = el("div", "controls");
+// ── Entry gate (cold path) ────────────────────────────────────────
+//
+// A user arriving from a chat mention sees a room with two mystery dots and
+// no framing. The gate is what the native app's threshold does: episode
+// number, tier, who is in the room, and one Enter. It is also where the
+// return-recap branches, because that is exactly the "you left off" moment.
 
-  const guessBtn = el("button", "btn primary", "Guess");
-  guessBtn.addEventListener("click", openGuessSheet);
-  bar.append(guessBtn);
+function renderGate(signal, { resumed }) {
+  const wrap = el("div", "gate");
 
-  if (state.cluesFound.length < totalClues()) {
-    const hintBtn = el("button", "btn", "Hint");
-    hintBtn.disabled = state.hintsLeft <= 0;
-    hintBtn.addEventListener("click", spendHint);
-    bar.append(hintBtn);
+  const plate = el("div", "plate");
+  plate.append(
+    el("div", "plate-kicker", episode.witnessChamber ? "The Witness Chamber" : "Daily case"),
+    el("h1", "plate-title", "WhoWare"),
+    el("p", "plate-tag", "Someone changed history from this room. Name them.")
+  );
+
+  const meta = el("dl", "plate-meta");
+  const addMeta = (k, v) => {
+    meta.append(el("dt", null, k), el("dd", null, v));
+  };
+  addMeta("Episode", `#${String(episode.episodeDay).slice(-3)}`);
+  addMeta("Tier", episode.difficulty);
+  if (episode.witnessChamber) addMeta("In the room", episode.roomFigure.canonicalName);
+  addMeta("Streak", profile.streak ? `${profile.streak} day${profile.streak === 1 ? "" : "s"}` : "none yet");
+  plate.append(meta);
+  wrap.append(plate);
+
+  if (resumed) {
+    const recap = el("div", "recap");
+    recap.append(el("div", "recap-title", "Where you left off"));
+    const line = el("p", "recap-line");
+    line.textContent =
+      `${state.cluesFound.length} of ${totalClues()} clues opened · ` +
+      `${state.guesses.length} guess${state.guesses.length === 1 ? "" : "es"} spent · ` +
+      `${state.guessesLeft} left`;
+    recap.append(line);
+    if (state.guesses.length) {
+      const last = state.guesses[state.guesses.length - 1];
+      recap.append(el("p", "recap-proximity", last.prose));
+    }
+    plate.append(recap);
   }
 
-  const next = el("button", "btn ghost", "Next scene");
-  next.disabled = state.sceneIndex >= episode.scenes.length - 1;
-  next.addEventListener("click", () => {
-    state.sceneIndex = (state.sceneIndex ?? 0) + 1;
-    saveState();
-    render();
+  const enter = el("button", "btn primary gate-enter", resumed ? "Resume the room" : "Enter the room");
+  enter.addEventListener("click", () => {
+    // Sound/analytics would hook here; first interaction unlocks autoplay.
+    renderRoom();
   });
-  bar.append(next);
+  wrap.append(enter);
 
-  return bar;
+  const howto = el("p", "gate-howto");
+  howto.innerHTML =
+    "Inspect what is in the room, read what the figure says about it, then name the one they knew.";
+  wrap.append(howto);
+
+  app.append(wrap);
+  if (!reducedMotion()) wrap.classList.add("rise-in");
+  void signal;
+}
+
+// ── Room ──────────────────────────────────────────────────────────
+
+function renderRoom() {
+  mountView((signal) => {
+    const scene = currentScene();
+    applyPalette(scene);
+
+    const wrap = el("div", "room");
+    const refs = {};
+
+    // HUD — patched in place, never rebuilt.
+    const hud = el("div", "hud");
+    refs.clues = el("span", "hud-item");
+    refs.guesses = el("span", "hud-item");
+    refs.ceiling = el("span", "hud-item");
+    hud.append(refs.clues, refs.guesses, refs.ceiling);
+    wrap.append(hud);
+
+    // Hint feedback line — the previous version revealed a clue silently.
+    refs.hintLine = el("p", "hint-line");
+    refs.hintLine.hidden = true;
+    wrap.append(refs.hintLine);
+
+    refs.log = el("div", "log");
+    refs.log.hidden = true;
+    wrap.append(refs.log);
+
+    // Stage
+    const stage = el("div", "stage");
+    const backdrop = scene.imageUrl ?? scene.panorama ?? null;
+    if (backdrop) stage.style.setProperty("--backdrop", `url("${backdrop}")`);
+
+    stage.append(el("div", "scene-title", scene.title));
+    stage.append(el("p", "ambient", scene.ambientText));
+
+    refs.hotspots = el("div", "hotspots");
+    stage.append(refs.hotspots);
+
+    refs.exhibitSlot = el("div", "exhibit-slot");
+    stage.append(refs.exhibitSlot);
+
+    // Objective: say what to do, once, in the room.
+    refs.objective = el("p", "objective");
+    stage.append(refs.objective);
+
+    wrap.append(stage);
+
+    // Controls
+    const bar = el("div", "controls");
+    refs.guessBtn = el("button", "btn primary", "Guess");
+    refs.guessBtn.addEventListener("click", openGuessSheet);
+    refs.hintBtn = el("button", "btn", "Hint");
+    refs.hintBtn.addEventListener("click", spendHint);
+    refs.nextBtn = el("button", "btn ghost", "Next scene");
+    refs.nextBtn.addEventListener("click", advanceScene);
+    bar.append(refs.guessBtn, refs.hintBtn, refs.nextBtn);
+    wrap.append(bar);
+
+    app.append(wrap);
+
+    // Dust sits above the backdrop but below the text layer.
+    const canvas = el("canvas", "dust");
+    canvas.setAttribute("aria-hidden", "true");
+    stage.prepend(canvas);
+    stopDust = startDust(canvas, { color: scene.palette?.[2] });
+
+    // Signal-driven teardown, so leaving the room always stops the loop even
+    // if the view is swapped by a path that skips mountView's disposer.
+    signal.addEventListener("abort", () => stopDust(), { once: true });
+
+    roomRefs = refs;
+    renderRoomScene(refs);
+  });
+}
+
+function renderRoomScene(refs) {
+  const scene = currentScene();
+  const revealed = new Set(state.cluesFound);
+  const ceiling = scoreCeiling(episode, state);
+
+  refs.clues.textContent = `CLUES ${state.cluesFound.length}/${totalClues()}`;
+  refs.guesses.textContent = `GUESSES ${state.guessesLeft}`;
+  refs.ceiling.textContent = `CEILING ${ceiling}`;
+
+  // Hint line — explain what the hint did, instead of a silent reveal.
+  if (state.lastHint) {
+    refs.hintLine.textContent = state.lastHint;
+    refs.hintLine.hidden = false;
+  } else {
+    refs.hintLine.hidden = true;
+  }
+
+  // Deduction log
+  if (state.guesses.length) {
+    refs.log.replaceChildren(
+      ...state.guesses
+        .slice()
+        .reverse()
+        .map((g) => el("div", "log-row", `${g.text} — ${g.prose}`)),
+    );
+    refs.log.hidden = false;
+  } else {
+    refs.log.hidden = true;
+  }
+
+  // Hotspots — only unrevealed ones remain.
+  const dots = scene.clues
+    .filter((c) => !revealed.has(c.index))
+    .map((c) => {
+      const dot = el("button", "hotspot");
+      dot.style.left = `${c.x * 100}%`;
+      dot.style.top = `${c.y * 100}%`;
+      dot.setAttribute("aria-label", `Inspect: ${c.label}`);
+      // Visible affordance — the old dot gave a sighted user nothing to go on.
+      dot.append(el("span", "hotspot-tip", "Inspect"));
+      dot.addEventListener("click", () => revealClue(c));
+      return dot;
+    });
+  refs.hotspots.replaceChildren(...dots);
+
+  // Exhibit — the most recently revealed clue in this scene.
+  const open = scene.clues.filter((c) => revealed.has(c.index)).at(-1);
+  if (open) {
+    const box = el("figure", "exhibit");
+    box.append(el("figcaption", "exhibit-no", `CLUE ${String(open.index).padStart(2, "0")}`));
+    box.append(el("h3", "exhibit-label", open.label));
+    box.append(el("p", "exhibit-detail", open.detail));
+    if (open.figureQuote) {
+      const q = el("blockquote", "quote");
+      q.append(el("p", null, open.figureQuote));
+      q.append(el("cite", null, `— ${episode.roomFigure.canonicalName}`));
+      box.append(q);
+    }
+    // Declassification wipe — the native app's "censor bar" beat.
+    if (!reducedMotion()) {
+      const bar = el("div", "censor");
+      box.append(bar);
+      requestAnimationFrame(() => bar.classList.add("retract"));
+    }
+    refs.exhibitSlot.replaceChildren(box);
+  } else {
+    refs.exhibitSlot.replaceChildren();
+  }
+
+  // Objective
+  const remaining = dots.length;
+  refs.objective.textContent = remaining
+    ? `${remaining} object${remaining === 1 ? "" : "s"} in this room ${remaining === 1 ? "is" : "are"} unopened.`
+    : "Nothing left here. Move on, or name who changed history.";
+
+  // Controls
+  refs.hintBtn.disabled = state.hintsLeft <= 0 || state.cluesFound.length >= totalClues();
+  refs.hintBtn.textContent = state.hintsLeft ? `Hint (${state.hintsLeft})` : "No hints left";
+  refs.nextBtn.disabled = state.sceneIndex >= episode.scenes.length - 1;
+  refs.nextBtn.textContent =
+    state.sceneIndex >= episode.scenes.length - 1 ? "Last scene" : `Scene ${state.sceneIndex + 2}`;
 }
 
 // ── Actions ───────────────────────────────────────────────────────
 
 function revealClue(clue) {
-  state.cluesFound = [...new Set([...state.cluesFound, clue.index])].sort((a, b) => a - b);
+  if (state.cluesFound.includes(clue.index)) return;
+  state.cluesFound = [...state.cluesFound, clue.index].sort((a, b) => a - b);
   saveState();
-  render();
+  patchRoom();
 }
 
 function spendHint() {
   if (state.hintsLeft <= 0) return;
-  state.hintsLeft -= 1;
   const scene = currentScene();
   const hidden = scene.clues.find((c) => !state.cluesFound.includes(c.index));
-  if (hidden) state.cluesFound = [...state.cluesFound, hidden.index].sort((a, b) => a - b);
+  if (!hidden) return;
+  state.hintsLeft -= 1;
+  state.cluesFound = [...state.cluesFound, hidden.index].sort((a, b) => a - b);
+  state.lastHint = `A hand points to “${hidden.label}.”`;
   saveState();
-  render();
+  patchRoom();
+}
+
+function advanceScene() {
+  if (state.sceneIndex >= episode.scenes.length - 1) return;
+  state.sceneIndex += 1;
+  saveState();
+  // Scene change repaints the backdrop, so rebuild the room rather than
+  // patching — but go through the transition so it is not a hard cut.
+  crossfade(app, renderRoom);
+}
+
+// patchRoom updates the mounted room in place — no teardown, so the
+// panorama layer, the dust canvas and focus all survive a clue reveal.
+function patchRoom() {
+  if (roomRefs) renderRoomScene(roomRefs);
+  else renderRoom();
 }
 
 function openGuessSheet() {
-  const sheet = el("div", "sheet");
-  const input = el("input", "guess-input");
-  input.maxLength = MAX_GUESS_CHARS;
-  input.placeholder = "Name the one who changed history";
-  input.setAttribute("aria-label", "Your guess");
+  mountView(() => {
+    const sheet = el("div", "sheet");
+    const input = el("input", "guess-input");
+    input.maxLength = MAX_GUESS_CHARS;
+    input.placeholder = episode.witnessChamber ? `Who did ${episode.roomFigure.canonicalName} mean?` : "Name the one who changed history";
+    input.setAttribute("aria-label", "Your guess");
+    input.setAttribute("autocomplete", "off");
 
-  const submit = el("button", "btn primary", "Commit");
-  const cancel = el("button", "btn ghost", "Back");
+    const submit = el("button", "btn primary", "Commit");
+    const cancel = el("button", "btn ghost", "Back");
 
-  const close = () => render();
+    const commit = () => {
+      const result = evaluateGuess(input.value, episode);
+      state.guessesLeft -= 1;
+      state.guesses.push({ text: input.value.trim(), prose: result.prose, proximity: result.proximity });
+      state.lastHint = null;
+      if (result.correct) {
+        state.score = scoreCeiling(episode, state);
+        profile = applySolve(profile, episode, state.score);
+        state.solved = true;
+        saveProfile();
+      } else if (state.guessesLeft <= 0) {
+        state.exhausted = true;
+        state.score = 0;
+        profile = recordMiss(profile, episode);
+        saveProfile();
+      }
+      saveState();
+      renderVerdict();
+    };
 
-  submit.addEventListener("click", () => {
-    const result = evaluateGuess(input.value, episode);
-    state.guessesLeft -= 1;
-    state.guesses.push({ text: input.value.trim(), prose: result.prose, proximity: result.proximity });
-    if (result.correct) {
-      state.score = scoreCeiling(episode, state);
-      profile = applySolve(profile, episode, state.score);
-      state.solved = true;
-      saveProfile();
-    } else if (state.guessesLeft <= 0) {
-      state.exhausted = true;
-      state.score = 0;
-      profile = recordMiss(profile, episode);
-      saveProfile();
-    }
-    saveState();
-    close();
+    submit.addEventListener("click", commit);
+    cancel.addEventListener("click", () => renderRoom());
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") commit();
+    });
+
+    const actions = el("div", "sheet-actions");
+    actions.append(cancel, submit);
+    sheet.append(
+      el("p", "sheet-kicker", episode.witnessChamber ? `${episode.roomFigure.canonicalName} is speaking about someone.` : "Name the one"),
+      input,
+      el("p", "sheet-help", `${state.guessesLeft} guess${state.guessesLeft === 1 ? "" : "es"} remaining. Enter to commit, Esc to back out.`),
+      actions,
+    );
+    app.append(sheet);
+    input.focus();
   });
-
-  cancel.addEventListener("click", close);
-  input.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") submit.click();
-  });
-
-  const actions = el("div", "sheet-actions");
-  actions.append(cancel, submit);
-  sheet.append(input, actions);
-  app.innerHTML = "";
-  app.append(sheet);
-  input.focus();
 }
 
+// ── Verdict ───────────────────────────────────────────────────────
+
 function renderVerdict() {
-  const solved = state.solved;
-  const grade = solved ? detectiveGrade(state.score) : null;
+  mountView((signal) => {
+    const solved = state.solved;
+    const grade = solved ? detectiveGrade(state.score) : null;
+    const wrap = el("div", `verdict ${solved ? "solved" : "exhausted"}`);
 
-  const wrap = el("div", `verdict ${solved ? "solved" : "exhausted"}`);
-
-  if (episode.witnessChamber) {
-    wrap.append(el("p", "ack", `${episode.roomFigure.canonicalName} nods slowly.`));
-  }
-
-  if (solved) {
+    const ack = el("p", "ack");
     const name = el("h1", "reveal");
-    typewrite(name, episode.target.canonicalName);
-    wrap.append(name);
-    wrap.append(el("p", "summary", episode.targetSummary));
-    wrap.append(el("div", "grade", `${grade} · ${state.score} points`));
-    wrap.append(el("div", "streak", streakLine()));
-  } else {
-    wrap.append(el("h1", "reveal", episode.target.canonicalName));
-    wrap.append(el("p", "summary", episode.targetSummary));
-    wrap.append(el("p", "salvage", `The signal fades. ${episode.roomFigure.canonicalName} says nothing.`));
-    wrap.append(el("div", "streak", streakLine(true)));
-  }
 
-  // The LLM reads this when summarising the window for the assistant.
-  wrap.append(el("p", "summary-template", summaryForLlm()));
-  wrap.append(renderShare());
+    if (solved) {
+      // Witness Chamber acknowledgment, then the name — the order matters.
+      typewriter(ack, `${episode.roomFigure.canonicalName} nods slowly.`, { signal }).then(() => {
+        if (!signal.aborted) typewriter(name, episode.target.canonicalName, { speed: 55, signal });
+      });
+    } else {
+      ack.textContent = `The signal fades. ${episode.roomFigure.canonicalName} says nothing.`;
+      name.textContent = episode.target.canonicalName;
+    }
+    wrap.append(ack, name);
+    wrap.append(el("p", "summary", episode.targetSummary));
+    wrap.append(el("div", "grade", solved ? `${grade} · ${state.score} points` : "No points today"));
+    wrap.append(el("div", "streak", streakSummary(profile, !solved)));
+    wrap.append(el("p", "summary-template", runSummary(profile, state, episode)));
+    wrap.append(renderShare());
+    app.append(wrap);
 
-  const again = el("button", "btn primary", "Play again");
-  again.addEventListener("click", () => {
-    // Replaying resets the run only — the streak lives in the profile and
-    // must survive, or the daily ritual has no memory.
-    state = startState(episode);
-    saveState();
-    render();
+    if (solved) {
+      const again = el("button", "btn primary", "Play again");
+      again.addEventListener("click", () => {
+        // Replaying resets the run only — the streak lives in the profile.
+        state = startState(episode);
+        saveState();
+        renderRoom();
+      });
+      wrap.append(again);
+    }
   });
-  wrap.append(again);
-
-  app.append(wrap);
 }
 
 // ── Share ─────────────────────────────────────────────────────────
-//
-// Growth in Anna is shareability, not retention (ANNA.md §4): there is no
-// push surface and a first install has no yesterday to lose a streak
-// against. The pasted result is the artefact that travels.
-
-const SITE_URL = "https://whoware.vercel.app";
 
 function shareText() {
   return buildShareText({
@@ -363,14 +535,11 @@ function shareText() {
 function renderShare() {
   const text = shareText();
   const block = el("div", "share");
-
-  const preview = el("pre", "share-text", text);
-  block.append(preview);
-
-  const row = el("div", "share-row");
   const status = el("span", "share-status");
 
-  // Prefer the native share sheet; fall back to clipboard.
+  block.append(el("pre", "share-text", text));
+
+  const row = el("div", "share-row");
   if (navigator.share) {
     const native = el("button", "btn primary", "Share");
     native.addEventListener("click", async () => {
@@ -382,47 +551,62 @@ function renderShare() {
     });
     row.append(native);
   }
-
   const copy = el("button", navigator.share ? "btn" : "btn primary", "Copy");
   copy.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(text);
       status.textContent = "Copied";
     } catch {
-      // Clipboard is gated on focus/permission; the preview is selectable
-      // either way, so this is a soft failure.
       status.textContent = "Select and copy above";
     }
   });
   row.append(copy);
-  block.append(row, status);
 
+  block.append(row, status);
   return block;
 }
 
-function streakLine(missed = false) {
-  return streakSummary(profile, missed);
-}
+// ── Keyboard ──────────────────────────────────────────────────────
+//
+// The native app binds Esc/G/N/1–9. Cheap here, and it is the difference
+// between "usable" and "fast" for anyone who plays several days running.
 
-function summaryForLlm() {
-  return runSummary(profile, state, episode);
-}
+function onKey(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
 
-function typewrite(node, text) {
-  node.textContent = "";
-  let i = 0;
-  const tick = () => {
-    if (i > text.length) return;
-    node.textContent = text.slice(0, i++);
-    setTimeout(tick, 45);
-  };
-  tick();
+  if (e.key === "Escape") {
+    if (app.querySelector(".sheet")) renderRoom();
+    return;
+  }
+  if (typing) return;
+
+  const k = e.key.toLowerCase();
+  if (k === "g") {
+    e.preventDefault();
+    if (!state.solved && !state.exhausted) openGuessSheet();
+  } else if (k === "h") {
+    e.preventDefault();
+    spendHint();
+  } else if (k === "n") {
+    e.preventDefault();
+    advanceScene();
+  } else if (/^[1-9]$/.test(e.key)) {
+    const idx = Number(e.key) - 1;
+    if (idx < episode.scenes.length) {
+      e.preventDefault();
+      state.sceneIndex = idx;
+      saveState();
+      crossfade(app, renderRoom);
+    }
+  }
 }
 
 // ── Boot ──────────────────────────────────────────────────────────
 
 async function main() {
-  episode = await fetch("./episode.json").then((r) => r.json());
+  const res = await fetch("./episode.json");
+  episode = await res.json();
   state = startState(episode);
 
   try {
@@ -437,7 +621,11 @@ async function main() {
     console.info("standalone preview — APS disabled", e);
   }
 
-  render();
+  // Cold start always shows the gate. Resumed runs get the recap on it,
+  // rather than dropping straight into a room with no framing.
+  mountView((signal) => renderGate(signal, { resumed: isRunInProgress() }));
+
+  document.addEventListener("keydown", onKey);
 }
 
 main();

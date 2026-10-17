@@ -146,13 +146,18 @@ const RAW_EPISODE = {
 //
 // Production scenes carry `imageUrl` from Venice (see
 // `venice.generateImage`). This fixture has no Convex access, so scenes get a
-// deterministic SVG backdrop derived from their own palette — it keeps the
-// 2D-first renderer honest about what a panorama layer is for, and the UI
-// prefers `imageUrl` whenever a real episode supplies one.
+// deterministic SVG backdrop derived from their own palette.
+//
+// Written as standalone `.svg` files rather than inlined data URIs: an
+// earlier revision embedded them in episode.json, which made the payload
+// 12 KB of base64 and forced the browser to decode a panorama it might not
+// display. As files they are cacheable, lazily fetched, and swappable for a
+// real `imageUrl` with no code change. The UI prefers `imageUrl`, then
+// `panorama`.
 
 function makePanorama(palette: readonly string[], title: string): string {
   const [ink, deep, accent, parchment] = palette;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
 <defs>
 <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0" stop-color="${ink}"/><stop offset="1" stop-color="${deep}"/>
@@ -184,7 +189,6 @@ function makePanorama(palette: readonly string[], title: string): string {
 <rect width="1600" height="900" fill="url(#vig)"/>
 <text x="56" y="70" font-family="Georgia,serif" font-size="30" fill="${parchment}" opacity="0.5">${title}</text>
 </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 // ── Generate quotes with the real engine ──────────────────────────
@@ -193,7 +197,7 @@ let produced = 0;
 
 const scenes = RAW_EPISODE.scenes.map((scene, sceneIndex) => ({
   ...scene,
-  panoramaDataUri: makePanorama(scene.palette, scene.title),
+  panorama: `panorama/scene-${sceneIndex + 1}.svg`,
   clues: scene.clues.map((clue, clueIndex) => {
     const figureQuote = quoteForClue({
       figure: {
@@ -256,4 +260,13 @@ for (const scene of bundle.scenes) {
 
 const outPath = new URL("../bundle/episode.json", import.meta.url);
 await Bun.write(outPath, JSON.stringify(bundle, null, 2) + "\n");
-console.log(`wrote ${bundle.scenes.length} scenes → ${outPath.pathname}`);
+
+// Panoramas ship as real files, not inline data URIs (see makePanorama).
+const panoramaDir = new URL("../bundle/panorama/", import.meta.url);
+await Bun.write(new URL(`.gitkeep`, panoramaDir), "");
+for (const [i, scene] of RAW_EPISODE.scenes.entries()) {
+  await Bun.write(new URL(`scene-${i + 1}.svg`, panoramaDir), makePanorama(scene.palette, scene.title));
+}
+
+const bytes = new Blob([JSON.stringify(bundle)]).size;
+console.log(`wrote ${bundle.scenes.length} scenes → ${outPath.pathname} (${bytes}b + ${scenes.length} panoramas)`);

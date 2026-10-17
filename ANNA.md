@@ -180,6 +180,7 @@ Decide this before writing UI, not after. It changes the room layout.
 | 6 | Wire APS for score / streak / guess log | ✅ done (code) · ⚠️ **unverified against real APS** — needs `anna-app login` |
 | 7 | Apply short-mode tuning from §5 | ✅ done |
 | 8 | Verdict view + share card + `view.summary_template` | ✅ done |
+| 8b | Entry gate, return recap, keyboard, affordances, dust, declassification beat | ✅ done |
 | 9 | `anna-app login`, `account set-handle` | ⬜ **blocking — needs a human PAT** |
 | 10 | `anna-app apps push` → `apps submit-review` | ⬜ |
 
@@ -214,6 +215,46 @@ streak added — the native card dropped those in v0.2 cut #6, but here the
 streak *is* the growth mechanic. Native share sheet where available,
 clipboard otherwise, with the text always shown in a selectable block so a
 blocked clipboard is a soft failure.
+
+### Cold path
+
+The first version dropped a returning player straight into a room with two
+mystery dots and no framing. Three things now stand between a chat mention
+and play, and the middle one only appears for a run already in progress:
+
+1. **Entry gate** — episode number, tier, who is in the room, current streak,
+   and one Enter. Witness Chamber episodes say so on the kicker.
+2. **Return recap** — "Where you left off": clues opened, guesses spent,
+   guesses left, and the proximity prose from the last one. Resume restarts
+   the run, never the profile.
+3. **The room**, which states its own objective ("2 objects in this room are
+   unopened") and labels every hotspot with what it actually is
+   (`Inspect: Enigma cipher chart`, not "Undisclosed clue 1").
+
+### Environment: the window is rarely focused
+
+An Anna app window spends most of its life unfocused or collapsed while the
+user reads the conversation it was summoned from. Two obvious animation
+implementations break there and only there — a chained-`setTimeout`
+typewriter crawls at ~1 char/sec because background timers clamp to 1 Hz, and
+a bare `requestAnimationFrame` typewriter never completes at all because rAF
+is paused outright when hidden, leaving a blank verdict. `motion.js` derives
+progress from elapsed wall-clock and backstops rAF with a timer, so the
+reveal always lands. `startDust` stops on `visibilitychange`. Both paths are
+pinned by `tools/motion.test.js`, which stubs the frame clock because the
+failure is invisible in local dev.
+
+### Rendering: patch, never rebuild
+
+Views are built once and patched. Clue reveals, hints and guesses update only
+the changed nodes, so the panorama layer, the dust canvas and DOM focus
+survive. `mountView` owns an `AbortController` plus a dust teardown, so
+leaving a view always cancels its motion — the previous version's
+`app.innerHTML = ""` tore down the whole subtree on every reveal.
+
+Backdrops ship as real files in `bundle/panorama/`, not inlined data URIs:
+`episode.json` went 12.4 KB → **3.6 KB**, and panoramas became cacheable and
+lazily fetched. A curated episode's `imageUrl` takes precedence.
 
 ### What is still unverified
 
