@@ -12,6 +12,7 @@
 import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 import {
   applySolve,
+  buildShareText,
   defaultProfile,
   detectiveGrade,
   evaluateGuess,
@@ -319,6 +320,7 @@ function renderVerdict() {
 
   // The LLM reads this when summarising the window for the assistant.
   wrap.append(el("p", "summary-template", summaryForLlm()));
+  wrap.append(renderShare());
 
   const again = el("button", "btn primary", "Play again");
   again.addEventListener("click", () => {
@@ -331,6 +333,71 @@ function renderVerdict() {
   wrap.append(again);
 
   app.append(wrap);
+}
+
+// ── Share ─────────────────────────────────────────────────────────
+//
+// Growth in Anna is shareability, not retention (ANNA.md §4): there is no
+// push surface and a first install has no yesterday to lose a streak
+// against. The pasted result is the artefact that travels.
+
+const SITE_URL = "https://whoware.vercel.app";
+
+function shareText() {
+  return buildShareText({
+    episodeDay: episode.episodeDay,
+    figureName: episode.target.canonicalName,
+    outcome: state.solved ? "solved" : "exhausted",
+    score: state.score,
+    grade: state.solved ? detectiveGrade(state.score) : null,
+    streak: profile.streak,
+    guessesUsed: state.guesses.length,
+    maxGuesses: episode.tuning.guessLimit,
+    difficulty: episode.difficulty,
+    era: episode.target.era,
+    region: episode.target.region,
+    siteUrl: SITE_URL,
+  });
+}
+
+function renderShare() {
+  const text = shareText();
+  const block = el("div", "share");
+
+  const preview = el("pre", "share-text", text);
+  block.append(preview);
+
+  const row = el("div", "share-row");
+  const status = el("span", "share-status");
+
+  // Prefer the native share sheet; fall back to clipboard.
+  if (navigator.share) {
+    const native = el("button", "btn primary", "Share");
+    native.addEventListener("click", async () => {
+      try {
+        await navigator.share({ text });
+      } catch (e) {
+        if (e?.name !== "AbortError") status.textContent = "Share cancelled";
+      }
+    });
+    row.append(native);
+  }
+
+  const copy = el("button", navigator.share ? "btn" : "btn primary", "Copy");
+  copy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      status.textContent = "Copied";
+    } catch {
+      // Clipboard is gated on focus/permission; the preview is selectable
+      // either way, so this is a soft failure.
+      status.textContent = "Select and copy above";
+    }
+  });
+  row.append(copy);
+  block.append(row, status);
+
+  return block;
 }
 
 function streakLine(missed = false) {

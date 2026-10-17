@@ -154,3 +154,51 @@ export function runSummary(profile, state, ep) {
     : `did not solve; target was ${ep.target.canonicalName}`;
   return `WhoWare day ${ep.episodeDay}: ${outcome}. Streak ${profile.streak ?? 0} (best ${profile.best ?? 0}). Guesses used ${state.guesses.length}/${ep.tuning.guessLimit}. Clues found ${state.cluesFound.length}.`;
 }
+
+// ── Share text ────────────────────────────────────────────────────
+//
+// Mirrors buildShareText in apps/default/components/who-ware/
+// result-share-card.tsx so a result pasted from Anna and from the native
+// app are recognisably the same artefact. Grade and streak are added here:
+// the native card dropped them in v0.2 cut #6, but in Anna the streak is
+// the growth mechanic and belongs in the thing people paste.
+
+const FILLED = "🟧";
+const EMPTY = "⬜";
+
+export function buildEmojiRow(filled, total) {
+  const safeTotal = Math.max(0, total);
+  const safeFilled = Math.max(0, Math.min(filled, safeTotal));
+  return FILLED.repeat(safeFilled) + EMPTY.repeat(Math.max(0, safeTotal - safeFilled));
+}
+
+export function buildShareText({
+  episodeDay,
+  figureName,
+  outcome,
+  score,
+  grade,
+  streak,
+  guessesUsed,
+  maxGuesses,
+  difficulty,
+  era,
+  region,
+  siteUrl,
+}) {
+  const label = outcome === "solved" ? "Solved" : "Missed";
+  const row = buildEmojiRow(guessesUsed, maxGuesses);
+  const pts = `${score.toLocaleString()} pts${grade ? ` · ${grade}` : ""}`;
+  // Plain lines, no leading "\n" — join supplies the separator. Embedding one
+  // here double-spaced every line after the first.
+  const streakLine = streak != null && streak > 0 ? `Streak ${streak}` : "";
+  return [
+    `WhoWare #${String(episodeDay).slice(-3)} · ${difficulty ?? "iconic"}`,
+    `${label}: ${figureName}${era ? ` · ${era}` : ""}${region ? ` · ${region}` : ""}`,
+    `${row}  ${pts}`,
+    streakLine,
+    siteUrl ?? "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}

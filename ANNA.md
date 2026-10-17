@@ -179,7 +179,7 @@ Decide this before writing UI, not after. It changes the room layout.
 | 5 | Build room UI (panorama, hotspots, clue exhibit, quote-block) | ✅ done |
 | 6 | Wire APS for score / streak / guess log | ✅ done (code) · ⚠️ **unverified against real APS** — needs `anna-app login` |
 | 7 | Apply short-mode tuning from §5 | ✅ done |
-| 8 | Verdict view + share card + `view.summary_template` | 🟡 verdict + LLM summary done · **share card not built** |
+| 8 | Verdict view + share card + `view.summary_template` | ✅ done |
 | 9 | `anna-app login`, `account set-handle` | ⬜ **blocking — needs a human PAT** |
 | 10 | `anna-app apps push` → `apps submit-review` | ⬜ |
 
@@ -197,12 +197,23 @@ resets the run, **every new day silently zeroed the streak** — the one
 mechanic the daily loop rests on. `tools/game.test.js` pins the fix.
 
 `bundle/game.js` holds the pure rules (scoring, grading, guess evaluation,
-streak transitions) with no DOM or host dependency, so the streak logic is
-unit-tested rather than only reachable by clicking through a room:
+streak transitions, share text) with no DOM or host dependency, so the streak
+logic is unit-tested rather than only reachable by clicking through a room:
 
 ```bash
-bun test anna/whoware/tools/game.test.js   # 23 pass
+bun test anna/whoware/tools/game.test.js   # 29 pass
 ```
+
+### Share
+
+Growth in Anna is shareability, not retention (§4), so the pasted result is
+the artefact that travels. `buildShareText` mirrors
+`apps/default/components/who-ware/result-share-card.tsx` so a result pasted
+from Anna and from the native app read as the same thing, with grade and
+streak added — the native card dropped those in v0.2 cut #6, but here the
+streak *is* the growth mechanic. Native share sheet where available,
+clipboard otherwise, with the text always shown in a selectable block so a
+blocked clipboard is a soft failure.
 
 ### What is still unverified
 

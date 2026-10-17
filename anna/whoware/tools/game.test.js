@@ -16,6 +16,8 @@ import {
   runSummary,
   scoreCeiling,
   streakSummary,
+  buildEmojiRow,
+  buildShareText,
   HISTORY_CAP,
 } from "../bundle/game.js";
 
@@ -224,5 +226,72 @@ describe("summaries", () => {
     const ep = episode(100);
     const out = runSummary(defaultProfile(), run({ exhausted: true }), ep);
     expect(out).toContain("did not solve");
+  });
+});
+describe("share text", () => {
+  const base = {
+    episodeDay: 20261017,
+    figureName: "Alan Turing",
+    outcome: "solved",
+    score: 920,
+    grade: "archivist",
+    streak: 3,
+    guessesUsed: 2,
+    maxGuesses: 5,
+    difficulty: "iconic",
+    era: "20th century",
+    region: "Britain",
+    siteUrl: "https://whoware.vercel.app",
+  };
+
+  test("emoji row is clamped to the guess budget", () => {
+    expect(buildEmojiRow(0, 5)).toBe("⬜⬜⬜⬜⬜");
+    expect(buildEmojiRow(2, 5)).toBe("🟧🟧⬜⬜⬜");
+    // a negative or over-budget count cannot produce a malformed row
+    expect(buildEmojiRow(-3, 5)).toBe("⬜⬜⬜⬜⬜");
+    expect(buildEmojiRow(99, 5)).toBe("🟧🟧🟧🟧🟧");
+    expect(buildEmojiRow(1, 0)).toBe("");
+  });
+
+  test("a solved result reads as the native app's card", () => {
+    const text = buildShareText(base);
+    expect(text).toContain("WhoWare #017 · iconic");
+    expect(text).toContain("Solved: Alan Turing · 20th century · Britain");
+    expect(text).toContain("🟧🟧⬜⬜⬜");
+    expect(text).toContain("920 pts · archivist");
+    expect(text).toContain("Streak 3");
+    expect(text).toContain("https://whoware.vercel.app");
+  });
+
+  test("a miss says Missed and omits the grade", () => {
+    const text = buildShareText({ ...base, outcome: "exhausted", score: 0, grade: null, streak: 0 });
+    expect(text).toContain("Missed: Alan Turing");
+    expect(text).not.toContain("archivist");
+    expect(text).not.toContain("Streak");
+  });
+
+  test("a zero streak is not advertised", () => {
+    expect(buildShareText({ ...base, streak: 0 })).not.toContain("Streak");
+  });
+
+  test("lines are single-spaced — no stray blank lines", () => {
+    const text = buildShareText(base);
+    expect(text).not.toMatch(/\n\s*\n/);
+    expect(text.split("\n")).toHaveLength(5);
+  });
+
+  test("optional era/region/site are omitted when absent", () => {
+    const text = buildShareText({
+      episodeDay: 20261017,
+      figureName: "Alan Turing",
+      outcome: "solved",
+      score: 500,
+      guessesUsed: 1,
+      maxGuesses: 5,
+    });
+    expect(text).toContain("Solved: Alan Turing");
+    expect(text).not.toContain("·\n");
+    expect(text).not.toContain("https://");
+    expect(text).not.toContain("undefined");
   });
 });

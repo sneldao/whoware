@@ -358,6 +358,41 @@ body {
   display: none;
 }
 
+/* ── Share ─────────────────────────────────────────────────────── */
+
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.share-text {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px dashed color-mix(in srgb, var(--parchment) 22%, transparent);
+  background: var(--panel);
+  color: color-mix(in srgb, var(--parchment) 78%, transparent);
+  font: 400 11px/1.5 ui-monospace, Menlo, monospace;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.share-row {
+  display: flex;
+  gap: 8px;
+}
+
+.share-status {
+  min-height: 1em;
+  font: 400 10px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .exhibit {
     animation: none;
